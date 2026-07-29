@@ -8,22 +8,26 @@ export interface Profile {
 
 const PUBLIC_PATHS = ['/login', '/signup']
 
+function matchesPath(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(base + '/')
+}
+
 export function getRedirectPath(profile: Profile | null, pathname: string): string | null {
-  const isPublicPath = PUBLIC_PATHS.some((path) => pathname.startsWith(path))
+  const isPublicPath = PUBLIC_PATHS.some((path) => matchesPath(pathname, path))
 
   if (!profile) {
     return isPublicPath ? null : '/login'
   }
 
   if (profile.status !== 'approved') {
-    return pathname.startsWith('/pending') ? null : '/pending'
+    return matchesPath(pathname, '/pending') ? null : '/pending'
   }
 
-  if (isPublicPath || pathname.startsWith('/pending')) {
+  if (isPublicPath || matchesPath(pathname, '/pending')) {
     return '/'
   }
 
-  if (pathname.startsWith('/admin') && profile.role !== 'admin') {
+  if (matchesPath(pathname, '/admin') && profile.role !== 'admin') {
     return '/'
   }
 

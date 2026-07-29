@@ -53,4 +53,28 @@ describe('getRedirectPath', () => {
     const profile: Profile = { status: 'approved', role: 'admin' }
     expect(getRedirectPath(profile, '/admin')).toBeNull()
   })
+
+  it('lets admins reach nested admin routes like /admin/foo', () => {
+    const profile: Profile = { status: 'approved', role: 'admin' }
+    expect(getRedirectPath(profile, '/admin/foo')).toBeNull()
+  })
+
+  it('blocks non-admin members from nested admin routes like /admin/foo', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/admin/foo')).toBe('/')
+  })
+
+  it('does not treat /login-help as the public /login path for unauthenticated users', () => {
+    expect(getRedirectPath(null, '/login-help')).toBe('/login')
+  })
+
+  it('does not treat /admin-guide as an admin route for approved non-admin members', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/admin-guide')).toBeNull()
+  })
+
+  it('lets rejected users stay on /pending', () => {
+    const profile: Profile = { status: 'rejected', role: 'member' }
+    expect(getRedirectPath(profile, '/pending')).toBeNull()
+  })
 })
