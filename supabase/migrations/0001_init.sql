@@ -15,23 +15,25 @@ create policy "Users can read own profile"
   on profiles for select
   using (auth.uid() = id);
 
+create function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
+
 create policy "Admins can read all profiles"
   on profiles for select
-  using (
-    exists (
-      select 1 from profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 create policy "Admins can update any profile"
   on profiles for update
-  using (
-    exists (
-      select 1 from profiles p
-      where p.id = auth.uid() and p.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 create function public.handle_new_user()
 returns trigger as $$
