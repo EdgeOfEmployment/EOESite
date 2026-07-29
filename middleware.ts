@@ -7,11 +7,14 @@ export async function middleware(request: NextRequest) {
 
   let profile: Profile | null = null
   if (user) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('status, role')
       .eq('id', user.id)
       .single()
+    if (error) {
+      console.error('middleware: failed to fetch profile', error)
+    }
     profile = data as Profile | null
   }
 
@@ -20,7 +23,9 @@ export async function middleware(request: NextRequest) {
   if (redirectPath) {
     const url = request.nextUrl.clone()
     url.pathname = redirectPath
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+    return redirectResponse
   }
 
   return supabaseResponse
