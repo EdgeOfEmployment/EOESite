@@ -6,7 +6,7 @@ export interface Profile {
   role: ProfileRole
 }
 
-const PUBLIC_PATHS = ['/login', '/signup']
+const PUBLIC_PATHS = ['/login', '/signup', '/pending']
 
 function matchesPath(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(base + '/')

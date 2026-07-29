@@ -14,6 +14,10 @@ describe('getRedirectPath', () => {
     expect(getRedirectPath(null, '/signup')).toBeNull()
   })
 
+  it('lets unauthenticated users reach /pending', () => {
+    expect(getRedirectPath(null, '/pending')).toBeNull()
+  })
+
   it('sends pending users to /pending', () => {
     const profile: Profile = { status: 'pending', role: 'member' }
     expect(getRedirectPath(profile, '/')).toBe('/pending')
