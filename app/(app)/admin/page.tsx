@@ -4,26 +4,37 @@ import { approveUser, rejectUser } from './actions'
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  const { data: pendingUsers } = await supabase
+  const { data: pendingUsers, error: pendingError } = await supabase
     .from('profiles')
     .select('id, name, created_at')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
 
-  const { data: approvedMembers } = await supabase
+  if (pendingError) {
+    console.error('admin page: failed to fetch pending users', pendingError)
+  }
+
+  const { data: approvedMembers, error: approvedError } = await supabase
     .from('profiles')
     .select('id, name, role')
     .eq('status', 'approved')
     .order('name', { ascending: true })
+
+  if (approvedError) {
+    console.error('admin page: failed to fetch approved members', approvedError)
+  }
+
+  const pendingList = pendingUsers ?? []
+  const approvedList = approvedMembers ?? []
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-8">
       <h1 className="mb-6 text-2xl font-bold">관리자 페이지</h1>
 
       <section className="mb-10">
-        <h2 className="mb-4 text-lg font-semibold">가입 대기 ({pendingUsers?.length ?? 0})</h2>
+        <h2 className="mb-4 text-lg font-semibold">가입 대기 ({pendingList.length})</h2>
         <ul className="flex flex-col gap-3">
-          {pendingUsers?.map((user) => (
+          {pendingList.map((user) => (
             <li key={user.id} className="flex items-center justify-between rounded border p-3">
               <span>{user.name}</span>
               <div className="flex gap-2">
@@ -40,16 +51,16 @@ export default async function AdminPage() {
               </div>
             </li>
           ))}
-          {pendingUsers?.length === 0 && (
+          {pendingList.length === 0 && (
             <p className="text-sm text-gray-500">대기 중인 가입 신청이 없습니다.</p>
           )}
         </ul>
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold">멤버 ({approvedMembers?.length ?? 0})</h2>
+        <h2 className="mb-4 text-lg font-semibold">멤버 ({approvedList.length})</h2>
         <ul className="flex flex-col gap-3">
-          {approvedMembers?.map((member) => (
+          {approvedList.map((member) => (
             <li key={member.id} className="flex items-center justify-between rounded border p-3">
               <span>{member.name}</span>
               {member.role !== 'admin' && (

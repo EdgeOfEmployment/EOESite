@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const ADMIN_ID = 'admin-1'
+const OTHER_ADMIN_ID = 'admin-2'
 const TARGET_ID = 'user-123'
 
-const singleMock = vi.fn()
 const selectEqMock = vi.fn()
 const selectMock = vi.fn()
 const updateEqMock = vi.fn()
@@ -11,6 +11,8 @@ const updateMock = vi.fn()
 const fromMock = vi.fn()
 const getUserMock = vi.fn()
 const revalidatePathMock = vi.fn()
+
+let roleById: Record<string, string | null>
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -31,9 +33,17 @@ beforeEach(() => {
   // Caller is authenticated as an admin by default.
   getUserMock.mockResolvedValue({ data: { user: { id: ADMIN_ID } }, error: null })
 
-  // supabase.from('profiles').select('role').eq('id', ...).single() -> caller's role lookup
-  singleMock.mockResolvedValue({ data: { role: 'admin' }, error: null })
-  selectEqMock.mockReturnValue({ single: singleMock })
+  // supabase.from('profiles').select('role').eq('id', ...).single() -> role lookup.
+  // This chain is used both for the caller's role lookup and the target's role
+  // lookup, so route the response by the id being queried.
+  roleById = {
+    [ADMIN_ID]: 'admin',
+    [OTHER_ADMIN_ID]: 'admin',
+    [TARGET_ID]: 'member',
+  }
+  selectEqMock.mockImplementation((_col: string, id: string) => ({
+    single: vi.fn().mockResolvedValue({ data: { role: roleById[id] ?? null }, error: null }),
+  }))
   selectMock.mockReturnValue({ eq: selectEqMock })
 
   // supabase.from('profiles').update({ status }).eq('id', ...) -> target profile mutation
@@ -83,7 +93,7 @@ describe('rejectUser', () => {
 
 describe('authorization', () => {
   it('throws when the caller is not an admin, without updating the target', async () => {
-    singleMock.mockResolvedValue({ data: { role: 'member' }, error: null })
+    roleById[ADMIN_ID] = 'member'
 
     await expect(approveUser(TARGET_ID)).rejects.toThrow()
 
@@ -109,6 +119,24 @@ describe('authorization', () => {
 
   it('also blocks approving one\'s own account', async () => {
     await expect(approveUser(ADMIN_ID)).rejects.toThrow()
+
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when rejecting a different admin, without updating', async () => {
+    await expect(rejectUser(OTHER_ADMIN_ID)).rejects.toThrow(
+      '다른 관리자의 상태는 변경할 수 없습니다',
+    )
+
+    expect(updateMock).not.toHaveBeenCalled()
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when approving a different admin, without updating', async () => {
+    await expect(approveUser(OTHER_ADMIN_ID)).rejects.toThrow(
+      '다른 관리자의 상태는 변경할 수 없습니다',
+    )
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()

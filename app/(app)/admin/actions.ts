@@ -25,6 +25,15 @@ async function setUserStatus(userId: string, status: UserStatus) {
 
   if (userId === user.id) throw new Error('본인 계정에는 이 작업을 수행할 수 없습니다')
 
+  const { data: targetProfile, error: targetError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+
+  if (targetError) throw new Error(targetError.message)
+  if (targetProfile?.role === 'admin') throw new Error('다른 관리자의 상태는 변경할 수 없습니다')
+
   const { error } = await supabase.from('profiles').update({ status }).eq('id', userId)
 
   if (error) throw new Error(error.message)
