@@ -25,4 +25,11 @@ describe('ProblemForm', () => {
     render(<ProblemForm />)
     expect(screen.getByLabelText('대상 주차')).toHaveValue('2026-08-11')
   })
+
+  it('renders an optional match keyword input', () => {
+    render(<ProblemForm />)
+    const input = screen.getByLabelText('저장소 매칭 키워드 (선택)')
+    expect(input).toBeInTheDocument()
+    expect(input).not.toBeRequired()
+  })
 })

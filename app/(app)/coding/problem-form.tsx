@@ -32,6 +32,15 @@ export function ProblemForm() {
         required
         className="rounded border px-3 py-2"
       />
+      <label htmlFor="matchKeyword" className="sr-only">
+        저장소 매칭 키워드 (선택)
+      </label>
+      <input
+        id="matchKeyword"
+        name="matchKeyword"
+        placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)"
+        className="rounded border px-3 py-2"
+      />
       <button type="submit" className="self-start rounded bg-black px-3 py-2 text-sm text-white">
         문제 등록
       </button>
