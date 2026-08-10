@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const getUserMock = vi.fn()
 const insertMock = vi.fn()
 const fromMock = vi.fn()
+const rpcMock = vi.fn()
 const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
@@ -12,6 +13,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: { getUser: getUserMock },
     from: fromMock,
+    rpc: rpcMock,
   })),
 }))
 
@@ -23,7 +25,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblem, toggleCheck, deleteProblem } from './actions'
+import { createProblem, toggleCheck, deleteProblem, updateGithubUsername } from './actions'
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData()
@@ -53,6 +55,7 @@ beforeEach(() => {
   getUserMock.mockResolvedValue({ data: { user: { id: 'admin-1' } } })
   insertMock.mockResolvedValue({ error: null })
   mockAdminCheck('admin')
+  rpcMock.mockResolvedValue({ error: null })
 })
 
 describe('createProblem', () => {
@@ -192,5 +195,36 @@ describe('deleteProblem', () => {
 
     await expect(deleteProblem('problem-1')).rejects.toThrow('권한이 없습니다')
     expect(deleteEq).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateGithubUsername', () => {
+  it('redirects with an error when the username is empty', async () => {
+    const formData = buildFormData({ githubUsername: '' })
+
+    await expect(updateGithubUsername(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('GitHub 아이디를 입력해주세요')
+    )
+    expect(rpcMock).not.toHaveBeenCalled()
+  })
+
+  it('calls the update_own_github_username RPC and revalidates /coding', async () => {
+    const formData = buildFormData({ githubUsername: 'kimminsu-dev' })
+
+    await updateGithubUsername(formData)
+
+    expect(rpcMock).toHaveBeenCalledWith('update_own_github_username', {
+      new_username: 'kimminsu-dev',
+    })
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('redirects with the Supabase error message when the RPC fails', async () => {
+    rpcMock.mockResolvedValue({ error: { message: 'db error' } })
+    const formData = buildFormData({ githubUsername: 'kimminsu-dev' })
+
+    await expect(updateGithubUsername(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith('/coding?error=' + encodeURIComponent('db error'))
   })
 })

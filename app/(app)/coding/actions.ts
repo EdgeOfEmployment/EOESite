@@ -78,6 +78,37 @@ export async function toggleCheck(problemId: string) {
   revalidatePath('/coding')
 }
 
+export async function updateGithubUsername(formData: FormData) {
+  const githubUsername = formData.get('githubUsername') as string
+
+  if (!githubUsername) {
+    redirect('/coding?error=' + encodeURIComponent('GitHub 아이디를 입력해주세요'))
+    return
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+    return
+  }
+
+  const { error } = await supabase.rpc('update_own_github_username', {
+    new_username: githubUsername,
+  })
+
+  if (error) {
+    redirect('/coding?error=' + encodeURIComponent(error.message))
+    return
+  }
+
+  revalidatePath('/coding')
+}
+
 export async function deleteProblem(problemId: string) {
   const supabase = await createClient()
 
