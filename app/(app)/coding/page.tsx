@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { groupByWeek, formatWeekLabel } from '@/lib/coding/week'
 import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
+import { GithubSettingsForm } from './github-settings-form'
 import type { CodingProblem, Member } from '@/lib/coding/types'
 
 export default async function CodingPage({
@@ -18,7 +19,7 @@ export default async function CodingPage({
 
   const { data: callerProfile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, github_username')
     .eq('id', user!.id)
     .single()
 
@@ -60,6 +61,7 @@ export default async function CodingPage({
     <main className="mx-auto max-w-2xl px-6 py-8">
       <h1 className="mb-6 text-2xl font-bold">코테 스터디</h1>
       {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+      <GithubSettingsForm currentUsername={callerProfile?.github_username ?? null} />
       {isAdmin && <ProblemForm />}
       <div className="mt-6 flex flex-col gap-6">
         {weekGroups.map((week) => (

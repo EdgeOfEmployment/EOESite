@@ -26,8 +26,12 @@ vi.mock('@/lib/supabase/server', () => ({
       if (table === 'profiles') {
         return {
           select: (columns: string) => {
-            if (columns === 'role') {
-              return { eq: () => ({ single: async () => ({ data: { role: 'member' } }) }) }
+            if (columns === 'role, github_username') {
+              return {
+                eq: () => ({
+                  single: async () => ({ data: { role: 'member', github_username: 'kimminsu-dev' } }),
+                }),
+              }
             }
             return { eq: () => Promise.resolve({ data: profiles }) }
           },
@@ -48,6 +52,7 @@ vi.mock('./actions', () => ({
   createProblem: vi.fn(),
   toggleCheck: vi.fn(),
   deleteProblem: vi.fn(),
+  updateGithubUsername: vi.fn(),
 }))
 
 import CodingPage from './page'
@@ -67,5 +72,11 @@ describe('CodingPage', () => {
     const ui = await CodingPage({ searchParams: Promise.resolve({}) })
     render(ui)
     expect(screen.queryByRole('button', { name: '문제 등록' })).not.toBeInTheDocument()
+  })
+
+  it("renders the GitHub settings form pre-filled with the caller's registered username", async () => {
+    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+    expect(screen.getByLabelText('내 GitHub 아이디')).toHaveValue('kimminsu-dev')
   })
 })
