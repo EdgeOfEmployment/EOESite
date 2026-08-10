@@ -89,3 +89,35 @@ export async function addComment(postId: string, formData: FormData) {
 
   revalidatePath('/checkin')
 }
+
+export async function toggleReaction(postId: string, emoji: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('로그인이 필요합니다')
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('checkin_reactions')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('author_id', user.id)
+    .eq('emoji', emoji)
+    .maybeSingle()
+
+  if (fetchError) throw new Error(fetchError.message)
+
+  if (existing) {
+    const { error } = await supabase.from('checkin_reactions').delete().eq('id', existing.id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase
+      .from('checkin_reactions')
+      .insert({ post_id: postId, author_id: user.id, emoji })
+    if (error) throw new Error(error.message)
+  }
+
+  revalidatePath('/checkin')
+}

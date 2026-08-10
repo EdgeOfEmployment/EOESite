@@ -26,7 +26,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createCheckinPost, addComment } from './actions'
+import { createCheckinPost, addComment, toggleReaction } from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -118,5 +118,48 @@ describe('addComment', () => {
 
     expect(insertMock).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', body: '축하해요' })
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+  })
+})
+
+describe('toggleReaction', () => {
+  function mockFindExisting(existing: { id: string } | null) {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+    const insert = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table !== 'checkin_reactions') throw new Error(`unexpected table ${table}`)
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: existing, error: null }) }),
+            }),
+          }),
+        }),
+        insert,
+        delete: () => ({ eq: deleteEq }),
+      }
+    })
+
+    return { deleteEq, insert }
+  }
+
+  it('inserts a reaction when none exists yet', async () => {
+    const { insert, deleteEq } = mockFindExisting(null)
+
+    await toggleReaction('post-1', '👍')
+
+    expect(insert).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', emoji: '👍' })
+    expect(deleteEq).not.toHaveBeenCalled()
+    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+  })
+
+  it('deletes the existing reaction when the user already reacted', async () => {
+    const { insert, deleteEq } = mockFindExisting({ id: 'reaction-1' })
+
+    await toggleReaction('post-1', '👍')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'reaction-1')
+    expect(insert).not.toHaveBeenCalled()
   })
 })
