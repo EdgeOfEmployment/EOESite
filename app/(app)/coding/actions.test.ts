@@ -78,7 +78,7 @@ describe('createProblem', () => {
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  it('creates the problem and revalidates /coding', async () => {
+  it('creates the problem with a null match keyword when none is provided', async () => {
     const formData = buildFormData({
       title: '두 수의 합',
       link: 'https://example.com/problem/1',
@@ -92,8 +92,28 @@ describe('createProblem', () => {
       link: 'https://example.com/problem/1',
       week_of: '2026-08-11',
       created_by: 'admin-1',
+      match_keyword: null,
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('passes the optional match keyword when provided', async () => {
+    const formData = buildFormData({
+      title: '두 수의 합',
+      link: 'https://example.com/problem/1',
+      weekOf: '2026-08-11',
+      matchKeyword: 'two-sum',
+    })
+
+    await createProblem(formData)
+
+    expect(insertMock).toHaveBeenCalledWith({
+      title: '두 수의 합',
+      link: 'https://example.com/problem/1',
+      week_of: '2026-08-11',
+      created_by: 'admin-1',
+      match_keyword: 'two-sum',
+    })
   })
 })
 

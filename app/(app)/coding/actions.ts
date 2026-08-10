@@ -8,6 +8,7 @@ export async function createProblem(formData: FormData) {
   const title = formData.get('title') as string
   const link = formData.get('link') as string
   const weekOf = formData.get('weekOf') as string
+  const matchKeyword = (formData.get('matchKeyword') as string) || null
 
   if (!title || !link || !weekOf) {
     redirect('/coding?error=' + encodeURIComponent('문제명, 링크, 주차를 모두 입력해주세요'))
@@ -36,7 +37,7 @@ export async function createProblem(formData: FormData) {
 
   const { error } = await supabase
     .from('coding_problems')
-    .insert({ title, link, week_of: weekOf, created_by: user.id })
+    .insert({ title, link, week_of: weekOf, created_by: user.id, match_keyword: matchKeyword })
 
   if (error) {
     redirect('/coding?error=' + encodeURIComponent(error.message))
