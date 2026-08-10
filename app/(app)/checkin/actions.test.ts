@@ -26,7 +26,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createCheckinPost } from './actions'
+import { createCheckinPost, addComment } from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -97,5 +97,26 @@ describe('createCheckinPost', () => {
       body: '오늘의 인증',
       photo_url: 'https://example.com/photo.jpg',
     })
+  })
+})
+
+describe('addComment', () => {
+  it('redirects with an error when the comment body is empty', async () => {
+    const formData = new FormData()
+    formData.set('body', '')
+
+    await expect(addComment('post-1', formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?error=' + encodeURIComponent('댓글 내용을 입력해주세요'))
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
+  it('inserts the comment and revalidates the checkin feed', async () => {
+    const formData = new FormData()
+    formData.set('body', '축하해요')
+
+    await addComment('post-1', formData)
+
+    expect(insertMock).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', body: '축하해요' })
+    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
   })
 })

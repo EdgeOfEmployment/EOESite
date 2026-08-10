@@ -58,3 +58,34 @@ export async function createCheckinPost(formData: FormData) {
   revalidatePath('/checkin')
   revalidatePath('/')
 }
+
+export async function addComment(postId: string, formData: FormData) {
+  const body = formData.get('body') as string
+
+  if (!body) {
+    redirect('/checkin?error=' + encodeURIComponent('댓글 내용을 입력해주세요'))
+    return
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+    return
+  }
+
+  const { error } = await supabase
+    .from('checkin_comments')
+    .insert({ post_id: postId, author_id: user.id, body })
+
+  if (error) {
+    redirect('/checkin?error=' + encodeURIComponent(error.message))
+    return
+  }
+
+  revalidatePath('/checkin')
+}
