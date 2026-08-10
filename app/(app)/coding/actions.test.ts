@@ -23,7 +23,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblem, toggleCheck } from './actions'
+import { createProblem, toggleCheck, deleteProblem } from './actions'
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData()
@@ -135,5 +135,42 @@ describe('toggleCheck', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'check-1')
     expect(insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteProblem', () => {
+  it('deletes the problem when the caller is an admin', async () => {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+    mockAdminCheck('admin')
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) }
+      }
+      if (table === 'coding_problems') {
+        return { delete: () => ({ eq: deleteEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await deleteProblem('problem-1')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'problem-1')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('throws when the caller is not an admin', async () => {
+    const deleteEq = vi.fn()
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'member' }, error: null }) }) }) }
+      }
+      if (table === 'coding_problems') {
+        return { delete: () => ({ eq: deleteEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(deleteProblem('problem-1')).rejects.toThrow('권한이 없습니다')
+    expect(deleteEq).not.toHaveBeenCalled()
   })
 })
