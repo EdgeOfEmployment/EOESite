@@ -525,6 +525,8 @@ git commit -m "Add auth/approval-gating middleware"
 
 Note: full end-to-end verification of this middleware (redirects actually firing) happens in Task 13, once login/signup/pending pages exist.
 
+**Post-implementation update (2026-08-10):** Next.js deprecated the `middleware.ts` file convention in favor of `proxy.ts` (same behavior, renamed file and exported function — `middleware()` → `proxy()`). The file was renamed accordingly; the code above reflects the original implementation for historical reference.
+
 ---
 
 ## Task 6: Signup page and action
