@@ -45,3 +45,34 @@ export async function createProblem(formData: FormData) {
 
   revalidatePath('/coding')
 }
+
+export async function toggleCheck(problemId: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('로그인이 필요합니다')
+
+  const { data: existing, error: fetchError } = await supabase
+    .from('coding_checks')
+    .select('id')
+    .eq('problem_id', problemId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (fetchError) throw new Error(fetchError.message)
+
+  if (existing) {
+    const { error } = await supabase.from('coding_checks').delete().eq('id', existing.id)
+    if (error) throw new Error(error.message)
+  } else {
+    const { error } = await supabase
+      .from('coding_checks')
+      .insert({ problem_id: problemId, user_id: user.id })
+    if (error) throw new Error(error.message)
+  }
+
+  revalidatePath('/coding')
+}
