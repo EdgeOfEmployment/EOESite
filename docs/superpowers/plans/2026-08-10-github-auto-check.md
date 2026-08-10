@@ -57,7 +57,7 @@ app/
 
 - Create: `supabase/migrations/0004_github_sync.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0004_github_sync.sql`:
 
@@ -89,7 +89,7 @@ Open the Supabase project dashboard → SQL Editor → paste the contents of `00
 
 In the Supabase dashboard → Table Editor, confirm `profiles` has a new `github_username` column and `coding_problems` has a new `match_keyword` column. In the SQL Editor, run `select proname from pg_proc where proname = 'update_own_github_username';` and confirm it returns one row.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/0004_github_sync.sql
@@ -105,7 +105,7 @@ git commit -m "Add github_username, match_keyword, and self-update RPC for GitHu
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Update the existing test and add a new one**
+- [x] **Step 1: Update the existing test and add a new one**
 
 In `app/(app)/coding/actions.test.ts`, replace the `'creates the problem and revalidates /coding'` test inside `describe('createProblem', ...)` with these two tests (keep the other two `createProblem` tests unchanged):
 
@@ -149,12 +149,12 @@ In `app/(app)/coding/actions.test.ts`, replace the `'creates the problem and rev
   })
 ```
 
-- [ ] **Step 2: Run the tests to verify the new ones fail**
+- [x] **Step 2: Run the tests to verify the new ones fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL on the two new tests — `insertMock` was called without a `match_keyword` key, so the exact-match assertion fails. The other existing tests still pass.
 
-- [ ] **Step 3: Update the implementation**
+- [x] **Step 3: Update the implementation**
 
 In `app/(app)/coding/actions.ts`, replace the `createProblem` function's body from the `weekOf` line through the `insert` call with:
 
@@ -203,12 +203,12 @@ export async function createProblem(formData: FormData) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 8 tests green (the two `createProblem` tests replaced the original one, so the file now has 8 total instead of 7).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -224,7 +224,7 @@ git commit -m "Add optional match keyword to createProblem"
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Add `rpc` to the shared Supabase mock and write the failing tests**
+- [x] **Step 1: Add `rpc` to the shared Supabase mock and write the failing tests**
 
 In `app/(app)/coding/actions.test.ts`:
 
@@ -293,12 +293,12 @@ describe('updateGithubUsername', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify the new ones fail**
+- [x] **Step 2: Run the tests to verify the new ones fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'updateGithubUsername'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/coding/actions.ts`:
 
@@ -335,12 +335,12 @@ export async function updateGithubUsername(formData: FormData) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 11 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -356,7 +356,7 @@ git commit -m "Add self-service updateGithubUsername server action"
 - Modify: `app/(app)/coding/problem-form.tsx`
 - Modify: `app/(app)/coding/problem-form.test.tsx`
 
-- [ ] **Step 1: Add the failing test**
+- [x] **Step 1: Add the failing test**
 
 Append to `app/(app)/coding/problem-form.test.tsx`, inside the existing `describe('ProblemForm', ...)` block:
 
@@ -369,12 +369,12 @@ Append to `app/(app)/coding/problem-form.test.tsx`, inside the existing `describ
   })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/coding/problem-form.test.tsx"`
 Expected: FAIL — no element found for that label.
 
-- [ ] **Step 3: Add the field**
+- [x] **Step 3: Add the field**
 
 In `app/(app)/coding/problem-form.tsx`, add this block right before the closing `<button` element:
 
@@ -390,12 +390,12 @@ In `app/(app)/coding/problem-form.tsx`, add this block right before the closing 
       />
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/coding/problem-form.test.tsx"`
 Expected: PASS — all 3 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/problem-form.tsx" "app/(app)/coding/problem-form.test.tsx"
@@ -411,7 +411,7 @@ git commit -m "Add optional match keyword input to problem registration form"
 - Create: `app/(app)/coding/github-settings-form.tsx`
 - Test: `app/(app)/coding/github-settings-form.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `app/(app)/coding/github-settings-form.test.tsx`:
 
@@ -443,12 +443,12 @@ describe('GithubSettingsForm', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/github-settings-form.test.tsx"`
 Expected: FAIL — `Cannot find module './github-settings-form'`.
 
-- [ ] **Step 3: Implement the component**
+- [x] **Step 3: Implement the component**
 
 Create `app/(app)/coding/github-settings-form.tsx`:
 
@@ -480,12 +480,12 @@ export function GithubSettingsForm({ currentUsername }: { currentUsername: strin
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/github-settings-form.test.tsx"`
 Expected: PASS — all 3 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/github-settings-form.tsx" "app/(app)/coding/github-settings-form.test.tsx"
@@ -501,7 +501,7 @@ git commit -m "Add GitHub username self-service settings form"
 - Modify: `app/(app)/coding/page.tsx`
 - Modify: `app/(app)/coding/page.test.tsx`
 
-- [ ] **Step 1: Update the failing test**
+- [x] **Step 1: Update the failing test**
 
 In `app/(app)/coding/page.test.tsx`:
 
@@ -536,12 +536,12 @@ In `app/(app)/coding/page.test.tsx`:
   })
 ```
 
-- [ ] **Step 2: Run the tests to verify the new one fails**
+- [x] **Step 2: Run the tests to verify the new one fails**
 
 Run: `npx vitest run "app/(app)/coding/page.test.tsx"`
 Expected: FAIL — no element with label "내 GitHub 아이디" exists yet. (The other two tests still pass since the mock's `role, github_username` branch change doesn't affect them — they don't assert on `role`.)
 
-- [ ] **Step 3: Update the page**
+- [x] **Step 3: Update the page**
 
 In `app/(app)/coding/page.tsx`:
 
@@ -653,12 +653,12 @@ export default async function CodingPage({
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/page.test.tsx"`
 Expected: PASS — all 3 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/page.tsx" "app/(app)/coding/page.test.tsx"
@@ -675,7 +675,7 @@ git commit -m "Render GitHub settings form on the coding board page"
 - Test: `app/api/github-webhook/route.test.ts`
 - Modify: `.env.local.example`
 
-- [ ] **Step 1: Document the new env vars**
+- [x] **Step 1: Document the new env vars**
 
 Read the current contents of `.env.local.example`, then add these two lines to it (keep the existing `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` lines untouched):
 
@@ -684,7 +684,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 GITHUB_WEBHOOK_SECRET=your-webhook-secret
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `app/api/github-webhook/route.test.ts`:
 
@@ -847,12 +847,12 @@ describe('POST /api/github-webhook', () => {
 })
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/api/github-webhook/route.test.ts"`
 Expected: FAIL — `Cannot find module './route'`.
 
-- [ ] **Step 4: Implement the route handler**
+- [x] **Step 4: Implement the route handler**
 
 Create `app/api/github-webhook/route.ts`:
 
@@ -943,17 +943,17 @@ export async function POST(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/api/github-webhook/route.test.ts"`
 Expected: PASS — all 5 tests green.
 
-- [ ] **Step 6: Full test suite + build check**
+- [x] **Step 6: Full test suite + build check**
 
 Run: `npx vitest run && npm run build`
 Expected: All tests pass across the whole project; build succeeds, with `/api/github-webhook` listed as a route.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/api/github-webhook/route.ts app/api/github-webhook/route.test.ts .env.local.example
