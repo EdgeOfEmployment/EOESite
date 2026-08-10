@@ -52,7 +52,7 @@ app/
 
 - Create: `supabase/migrations/0003_coding.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0003_coding.sql`:
 
@@ -131,7 +131,7 @@ Open the Supabase project dashboard → SQL Editor → paste the contents of `00
 
 In the Supabase dashboard → Table Editor, confirm `coding_problems` and `coding_checks` tables exist. In Authentication/Database → Policies (or the SQL Editor with `select * from pg_policies where tablename = 'profiles';`), confirm a new "Approved members can read all profiles" policy exists on `profiles`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/0003_coding.sql
@@ -148,7 +148,7 @@ git commit -m "Fix profiles RLS so approved members can read each other, add cod
 - Create: `lib/coding/week.ts`
 - Test: `lib/coding/week.test.ts`
 
-- [ ] **Step 1: Write the domain types**
+- [x] **Step 1: Write the domain types**
 
 Create `lib/coding/types.ts`:
 
@@ -169,7 +169,7 @@ export interface CodingProblem {
 }
 ```
 
-- [ ] **Step 2: Write the failing tests for the week logic**
+- [x] **Step 2: Write the failing tests for the week logic**
 
 Create `lib/coding/week.test.ts`:
 
@@ -221,12 +221,12 @@ describe('groupByWeek', () => {
 })
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `npx vitest run lib/coding/week.test.ts`
 Expected: FAIL — `Cannot find module './week'`.
 
-- [ ] **Step 4: Implement the week logic**
+- [x] **Step 4: Implement the week logic**
 
 Create `lib/coding/week.ts`:
 
@@ -262,12 +262,12 @@ export function groupByWeek<T extends { weekOf: string }>(items: T[]): WeekGroup
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run lib/coding/week.test.ts`
 Expected: PASS — all 7 tests green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/coding/types.ts lib/coding/week.ts lib/coding/week.test.ts
@@ -283,7 +283,7 @@ git commit -m "Add coding board domain types and week logic"
 - Create: `app/(app)/coding/actions.ts`
 - Test: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `app/(app)/coding/actions.test.ts`:
 
@@ -388,12 +388,12 @@ describe('createProblem', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL — `Cannot find module './actions'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Create `app/(app)/coding/actions.ts`:
 
@@ -447,12 +447,12 @@ export async function createProblem(formData: FormData) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 3 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -468,7 +468,7 @@ git commit -m "Add admin-only createProblem server action"
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Add the failing tests**
+- [x] **Step 1: Add the failing tests**
 
 Append to `app/(app)/coding/actions.test.ts` (add `import { toggleCheck } from './actions'` at the top alongside the existing import):
 
@@ -515,12 +515,12 @@ describe('toggleCheck', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'toggleCheck'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/coding/actions.ts`:
 
@@ -557,12 +557,12 @@ export async function toggleCheck(problemId: string) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 5 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -578,7 +578,7 @@ git commit -m "Add toggleCheck server action for coding problems"
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Add the failing tests**
+- [x] **Step 1: Add the failing tests**
 
 Append to `app/(app)/coding/actions.test.ts` (add `import { deleteProblem } from './actions'` at the top):
 
@@ -621,12 +621,12 @@ describe('deleteProblem', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'deleteProblem'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/coding/actions.ts`:
 
@@ -657,12 +657,12 @@ export async function deleteProblem(problemId: string) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 7 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -678,7 +678,7 @@ git commit -m "Add admin-only deleteProblem server action"
 - Create: `app/(app)/coding/problem-form.tsx`
 - Test: `app/(app)/coding/problem-form.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `app/(app)/coding/problem-form.test.tsx`:
 
@@ -713,12 +713,12 @@ describe('ProblemForm', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/coding/problem-form.test.tsx"`
 Expected: FAIL — `Cannot find module './problem-form'`.
 
-- [ ] **Step 3: Implement the component**
+- [x] **Step 3: Implement the component**
 
 Create `app/(app)/coding/problem-form.tsx`:
 
@@ -765,12 +765,12 @@ export function ProblemForm() {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/coding/problem-form.test.tsx"`
 Expected: PASS — both tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/problem-form.tsx" "app/(app)/coding/problem-form.test.tsx"
@@ -786,7 +786,7 @@ git commit -m "Add coding problem registration form"
 - Create: `app/(app)/coding/problem-card.tsx`
 - Test: `app/(app)/coding/problem-card.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `app/(app)/coding/problem-card.test.tsx`:
 
@@ -854,12 +854,12 @@ describe('ProblemCard', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/problem-card.test.tsx"`
 Expected: FAIL — `Cannot find module './problem-card'`.
 
-- [ ] **Step 3: Implement the component**
+- [x] **Step 3: Implement the component**
 
 Create `app/(app)/coding/problem-card.tsx`:
 
@@ -928,12 +928,12 @@ export function ProblemCard({
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/problem-card.test.tsx"`
 Expected: PASS — all 5 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/problem-card.tsx" "app/(app)/coding/problem-card.test.tsx"
@@ -949,7 +949,7 @@ git commit -m "Add coding problem card with member checklist"
 - Create: `app/(app)/coding/page.tsx`
 - Test: `app/(app)/coding/page.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `app/(app)/coding/page.test.tsx`:
 
@@ -1027,12 +1027,12 @@ describe('CodingPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/coding/page.test.tsx"`
 Expected: FAIL — `Cannot find module './page'`.
 
-- [ ] **Step 3: Implement the page**
+- [x] **Step 3: Implement the page**
 
 Create `app/(app)/coding/page.tsx`:
 
@@ -1126,17 +1126,17 @@ export default async function CodingPage({
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/coding/page.test.tsx"`
 Expected: PASS — both tests green.
 
-- [ ] **Step 5: Full test suite + build check**
+- [x] **Step 5: Full test suite + build check**
 
 Run: `npx vitest run && npm run build`
 Expected: All tests pass; build succeeds.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "app/(app)/coding/page.tsx" "app/(app)/coding/page.test.tsx"
