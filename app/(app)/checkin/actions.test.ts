@@ -26,7 +26,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createCheckinPost, addComment, toggleReaction } from './actions'
+import { createCheckinPost, addComment, toggleReaction, deleteCheckinPost } from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -161,5 +161,39 @@ describe('toggleReaction', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'reaction-1')
     expect(insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteCheckinPost', () => {
+  function mockAdminCheck(role: 'admin' | 'member') {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role }, error: null }) }) }) }
+      }
+      if (table === 'checkin_posts') {
+        return { delete: () => ({ eq: deleteEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    return { deleteEq }
+  }
+
+  it('deletes the post when the caller is an admin', async () => {
+    const { deleteEq } = mockAdminCheck('admin')
+
+    await deleteCheckinPost('post-1')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+  })
+
+  it('throws when the caller is not an admin', async () => {
+    const { deleteEq } = mockAdminCheck('member')
+
+    await expect(deleteCheckinPost('post-1')).rejects.toThrow('권한이 없습니다')
+    expect(deleteEq).not.toHaveBeenCalled()
   })
 })
