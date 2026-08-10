@@ -58,7 +58,7 @@ next.config.ts                # MODIFY: raise serverActions.bodySizeLimit for ph
 
 - Create: `supabase/migrations/0002_checkin.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0002_checkin.sql`:
 
@@ -152,15 +152,15 @@ create policy "Anyone can view checkin photos"
   using (bucket_id = 'checkin-photos');
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open your Supabase project dashboard → SQL Editor → paste the contents of `0002_checkin.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard → Table Editor, confirm `checkin_posts`, `checkin_comments`, `checkin_reactions` tables exist. In Storage, confirm a public `checkin-photos` bucket exists.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/0002_checkin.sql
@@ -177,7 +177,7 @@ git commit -m "Add checkin board tables, RLS, and photo storage bucket"
 - Create: `lib/checkin/status.ts`
 - Test: `lib/checkin/status.test.ts`
 
-- [ ] **Step 1: Write the domain types**
+- [x] **Step 1: Write the domain types**
 
 Create `lib/checkin/types.ts`:
 
@@ -219,7 +219,7 @@ export interface CheckinPost {
 }
 ```
 
-- [ ] **Step 2: Write the failing tests for the status logic**
+- [x] **Step 2: Write the failing tests for the status logic**
 
 Create `lib/checkin/status.test.ts`:
 
@@ -264,12 +264,12 @@ describe('getMissingTypes', () => {
 })
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `npx vitest run lib/checkin/status.test.ts`
 Expected: FAIL — `Cannot find module './status'`.
 
-- [ ] **Step 4: Implement the status logic**
+- [x] **Step 4: Implement the status logic**
 
 Create `lib/checkin/status.ts`:
 
@@ -310,12 +310,12 @@ export function getMissingTypes(userId: string, todaysPosts: TodayPost[]): Check
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run lib/checkin/status.test.ts`
 Expected: PASS — all 5 tests green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/checkin/types.ts lib/checkin/status.ts lib/checkin/status.test.ts
@@ -331,7 +331,7 @@ git commit -m "Add checkin domain types and today-status logic"
 - Create: `lib/checkin/calendar.ts`
 - Test: `lib/checkin/calendar.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `lib/checkin/calendar.test.ts`:
 
@@ -411,12 +411,12 @@ describe('groupPostsByMember', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run lib/checkin/calendar.test.ts`
 Expected: FAIL — `Cannot find module './calendar'`.
 
-- [ ] **Step 3: Implement the calendar logic**
+- [x] **Step 3: Implement the calendar logic**
 
 Create `lib/checkin/calendar.ts`:
 
@@ -492,12 +492,12 @@ export function groupPostsByMember(
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run lib/checkin/calendar.test.ts`
 Expected: PASS — all 4 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/checkin/calendar.ts lib/checkin/calendar.test.ts
@@ -514,7 +514,7 @@ git commit -m "Add checkin calendar grid logic"
 - Create: `app/(app)/checkin/actions.ts`
 - Test: `app/(app)/checkin/actions.test.ts`
 
-- [ ] **Step 1: Raise the Server Action body size limit**
+- [x] **Step 1: Raise the Server Action body size limit**
 
 Modify `next.config.ts`:
 
@@ -532,7 +532,7 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `app/(app)/checkin/actions.test.ts`:
 
@@ -640,12 +640,12 @@ describe('createCheckinPost', () => {
 })
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: FAIL — `Cannot find module './actions'`.
 
-- [ ] **Step 4: Implement the action**
+- [x] **Step 4: Implement the action**
 
 Create `app/(app)/checkin/actions.ts`:
 
@@ -712,12 +712,12 @@ export async function createCheckinPost(formData: FormData) {
 }
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: PASS — all 4 tests green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add next.config.ts "app/(app)/checkin/actions.ts" "app/(app)/checkin/actions.test.ts"
@@ -733,7 +733,7 @@ git commit -m "Add createCheckinPost server action with optional photo upload"
 - Modify: `app/(app)/checkin/actions.ts`
 - Modify: `app/(app)/checkin/actions.test.ts`
 
-- [ ] **Step 1: Add the failing tests**
+- [x] **Step 1: Add the failing tests**
 
 Append to `app/(app)/checkin/actions.test.ts`:
 
@@ -764,12 +764,12 @@ describe('addComment', () => {
 
 (Add the `import { addComment } from './actions'` line next to the existing `createCheckinPost` import at the top of the file instead of re-importing inside the block above.)
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: FAIL — `addComment is not a function` / `Cannot find export 'addComment'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/checkin/actions.ts`:
 
@@ -806,12 +806,12 @@ export async function addComment(postId: string, formData: FormData) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: PASS — all 6 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/actions.ts" "app/(app)/checkin/actions.test.ts"
@@ -827,7 +827,7 @@ git commit -m "Add addComment server action for checkin posts"
 - Modify: `app/(app)/checkin/actions.ts`
 - Modify: `app/(app)/checkin/actions.test.ts`
 
-- [ ] **Step 1: Add the failing tests**
+- [x] **Step 1: Add the failing tests**
 
 Append to `app/(app)/checkin/actions.test.ts` (and add `import { toggleReaction } from './actions'` at the top):
 
@@ -876,12 +876,12 @@ describe('toggleReaction', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'toggleReaction'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/checkin/actions.ts`:
 
@@ -919,12 +919,12 @@ export async function toggleReaction(postId: string, emoji: string) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: PASS — all 8 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/actions.ts" "app/(app)/checkin/actions.test.ts"
@@ -940,7 +940,7 @@ git commit -m "Add toggleReaction server action for checkin posts"
 - Modify: `app/(app)/checkin/actions.ts`
 - Modify: `app/(app)/checkin/actions.test.ts`
 
-- [ ] **Step 1: Add the failing tests**
+- [x] **Step 1: Add the failing tests**
 
 Append to `app/(app)/checkin/actions.test.ts` (and add `import { deleteCheckinPost } from './actions'` at the top):
 
@@ -980,12 +980,12 @@ describe('deleteCheckinPost', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'deleteCheckinPost'`.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to `app/(app)/checkin/actions.ts`:
 
@@ -1016,12 +1016,12 @@ export async function deleteCheckinPost(postId: string) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/checkin/actions.test.ts"`
 Expected: PASS — all 10 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/actions.ts" "app/(app)/checkin/actions.test.ts"
@@ -1037,7 +1037,7 @@ git commit -m "Add admin-only deleteCheckinPost server action"
 - Create: `app/(app)/checkin/post-form.tsx`
 - Test: `app/(app)/checkin/post-form.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `app/(app)/checkin/post-form.test.tsx`:
 
@@ -1070,12 +1070,12 @@ describe('PostForm', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/checkin/post-form.test.tsx"`
 Expected: FAIL — `Cannot find module './post-form'`.
 
-- [ ] **Step 3: Implement the component**
+- [x] **Step 3: Implement the component**
 
 Create `app/(app)/checkin/post-form.tsx`:
 
@@ -1111,12 +1111,12 @@ export function PostForm() {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/checkin/post-form.test.tsx"`
 Expected: PASS — both tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/post-form.tsx" "app/(app)/checkin/post-form.test.tsx"
@@ -1132,7 +1132,7 @@ git commit -m "Add checkin post creation form"
 - Create: `app/(app)/checkin/post-card.tsx`
 - Test: `app/(app)/checkin/post-card.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `app/(app)/checkin/post-card.test.tsx`:
 
@@ -1190,12 +1190,12 @@ describe('PostCard', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/checkin/post-card.test.tsx"`
 Expected: FAIL — `Cannot find module './post-card'`.
 
-- [ ] **Step 3: Implement the component**
+- [x] **Step 3: Implement the component**
 
 Create `app/(app)/checkin/post-card.tsx`:
 
@@ -1274,12 +1274,12 @@ export function PostCard({
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/checkin/post-card.test.tsx"`
 Expected: PASS — all 4 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/post-card.tsx" "app/(app)/checkin/post-card.test.tsx"
@@ -1295,7 +1295,7 @@ git commit -m "Add checkin post card with reactions and comments"
 - Create: `app/(app)/checkin/page.tsx`
 - Test: `app/(app)/checkin/page.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `app/(app)/checkin/page.test.tsx`:
 
@@ -1375,12 +1375,12 @@ describe('CheckinPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/checkin/page.test.tsx"`
 Expected: FAIL — `Cannot find module './page'`.
 
-- [ ] **Step 3: Implement the page**
+- [x] **Step 3: Implement the page**
 
 Create `app/(app)/checkin/page.tsx`:
 
@@ -1476,17 +1476,17 @@ export default async function CheckinPage({
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/checkin/page.test.tsx"`
 Expected: PASS.
 
-- [ ] **Step 5: Full test suite + build check**
+- [x] **Step 5: Full test suite + build check**
 
 Run: `npx vitest run && npm run build`
 Expected: All tests pass; build succeeds.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "app/(app)/checkin/page.tsx" "app/(app)/checkin/page.test.tsx"
@@ -1502,7 +1502,7 @@ git commit -m "Add checkin feed page"
 - Create: `app/(app)/checkin/calendar/page.tsx`
 - Test: `app/(app)/checkin/calendar/page.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `app/(app)/checkin/calendar/page.test.tsx`:
 
@@ -1558,12 +1558,12 @@ describe('CheckinCalendarPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/checkin/calendar/page.test.tsx"`
 Expected: FAIL — `Cannot find module './page'`.
 
-- [ ] **Step 3: Implement the page**
+- [x] **Step 3: Implement the page**
 
 Create `app/(app)/checkin/calendar/page.tsx`:
 
@@ -1672,12 +1672,12 @@ export default async function CheckinCalendarPage({
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/checkin/calendar/page.test.tsx"`
 Expected: PASS — both tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/checkin/calendar/page.tsx" "app/(app)/checkin/calendar/page.test.tsx"
@@ -1693,7 +1693,7 @@ git commit -m "Add checkin calendar page with date/member views"
 - Modify: `app/(app)/page.tsx`
 - Modify: `app/(app)/page.test.tsx`
 
-- [ ] **Step 1: Replace the failing test with Supabase-backed assertions**
+- [x] **Step 1: Replace the failing test with Supabase-backed assertions**
 
 Replace the contents of `app/(app)/page.test.tsx`:
 
@@ -1752,12 +1752,12 @@ describe('DashboardPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run "app/(app)/page.test.tsx"`
 Expected: FAIL — the current `DashboardPage` is synchronous and renders neither the status message nor a table, so `getByText(/기상, 스터디, 목표달성/)` and the member names will not be found.
 
-- [ ] **Step 3: Implement the dashboard**
+- [x] **Step 3: Implement the dashboard**
 
 Replace the contents of `app/(app)/page.tsx`:
 
@@ -1836,17 +1836,17 @@ export default async function DashboardPage() {
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run "app/(app)/page.test.tsx"`
 Expected: PASS — all 3 tests green.
 
-- [ ] **Step 5: Full test suite + build check**
+- [x] **Step 5: Full test suite + build check**
 
 Run: `npx vitest run && npm run build`
 Expected: All tests pass; build succeeds.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "app/(app)/page.tsx" "app/(app)/page.test.tsx"
