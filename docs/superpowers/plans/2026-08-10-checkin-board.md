@@ -1859,45 +1859,45 @@ git commit -m "Wire dashboard today-status table into checkin data"
 
 This task has no automated test — it is a manual walkthrough to confirm the checkin board works end-to-end with real Supabase Storage and RLS.
 
-- [ ] **Step 1: Confirm the migration and bucket are live**
+- [x] **Step 1: Confirm the migration and bucket are live**
 
 In the Supabase dashboard, re-check that `0002_checkin.sql` ran successfully (Task 1) and that the `checkin-photos` bucket appears under Storage.
 
-- [ ] **Step 2: Start the dev server**
+- [x] **Step 2: Start the dev server**
 
 ```bash
 npm run dev
 ```
 
-- [ ] **Step 3: Post a check-in without a photo**
+- [x] **Step 3: Post a check-in without a photo**
 
 Log in as an approved member, visit `http://localhost:3000/checkin`, submit the form with type=기상 and some text, no photo.
 Expected: Redirected back to `/checkin`, the new post appears at the top of the feed with the "기상" badge.
 
-- [ ] **Step 4: Post a check-in with a photo**
+- [x] **Step 4: Post a check-in with a photo**
 
 Submit the form again with a photo attached.
 Expected: Post appears with the photo rendered inline (loaded from the public `checkin-photos` bucket URL).
 
-- [ ] **Step 5: Comment and react**
+- [x] **Step 5: Comment and react**
 
 Log in as a second approved member. Add a comment on the first member's post; click a reaction emoji, then click it again.
 Expected: Comment appears immediately under the post; the emoji count increases by 1 then returns to 0 after the second click (toggle).
 
-- [ ] **Step 6: Confirm admin delete**
+- [x] **Step 6: Confirm admin delete**
 
 Log in as the admin account, open `/checkin`, click "삭제" on a post.
 Expected: Post disappears from the feed for all users. Confirm a non-admin does not see a "삭제" button on any post.
 
-- [ ] **Step 7: Confirm the calendar**
+- [x] **Step 7: Confirm the calendar**
 
 Visit `/checkin/calendar`. Expected: the current month renders with today's post(s) shown on the correct day cell. Switch to "멤버별" and confirm posts are grouped correctly by author.
 
-- [ ] **Step 8: Confirm the dashboard status table**
+- [x] **Step 8: Confirm the dashboard status table**
 
 Visit `/`. Expected: a member × type table shows a checkmark for every check-in posted today, and the banner message reflects the current user's own remaining check-ins for today (or the "모두 완료" message if none are missing).
 
-- [ ] **Step 9: Record completion**
+- [x] **Step 9: Record completion**
 
 No commit needed for this task — it's verification only. If any step fails, fix the underlying code/config before moving on to the next board-feature plan (코테 스터디).
 
