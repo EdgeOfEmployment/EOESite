@@ -29,7 +29,15 @@ export function PostCard({
       </div>
 
       {post.postingInfo && <p className="mb-2 whitespace-pre-wrap text-sm text-gray-600">{post.postingInfo}</p>}
-      <p className="whitespace-pre-wrap text-sm">{post.coverLetterText}</p>
+
+      <div className="flex flex-col gap-3">
+        {post.questions.map((q, index) => (
+          <div key={index}>
+            <p className="text-xs font-medium text-gray-500">{q.question}</p>
+            <p className="whitespace-pre-wrap text-sm">{q.answer}</p>
+          </div>
+        ))}
+      </div>
 
       <div className="mt-3 flex gap-2">
         {REACTION_EMOJIS.map((emoji) => {
