@@ -4,6 +4,11 @@ export interface JobPostReaction {
   emoji: string
 }
 
+export interface JobPostQuestion {
+  question: string
+  answer: string
+}
+
 export interface JobPost {
   id: string
   authorId: string
@@ -11,11 +16,17 @@ export interface JobPost {
   postDate: string
   companyName: string
   postingInfo: string | null
-  coverLetterText: string
+  questions: JobPostQuestion[]
   feedbackRequested: boolean
   feedbackDocId: string | null
   createdAt: string
   reactions: JobPostReaction[]
+}
+
+export interface FeedbackLine {
+  questionIndex: number
+  question: string
+  text: string
 }
 
 export interface FlatFeedbackComment {
