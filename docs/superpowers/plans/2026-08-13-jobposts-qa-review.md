@@ -1680,13 +1680,15 @@ npx vitest run
 
 Expected: all tests pass, including every file touched in this plan.
 
-- [ ] **Step 2: Build the app**
+- [x] **Step 2: Build the app**
 
 ```bash
 npm run build
 ```
 
 Expected: build succeeds with no TypeScript errors (in particular, confirm no other file still references `coverLetterText`/`cover_letter_text` — search for it if the build fails).
+
+Verified via `npx tsc --noEmit` instead (clean, no errors) rather than a full `next build`, since the user's `npm run dev` was live and a real `next build` would have corrupted its shared `.next/` cache.
 
 - [ ] **Step 3: Confirm the migration is live**
 
