@@ -2,22 +2,47 @@ import { describe, it, expect } from 'vitest'
 import { buildFeedbackLines } from './snapshot'
 
 describe('buildFeedbackLines', () => {
-  it('returns a single-element array for text with no line breaks', () => {
-    expect(buildFeedbackLines('한 줄짜리 자소서')).toEqual(['한 줄짜리 자소서'])
+  it('splits a single answer into sentences ending at each period', () => {
+    const result = buildFeedbackLines([
+      { question: '지원동기를 작성해주세요', answer: '첫 번째 문장입니다. 두 번째 문장입니다.' },
+    ])
+
+    expect(result).toEqual([
+      { questionIndex: 0, question: '지원동기를 작성해주세요', text: '첫 번째 문장입니다.' },
+      { questionIndex: 0, question: '지원동기를 작성해주세요', text: '두 번째 문장입니다.' },
+    ])
   })
 
-  it('splits text on newlines into one entry per line', () => {
-    const text = '첫 번째 줄\n두 번째 줄\n세 번째 줄'
-    expect(buildFeedbackLines(text)).toEqual(['첫 번째 줄', '두 번째 줄', '세 번째 줄'])
+  it('splits on newlines even without a trailing period', () => {
+    const result = buildFeedbackLines([{ question: '강점은 무엇인가요', answer: '첫 줄\n둘째 줄' }])
+
+    expect(result.map((l) => l.text)).toEqual(['첫 줄', '둘째 줄'])
   })
 
-  it('preserves blank lines between paragraphs', () => {
-    const text = '첫 문단\n\n둘째 문단'
-    expect(buildFeedbackLines(text)).toEqual(['첫 문단', '', '둘째 문단'])
+  it('does not produce a blank line when a period is immediately followed by a newline', () => {
+    const result = buildFeedbackLines([{ question: '강점은 무엇인가요', answer: '문장1.\n문장2.' }])
+
+    expect(result.map((l) => l.text)).toEqual(['문장1.', '문장2.'])
   })
 
-  it('normalizes CRLF line endings', () => {
-    const text = '줄1\r\n줄2'
-    expect(buildFeedbackLines(text)).toEqual(['줄1', '줄2'])
+  it('tags every line with the question index and text it came from', () => {
+    const result = buildFeedbackLines([
+      { question: '지원동기', answer: '첫 문장.' },
+      { question: '강점', answer: '둘째 문장.' },
+    ])
+
+    expect(result).toEqual([
+      { questionIndex: 0, question: '지원동기', text: '첫 문장.' },
+      { questionIndex: 1, question: '강점', text: '둘째 문장.' },
+    ])
+  })
+
+  it('skips a question with an empty answer', () => {
+    const result = buildFeedbackLines([
+      { question: '지원동기', answer: '' },
+      { question: '강점', answer: '둘째 문장.' },
+    ])
+
+    expect(result).toEqual([{ questionIndex: 1, question: '강점', text: '둘째 문장.' }])
   })
 })
