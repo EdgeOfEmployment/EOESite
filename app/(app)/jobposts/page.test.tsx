@@ -10,12 +10,12 @@ const posts = [
   {
     id: 'post-1',
     author_id: 'user-1',
-    post_date: '2026-08-12',
+    post_date: '2026-08-13',
     company_name: '토스',
     posting_info: '백엔드 신입',
-    cover_letter_text: '자소서 원문',
+    questions: [{ question: '지원동기를 작성해주세요', answer: '문제 해결에 흥미를 느꼈습니다.' }],
     feedback_requested: true,
-    created_at: '2026-08-12T00:00:00.000Z',
+    created_at: '2026-08-13T00:00:00.000Z',
   },
 ]
 
@@ -59,13 +59,13 @@ vi.mock('./actions', () => ({
 import JobPostsPage from './page'
 
 describe('JobPostsPage', () => {
-  it('renders the post form and the feed with author, company, and feedback link', async () => {
+  it('renders the post form and the feed with the question, answer, and feedback link', async () => {
     const ui = await JobPostsPage({ searchParams: Promise.resolve({}) })
     render(ui)
 
     expect(screen.getByRole('button', { name: '등록' })).toBeInTheDocument()
-    expect(screen.getByText('토스')).toBeInTheDocument()
-    expect(screen.getByText('김민수')).toBeInTheDocument()
+    expect(screen.getByText('지원동기를 작성해주세요')).toBeInTheDocument()
+    expect(screen.getByText('문제 해결에 흥미를 느꼈습니다.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '피드백 보기' })).toHaveAttribute('href', '/feedback/doc-1')
   })
 })

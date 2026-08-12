@@ -28,7 +28,7 @@ export default async function JobPostsPage({
 
   const { data: posts } = await supabase
     .from('job_posts')
-    .select('id, author_id, post_date, company_name, posting_info, cover_letter_text, feedback_requested, created_at')
+    .select('id, author_id, post_date, company_name, posting_info, questions, feedback_requested, created_at')
     .order('created_at', { ascending: false })
 
   const postIds = (posts ?? []).map((p) => p.id)
@@ -50,7 +50,7 @@ export default async function JobPostsPage({
     postDate: post.post_date,
     companyName: post.company_name,
     postingInfo: post.posting_info,
-    coverLetterText: post.cover_letter_text,
+    questions: post.questions,
     feedbackRequested: post.feedback_requested,
     feedbackDocId: feedbackDocIdByPost.get(post.id) ?? null,
     createdAt: post.created_at,
