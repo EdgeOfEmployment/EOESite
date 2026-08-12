@@ -8,12 +8,21 @@ import { buildFeedbackLines } from '@/lib/jobposts/snapshot'
 export async function createJobPost(formData: FormData) {
   const companyName = formData.get('companyName') as string
   const postingInfo = (formData.get('postingInfo') as string) || null
-  const coverLetterText = formData.get('coverLetterText') as string
   const postDate = (formData.get('postDate') as string) || new Date().toISOString().slice(0, 10)
   const feedbackRequested = formData.get('feedbackRequested') === 'on'
+  const questionCount = Number(formData.get('questionCount') ?? '0')
 
-  if (!companyName || !coverLetterText) {
-    redirect('/jobposts?error=' + encodeURIComponent('회사명과 자소서 내용을 입력해주세요'))
+  const questions: { question: string; answer: string }[] = []
+  for (let i = 0; i < questionCount; i++) {
+    const question = (formData.get(`question-${i}`) as string) || ''
+    const answer = (formData.get(`answer-${i}`) as string) || ''
+    if (question && answer) {
+      questions.push({ question, answer })
+    }
+  }
+
+  if (!companyName || questions.length === 0) {
+    redirect('/jobposts?error=' + encodeURIComponent('회사명과 최소 한 개의 문항/답변을 입력해주세요'))
     return
   }
 
@@ -35,7 +44,7 @@ export async function createJobPost(formData: FormData) {
       post_date: postDate,
       company_name: companyName,
       posting_info: postingInfo,
-      cover_letter_text: coverLetterText,
+      questions,
       feedback_requested: feedbackRequested,
     })
     .select('id')
@@ -49,7 +58,7 @@ export async function createJobPost(formData: FormData) {
   if (feedbackRequested) {
     const { error: docError } = await supabase
       .from('feedback_docs')
-      .insert({ job_post_id: inserted.id, lines: buildFeedbackLines(coverLetterText) })
+      .insert({ job_post_id: inserted.id, lines: buildFeedbackLines(questions) })
 
     if (docError) {
       redirect('/jobposts?error=' + encodeURIComponent(docError.message))

@@ -60,51 +60,93 @@ describe('createJobPost', () => {
   }
 
   it('redirects with an error when the company name is missing', async () => {
-    const formData = buildFormData({ companyName: '', coverLetterText: '내용' })
+    const formData = buildFormData({
+      companyName: '',
+      questionCount: '1',
+      'question-0': '지원동기',
+      'answer-0': '내용',
+    })
 
     await expect(createJobPost(formData)).rejects.toThrow()
     expect(redirectMock).toHaveBeenCalledWith(
-      '/jobposts?error=' + encodeURIComponent('회사명과 자소서 내용을 입력해주세요')
+      '/jobposts?error=' + encodeURIComponent('회사명과 최소 한 개의 문항/답변을 입력해주세요')
     )
   })
 
-  it('redirects with an error when the cover letter text is missing', async () => {
-    const formData = buildFormData({ companyName: '토스', coverLetterText: '' })
-
-    await expect(createJobPost(formData)).rejects.toThrow()
-    expect(redirectMock).toHaveBeenCalledWith(
-      '/jobposts?error=' + encodeURIComponent('회사명과 자소서 내용을 입력해주세요')
-    )
-  })
-
-  it('creates a job post without a feedback snapshot when feedback is not requested', async () => {
-    const { jobPostsInsert, feedbackDocsInsert } = mockInsert()
+  it('redirects with an error when no question/answer pair is valid', async () => {
     const formData = buildFormData({
       companyName: '토스',
-      coverLetterText: '자기소개서 내용',
-      postDate: '2026-08-12',
+      questionCount: '1',
+      'question-0': '',
+      'answer-0': '',
+    })
+
+    await expect(createJobPost(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/jobposts?error=' + encodeURIComponent('회사명과 최소 한 개의 문항/답변을 입력해주세요')
+    )
+  })
+
+  it('drops a pair where only the question or only the answer is filled in', async () => {
+    const { jobPostsInsert } = mockInsert()
+    const formData = buildFormData({
+      companyName: '토스',
+      postDate: '2026-08-13',
+      questionCount: '2',
+      'question-0': '지원동기',
+      'answer-0': '',
+      'question-1': '강점',
+      'answer-1': '문제 해결 능력.',
     })
 
     await createJobPost(formData)
 
     expect(jobPostsInsert).toHaveBeenCalledWith({
       author_id: 'user-1',
-      post_date: '2026-08-12',
+      post_date: '2026-08-13',
       company_name: '토스',
       posting_info: null,
-      cover_letter_text: '자기소개서 내용',
+      questions: [{ question: '강점', answer: '문제 해결 능력.' }],
+      feedback_requested: false,
+    })
+  })
+
+  it('creates a job post with multiple question/answer pairs', async () => {
+    const { jobPostsInsert, feedbackDocsInsert } = mockInsert()
+    const formData = buildFormData({
+      companyName: '토스',
+      postDate: '2026-08-13',
+      questionCount: '2',
+      'question-0': '지원동기',
+      'answer-0': '첫 문장.',
+      'question-1': '강점',
+      'answer-1': '둘째 문장.',
+    })
+
+    await createJobPost(formData)
+
+    expect(jobPostsInsert).toHaveBeenCalledWith({
+      author_id: 'user-1',
+      post_date: '2026-08-13',
+      company_name: '토스',
+      posting_info: null,
+      questions: [
+        { question: '지원동기', answer: '첫 문장.' },
+        { question: '강점', answer: '둘째 문장.' },
+      ],
       feedback_requested: false,
     })
     expect(feedbackDocsInsert).not.toHaveBeenCalled()
-    expect(revalidatePathMock).toHaveBeenCalledWith('/jobposts')
   })
 
-  it('creates a feedback snapshot split into lines when feedback is requested', async () => {
+  it('creates a feedback snapshot split into per-question lines when feedback is requested', async () => {
     const { feedbackDocsInsert } = mockInsert()
     const formData = buildFormData({
       companyName: '토스',
-      coverLetterText: '첫 줄\n둘째 줄',
-      postDate: '2026-08-12',
+      postDate: '2026-08-13',
+      questionCount: '1',
+      'question-0': '지원동기',
+      'answer-0': '첫 문장. 둘째 문장.',
       feedbackRequested: 'on',
     })
 
@@ -112,13 +154,21 @@ describe('createJobPost', () => {
 
     expect(feedbackDocsInsert).toHaveBeenCalledWith({
       job_post_id: 'post-1',
-      lines: ['첫 줄', '둘째 줄'],
+      lines: [
+        { questionIndex: 0, question: '지원동기', text: '첫 문장.' },
+        { questionIndex: 0, question: '지원동기', text: '둘째 문장.' },
+      ],
     })
   })
 
   it('redirects with an error when the job post insert fails', async () => {
     mockInsert({ jobPostError: { message: 'insert failed' } })
-    const formData = buildFormData({ companyName: '토스', coverLetterText: '내용' })
+    const formData = buildFormData({
+      companyName: '토스',
+      questionCount: '1',
+      'question-0': '지원동기',
+      'answer-0': '내용',
+    })
 
     await expect(createJobPost(formData)).rejects.toThrow()
     expect(redirectMock).toHaveBeenCalledWith('/jobposts?error=' + encodeURIComponent('insert failed'))
