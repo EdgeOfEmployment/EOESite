@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { groupCommentsByLine } from '@/lib/jobposts/comments'
-import { CommentThread } from './comment-thread'
+import { FeedbackLines, type FeedbackLineWithComments } from './feedback-lines'
+import type { FeedbackLine } from '@/lib/jobposts/types'
 
 export default async function FeedbackPage({
   params,
@@ -51,22 +52,23 @@ export default async function FeedbackPage({
   }))
 
   const commentsByLine = groupCommentsByLine(flatComments)
-  const lines = doc.lines as string[]
+  const lines = doc.lines as FeedbackLine[]
   const authorName = nameById.get(jobPost?.author_id ?? '') ?? '알 수 없음'
+
+  const feedbackLines: FeedbackLineWithComments[] = lines.map((line, index) => ({
+    index,
+    questionIndex: line.questionIndex,
+    question: line.question,
+    text: line.text,
+    comments: commentsByLine.get(index) ?? [],
+  }))
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
       <h1 className="mb-2 text-2xl font-bold">{jobPost?.company_name} 자소서 피드백</h1>
       <p className="mb-6 text-sm text-gray-500">작성자: {authorName}</p>
       {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
-      <ul className="flex flex-col gap-3">
-        {lines.map((text, index) => (
-          <li key={index} className="rounded border p-3">
-            <p className="whitespace-pre-wrap text-sm">{text || ' '}</p>
-            <CommentThread feedbackDocId={id} lineIndex={index} comments={commentsByLine.get(index) ?? []} />
-          </li>
-        ))}
-      </ul>
+      <FeedbackLines feedbackDocId={id} lines={feedbackLines} />
     </main>
   )
 }
