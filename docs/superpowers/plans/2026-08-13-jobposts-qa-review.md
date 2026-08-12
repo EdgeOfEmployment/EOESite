@@ -56,7 +56,7 @@ app/
 
 - Create: `supabase/migrations/0006_jobposts_qa.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0006_jobposts_qa.sql`:
 
@@ -74,7 +74,7 @@ Open the Supabase project dashboard → SQL Editor → paste the contents of `00
 
 In the Supabase dashboard → Table Editor, confirm `job_posts` now has a `questions` column and no longer has `cover_letter_text`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/0006_jobposts_qa.sql
@@ -89,7 +89,7 @@ git commit -m "Replace job_posts.cover_letter_text with structured questions jso
 
 - Modify: `lib/jobposts/types.ts`
 
-- [ ] **Step 1: Update the types**
+- [x] **Step 1: Update the types**
 
 Replace the contents of `lib/jobposts/types.ts` with:
 
@@ -140,7 +140,7 @@ export interface FeedbackComment extends FlatFeedbackComment {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add lib/jobposts/types.ts
@@ -156,7 +156,7 @@ git commit -m "Replace coverLetterText with structured Q&A types"
 - Modify: `lib/jobposts/snapshot.ts`
 - Modify: `lib/jobposts/snapshot.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `lib/jobposts/snapshot.test.ts` with:
 
@@ -211,12 +211,12 @@ describe('buildFeedbackLines', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run lib/jobposts/snapshot.test.ts`
 Expected: FAIL — `buildFeedbackLines` still takes a single string, output shape mismatches
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `lib/jobposts/snapshot.ts` with:
 
@@ -260,12 +260,12 @@ export function buildFeedbackLines(questions: { question: string; answer: string
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run lib/jobposts/snapshot.test.ts`
 Expected: PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add lib/jobposts/snapshot.ts lib/jobposts/snapshot.test.ts
@@ -281,7 +281,7 @@ git commit -m "Split feedback lines by sentence instead of raw newlines"
 - Modify: `app/(app)/jobposts/actions.ts`
 - Modify: `app/(app)/jobposts/actions.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `app/(app)/jobposts/actions.test.ts` with:
 
@@ -541,12 +541,12 @@ describe('deleteJobPost', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/jobposts/actions.test.ts"`
 Expected: FAIL — `createJobPost` still reads `coverLetterText`, insert payload mismatches
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `app/(app)/jobposts/actions.ts` with:
 
@@ -680,12 +680,12 @@ export async function deleteJobPost(postId: string) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/jobposts/actions.test.ts"`
 Expected: PASS (11 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/jobposts/actions.ts" "app/(app)/jobposts/actions.test.ts"
@@ -701,7 +701,7 @@ git commit -m "Read indexed question/answer fields in createJobPost"
 - Modify: `app/(app)/jobposts/post-form.tsx`
 - Modify: `app/(app)/jobposts/post-form.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `app/(app)/jobposts/post-form.test.tsx` with:
 
@@ -753,12 +753,12 @@ describe('PostForm', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/jobposts/post-form.test.tsx"`
 Expected: FAIL — no "+ 문항 추가" button, no indexed question/answer fields exist yet
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `app/(app)/jobposts/post-form.tsx` with:
 
@@ -880,12 +880,12 @@ export function PostForm() {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/jobposts/post-form.test.tsx"`
 Expected: PASS (4 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/jobposts/post-form.tsx" "app/(app)/jobposts/post-form.test.tsx"
@@ -901,7 +901,7 @@ git commit -m "Make the job post form a client component with dynamic Q&A pairs"
 - Modify: `app/(app)/jobposts/post-card.tsx`
 - Modify: `app/(app)/jobposts/post-card.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `app/(app)/jobposts/post-card.test.tsx` with:
 
@@ -974,12 +974,12 @@ describe('PostCard', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/jobposts/post-card.test.tsx"`
 Expected: FAIL — `post.questions` does not exist on the type/props used by the current implementation
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `app/(app)/jobposts/post-card.tsx` with:
 
@@ -1053,12 +1053,12 @@ export function PostCard({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/jobposts/post-card.test.tsx"`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/jobposts/post-card.tsx" "app/(app)/jobposts/post-card.test.tsx"
@@ -1074,7 +1074,7 @@ git commit -m "Render each cover letter question with its own answer"
 - Modify: `app/(app)/jobposts/page.tsx`
 - Modify: `app/(app)/jobposts/page.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `app/(app)/jobposts/page.test.tsx` with:
 
@@ -1152,12 +1152,12 @@ describe('JobPostsPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/jobposts/page.test.tsx"`
 Expected: FAIL — page still selects/maps `cover_letter_text`
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `app/(app)/jobposts/page.tsx` with:
 
@@ -1245,12 +1245,12 @@ export default async function JobPostsPage({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/jobposts/page.test.tsx"`
 Expected: PASS (1 test)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/jobposts/page.tsx" "app/(app)/jobposts/page.test.tsx"
@@ -1266,7 +1266,7 @@ git commit -m "Select job_posts.questions on the feed page"
 - Create: `app/(app)/feedback/[id]/feedback-lines.tsx`
 - Test: `app/(app)/feedback/[id]/feedback-lines.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `app/(app)/feedback/[id]/feedback-lines.test.tsx`:
 
@@ -1376,12 +1376,12 @@ describe('FeedbackLines', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/feedback/[id]/feedback-lines.test.tsx"`
 Expected: FAIL with "Cannot find module './feedback-lines'" (or similar)
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Create `app/(app)/feedback/[id]/feedback-lines.tsx`:
 
@@ -1459,12 +1459,12 @@ export function FeedbackLines({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/feedback/[id]/feedback-lines.test.tsx"`
 Expected: PASS (5 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/feedback/[id]/feedback-lines.tsx" "app/(app)/feedback/[id]/feedback-lines.test.tsx"
@@ -1480,7 +1480,7 @@ git commit -m "Add click-to-expand feedback line component"
 - Modify: `app/(app)/feedback/[id]/page.tsx`
 - Modify: `app/(app)/feedback/[id]/page.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the contents of `app/(app)/feedback/[id]/page.test.tsx` with:
 
@@ -1568,12 +1568,12 @@ describe('FeedbackPage', () => {
 })
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/feedback/[id]/page.test.tsx"`
 Expected: FAIL — page still renders `doc.lines` as plain strings in a `<ul>`, no question headings or comment badges
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 Replace the contents of `app/(app)/feedback/[id]/page.tsx` with:
 
@@ -1654,12 +1654,12 @@ export default async function FeedbackPage({
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/feedback/[id]/page.test.tsx"`
 Expected: PASS (2 tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/feedback/[id]/page.tsx" "app/(app)/feedback/[id]/page.test.tsx"
@@ -1672,7 +1672,7 @@ git commit -m "Render feedback lines grouped by question with click-to-expand co
 
 This task has no automated test for its manual steps — it confirms the full rewrite works end-to-end with real Supabase RLS after the migration is applied.
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 ```bash
 npx vitest run
