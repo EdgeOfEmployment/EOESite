@@ -18,4 +18,11 @@ describe('LoginPage', () => {
 
     expect(screen.getByText('이메일 또는 비밀번호가 올바르지 않습니다')).toBeInTheDocument()
   })
+
+  it('links to the signup page', async () => {
+    const ui = await LoginPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute('href', '/signup')
+  })
 })

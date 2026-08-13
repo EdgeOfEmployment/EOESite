@@ -38,6 +38,12 @@ export default async function LoginPage({
           로그인
         </button>
       </form>
+      <p className="mt-4 text-sm text-gray-500">
+        계정이 없으신가요?{' '}
+        <a href="/signup" className="underline">
+          회원가입
+        </a>
+      </p>
     </main>
   )
 }
