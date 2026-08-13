@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { JobPost } from '@/lib/jobposts/types'
@@ -11,35 +13,28 @@ export default async function JobPostsPage({
   const { error: queryError } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [session, { data: profiles }, { data: posts }] = await Promise.all([
+    getSessionProfile(),
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('job_posts')
+      .select('id, author_id, post_date, company_name, posting_info, questions, feedback_requested, created_at')
+      .order('created_at', { ascending: false }),
+  ])
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user!.id)
-    .single()
-
-  const isAdmin = callerProfile?.role === 'admin'
-
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
+  const isAdmin = session?.role === 'admin'
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
-  const { data: posts } = await supabase
-    .from('job_posts')
-    .select('id, author_id, post_date, company_name, posting_info, questions, feedback_requested, created_at')
-    .order('created_at', { ascending: false })
 
   const postIds = (posts ?? []).map((p) => p.id)
 
-  const { data: reactions } = postIds.length
-    ? await supabase.from('job_post_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds)
-    : { data: [] }
-
-  const { data: feedbackDocs } = postIds.length
-    ? await supabase.from('feedback_docs').select('id, job_post_id').in('job_post_id', postIds)
-    : { data: [] }
+  const [{ data: reactions }, { data: feedbackDocs }] = await Promise.all([
+    queryIfAny(postIds, () =>
+      supabase.from('job_post_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds)
+    ),
+    queryIfAny(postIds, () =>
+      supabase.from('feedback_docs').select('id, job_post_id').in('job_post_id', postIds)
+    ),
+  ])
 
   const feedbackDocIdByPost = new Map((feedbackDocs ?? []).map((d) => [d.job_post_id, d.id as string]))
 
@@ -72,7 +67,7 @@ export default async function JobPostsPage({
       <ul className="mt-6 flex flex-col gap-4">
         {jobPosts.map((post) => (
           <li key={post.id}>
-            <PostCard post={post} currentUserId={user!.id} isAdmin={isAdmin} />
+            <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
           </li>
         ))}
       </ul>

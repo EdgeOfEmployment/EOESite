@@ -1,15 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
-
-async function queryIfAny<T>(
-  ids: string[],
-  query: () => PromiseLike<{ data: T[] | null }>
-): Promise<{ data: T[] | null }> {
-  return ids.length ? query() : { data: [] }
-}
 
 export default async function CheckinPage({
   searchParams,
