@@ -4,6 +4,13 @@ import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
 
+async function queryIfAny<T>(
+  ids: string[],
+  query: () => PromiseLike<{ data: T[] | null }>
+): Promise<{ data: T[] | null }> {
+  return ids.length ? query() : { data: [] }
+}
+
 export default async function CheckinPage({
   searchParams,
 }: {
@@ -26,16 +33,18 @@ export default async function CheckinPage({
 
   const postIds = (posts ?? []).map((p) => p.id)
 
-  const [{ data: comments }, { data: reactions }] = postIds.length
-    ? await Promise.all([
-        supabase
-          .from('checkin_comments')
-          .select('id, post_id, author_id, body, created_at')
-          .in('post_id', postIds)
-          .order('created_at', { ascending: true }),
-        supabase.from('checkin_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds),
-      ])
-    : [{ data: [] as { id: string; post_id: string; author_id: string; body: string; created_at: string }[] }, { data: [] as { id: string; post_id: string; author_id: string; emoji: string }[] }]
+  const [{ data: comments }, { data: reactions }] = await Promise.all([
+    queryIfAny(postIds, () =>
+      supabase
+        .from('checkin_comments')
+        .select('id, post_id, author_id, body, created_at')
+        .in('post_id', postIds)
+        .order('created_at', { ascending: true })
+    ),
+    queryIfAny(postIds, () =>
+      supabase.from('checkin_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds)
+    ),
+  ])
 
   const checkinPosts: CheckinPost[] = (posts ?? []).map((post) => ({
     id: post.id,
