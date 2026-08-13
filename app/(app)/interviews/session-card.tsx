@@ -1,0 +1,55 @@
+import type { InterviewSession } from '@/lib/interviews/types'
+import { toggleParticipation, deleteSession } from './actions'
+
+export function SessionCard({
+  session,
+  currentUserId,
+  isAdmin,
+}: {
+  session: InterviewSession
+  currentUserId: string
+  isAdmin: boolean
+}) {
+  const isParticipating = session.participants.some((p) => p.userId === currentUserId)
+  const canDelete = isAdmin || session.createdBy === currentUserId
+
+  return (
+    <article className="rounded border p-4">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <a href={`/interviews/${session.id}`} className="font-medium underline">
+            {session.title}
+          </a>
+          <p className="text-xs text-gray-500">{session.sessionAt}</p>
+        </div>
+        {canDelete && (
+          <form action={deleteSession.bind(null, session.id)}>
+            <button type="submit" className="text-xs text-red-600">
+              삭제
+            </button>
+          </form>
+        )}
+      </div>
+
+      {session.description && (
+        <p className="mb-2 whitespace-pre-wrap text-sm text-gray-600">{session.description}</p>
+      )}
+
+      <form action={toggleParticipation.bind(null, session.id)} className="flex items-center gap-2">
+        <button
+          type="submit"
+          className={`rounded border px-2 py-1 text-xs ${isParticipating ? 'bg-black text-white' : ''}`}
+        >
+          {isParticipating ? '참석 취소' : '참석하기'}
+        </button>
+        <span className="text-xs text-gray-500">
+          {`참석 ${session.participants.length}명${
+            session.participants.length > 0
+              ? ` (${session.participants.map((p) => p.userName).join(', ')})`
+              : ''
+          }`}
+        </span>
+      </form>
+    </article>
+  )
+}
