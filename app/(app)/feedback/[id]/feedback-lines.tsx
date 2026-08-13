@@ -49,7 +49,7 @@ export function FeedbackLines({
             {isNewQuestion && <h2 className="mb-1 mt-4 text-sm font-semibold text-gray-700">{line.question}</h2>}
             <div
               className={`flex items-center justify-between gap-2 rounded px-2 py-1 text-sm ${
-                expanded ? 'bg-blue-50' : ''
+                expanded ? 'border border-blue-300' : 'border border-transparent'
               }`}
             >
               <span className="text-xs text-gray-400">{displayNumber}</span>
@@ -59,7 +59,7 @@ export function FeedbackLines({
               </button>
             </div>
             {expanded && (
-              <div className="ml-4 mb-2 rounded border border-blue-200 bg-blue-50/50 p-3">
+              <div className="ml-4 mb-2 rounded border border-blue-200 p-3">
                 <CommentThread feedbackDocId={feedbackDocId} lineIndex={line.index} comments={line.comments} />
               </div>
             )}
