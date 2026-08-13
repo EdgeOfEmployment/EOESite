@@ -721,9 +721,11 @@ git commit -m "Validate webhook events come from the expected source repository"
 
 This task has no automated test — it is a manual setup + walkthrough. These steps require the Supabase dashboard, the Vercel dashboard, and a real push to `EdgeOfEmployment/Coding-Test`.
 
+**Deployment order matters.** Deploy this branch's code to Vercel *before* applying the `0008_lock_coding_checks.sql` migration, not after. The old code (with the "체크" self-check button and `toggleCheck` action) still calls `.insert()` on `coding_checks` — if the migration lands first and drops the member-insert RLS policy while the old code is still serving traffic, any member clicking "체크" will hit a visible RLS-violation error. Once this branch's code is live, there is no insert call site left in the app that depends on that policy, so the migration is safe to apply immediately after. Setting `GITHUB_SOURCE_REPO` (Step 2) is independent and can happen before, during, or after the migration.
+
 - [ ] **Step 1: Confirm the migration is live**
 
-In the Supabase dashboard, re-check that `0008_lock_coding_checks.sql` ran successfully (Task 1).
+In the Supabase dashboard, re-check that `0008_lock_coding_checks.sql` ran successfully (Task 1) — and confirm it was applied *after* this branch's code was deployed, per the ordering note above.
 
 - [ ] **Step 2: Add the new environment variable in Vercel**
 
@@ -750,7 +752,7 @@ Expected: your row for that problem now shows "완료".
 - [ ] **Step 6: Confirm the admin cancel button works**
 
 Log in as the admin account, visit `/coding`. Next to the row you just auto-checked in Step 5, confirm a "취소" button appears. Click it.
-Expected: the row reverts to "미완료" for that member. Refresh to confirm the change persisted.
+Expected: the row reverts to "미완료" for that member. **Refresh the page and confirm the row is still "미완료" after the refresh** — don't stop at "no error appeared," since a Supabase delete that matches zero rows (e.g. because the admin-delete RLS policy from Task 1 isn't actually live yet) also returns no error and would make the button look like it worked when the row never actually changed.
 
 - [ ] **Step 7: Confirm non-admins never see the cancel button**
 
