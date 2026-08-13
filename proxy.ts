@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { getRedirectPath, type Profile } from '@/lib/auth/access'
 
+const SESSION_HEADERS = ['x-user-id', 'x-user-role', 'x-user-status']
+
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, supabase, user } = await updateSession(request)
 
@@ -13,7 +15,7 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
     if (error) {
-      console.error('middleware: failed to fetch profile', error)
+      console.error('proxy: failed to fetch profile', error)
     }
     profile = data as Profile | null
   }
@@ -28,7 +30,19 @@ export async function proxy(request: NextRequest) {
     return redirectResponse
   }
 
-  return supabaseResponse
+  const requestHeaders = new Headers(request.headers)
+  SESSION_HEADERS.forEach((header) => requestHeaders.delete(header))
+
+  if (user && profile) {
+    requestHeaders.set('x-user-id', user.id)
+    requestHeaders.set('x-user-role', profile.role)
+    requestHeaders.set('x-user-status', profile.status)
+  }
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie))
+
+  return response
 }
 
 export const config = {
