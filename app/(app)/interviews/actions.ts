@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { buildFeedbackLines } from '@/lib/feedback/snapshot'
 
 export async function createSession(formData: FormData) {
   const title = (formData.get('title') as string) || ''
@@ -106,4 +107,92 @@ export async function deleteSession(sessionId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/interviews')
+}
+
+export async function createInterviewQa(sessionId: string, formData: FormData) {
+  const questionCount = Number(formData.get('questionCount') ?? '0')
+
+  const questions: { question: string; answer: string }[] = []
+  for (let i = 0; i < questionCount; i++) {
+    const question = (formData.get(`question-${i}`) as string) || ''
+    const answer = (formData.get(`answer-${i}`) as string) || ''
+    if (question && answer) {
+      questions.push({ question, answer })
+    }
+  }
+
+  if (questions.length === 0) {
+    redirect(`/interviews/${sessionId}?error=` + encodeURIComponent('최소 한 개의 질문/답변을 입력해주세요'))
+    return
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+    return
+  }
+
+  const { data: inserted, error } = await supabase
+    .from('interview_qas')
+    .insert({ session_id: sessionId, author_id: user.id, questions })
+    .select('id')
+    .single()
+
+  if (error || !inserted) {
+    redirect(`/interviews/${sessionId}?error=` + encodeURIComponent(error?.message ?? '등록에 실패했습니다'))
+    return
+  }
+
+  const { error: docError } = await supabase
+    .from('feedback_docs')
+    .insert({ interview_qa_id: inserted.id, lines: buildFeedbackLines(questions) })
+
+  if (docError) {
+    redirect(`/interviews/${sessionId}?error=` + encodeURIComponent(docError.message))
+    return
+  }
+
+  revalidatePath(`/interviews/${sessionId}`)
+}
+
+export async function deleteInterviewQa(sessionId: string, qaId: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('권한이 없습니다')
+
+  const { data: qa, error: qaError } = await supabase
+    .from('interview_qas')
+    .select('author_id')
+    .eq('id', qaId)
+    .single()
+
+  if (qaError) throw new Error(qaError.message)
+
+  const { data: callerProfile, error: callerError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (callerError) throw new Error(callerError.message)
+
+  const isOwner = qa?.author_id === user.id
+  const isAdmin = callerProfile?.role === 'admin'
+
+  if (!isOwner && !isAdmin) throw new Error('권한이 없습니다')
+
+  const { error } = await supabase.from('interview_qas').delete().eq('id', qaId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/interviews/${sessionId}`)
 }

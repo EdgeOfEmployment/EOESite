@@ -22,7 +22,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createSession, toggleParticipation, deleteSession } from './actions'
+import { createSession, toggleParticipation, deleteSession, createInterviewQa, deleteInterviewQa } from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -173,6 +173,129 @@ describe('deleteSession', () => {
     const { deleteEq } = mockOwnerAndRole('user-2', 'member')
 
     await expect(deleteSession('session-1')).rejects.toThrow('권한이 없습니다')
+    expect(deleteEq).not.toHaveBeenCalled()
+  })
+})
+
+describe('createInterviewQa', () => {
+  function mockInsert({ qaError = null }: { qaError?: { message: string } | null } = {}) {
+    const feedbackDocsInsert = vi.fn().mockResolvedValue({ error: null })
+    const qaSingle = vi
+      .fn()
+      .mockResolvedValue(qaError ? { data: null, error: qaError } : { data: { id: 'qa-1' }, error: null })
+    const qaInsert = vi.fn().mockReturnValue({ select: () => ({ single: qaSingle }) })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'interview_qas') return { insert: qaInsert }
+      if (table === 'feedback_docs') return { insert: feedbackDocsInsert }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    return { qaInsert, feedbackDocsInsert }
+  }
+
+  it('redirects with an error when no question/answer pair is valid', async () => {
+    const formData = buildFormData({ questionCount: '1', 'question-0': '', 'answer-0': '' })
+
+    await expect(createInterviewQa('session-1', formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/interviews/session-1?error=' + encodeURIComponent('최소 한 개의 질문/답변을 입력해주세요')
+    )
+  })
+
+  it('drops a pair where only the question or only the answer is filled in', async () => {
+    const { qaInsert } = mockInsert()
+    const formData = buildFormData({
+      questionCount: '2',
+      'question-0': '자기소개를 해주세요',
+      'answer-0': '',
+      'question-1': '강점은',
+      'answer-1': '책임감입니다.',
+    })
+
+    await createInterviewQa('session-1', formData)
+
+    expect(qaInsert).toHaveBeenCalledWith({
+      session_id: 'session-1',
+      author_id: 'user-1',
+      questions: [{ question: '강점은', answer: '책임감입니다.' }],
+    })
+  })
+
+  it('creates a QA entry and always generates a feedback snapshot', async () => {
+    const { qaInsert, feedbackDocsInsert } = mockInsert()
+    const formData = buildFormData({
+      questionCount: '1',
+      'question-0': '자기소개를 해주세요',
+      'answer-0': '첫 문장. 둘째 문장.',
+    })
+
+    await createInterviewQa('session-1', formData)
+
+    expect(qaInsert).toHaveBeenCalledWith({
+      session_id: 'session-1',
+      author_id: 'user-1',
+      questions: [{ question: '자기소개를 해주세요', answer: '첫 문장. 둘째 문장.' }],
+    })
+    expect(feedbackDocsInsert).toHaveBeenCalledWith({
+      interview_qa_id: 'qa-1',
+      lines: [
+        { questionIndex: 0, question: '자기소개를 해주세요', text: '첫 문장.' },
+        { questionIndex: 0, question: '자기소개를 해주세요', text: '둘째 문장.' },
+      ],
+    })
+  })
+
+  it('redirects with an error when the QA insert fails', async () => {
+    mockInsert({ qaError: { message: 'insert failed' } })
+    const formData = buildFormData({ questionCount: '1', 'question-0': '자기소개', 'answer-0': '내용' })
+
+    await expect(createInterviewQa('session-1', formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith('/interviews/session-1?error=' + encodeURIComponent('insert failed'))
+  })
+})
+
+describe('deleteInterviewQa', () => {
+  function mockOwnerAndRole(authorId: string, role: 'admin' | 'member') {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'interview_qas') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { author_id: authorId }, error: null }) }) }),
+          delete: () => ({ eq: deleteEq }),
+        }
+      }
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role }, error: null }) }) }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    return { deleteEq }
+  }
+
+  it('deletes the QA entry when the caller is the author', async () => {
+    const { deleteEq } = mockOwnerAndRole('user-1', 'member')
+
+    await deleteInterviewQa('session-1', 'qa-1')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'qa-1')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/interviews/session-1')
+  })
+
+  it('deletes the QA entry when the caller is an admin but not the author', async () => {
+    const { deleteEq } = mockOwnerAndRole('user-2', 'admin')
+
+    await deleteInterviewQa('session-1', 'qa-1')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'qa-1')
+  })
+
+  it('throws when the caller is neither the author nor an admin', async () => {
+    const { deleteEq } = mockOwnerAndRole('user-2', 'member')
+
+    await expect(deleteInterviewQa('session-1', 'qa-1')).rejects.toThrow('권한이 없습니다')
     expect(deleteEq).not.toHaveBeenCalled()
   })
 })
