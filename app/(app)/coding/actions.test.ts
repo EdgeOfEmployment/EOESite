@@ -25,7 +25,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblem, toggleCheck, deleteProblem, updateGithubUsername } from './actions'
+import { createProblem, toggleCheck, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData()
@@ -226,5 +226,47 @@ describe('updateGithubUsername', () => {
 
     await expect(updateGithubUsername(formData)).rejects.toThrow()
     expect(redirectMock).toHaveBeenCalledWith('/coding?error=' + encodeURIComponent('db error'))
+  })
+})
+
+describe('adminRemoveCheck', () => {
+  it('throws when the caller is not an admin', async () => {
+    const secondEq = vi.fn()
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'member' }, error: null }) }) }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { delete: () => ({ eq: () => ({ eq: secondEq }) }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(adminRemoveCheck('problem-1', 'user-2')).rejects.toThrow('권한이 없습니다')
+    expect(secondEq).not.toHaveBeenCalled()
+  })
+
+  it('deletes the matching check when the caller is an admin', async () => {
+    const secondEq = vi.fn().mockResolvedValue({ error: null })
+    const firstEq = vi.fn(() => ({ eq: secondEq }))
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { delete: () => ({ eq: firstEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await adminRemoveCheck('problem-1', 'user-2')
+
+    expect(firstEq).toHaveBeenCalledWith('problem_id', 'problem-1')
+    expect(secondEq).toHaveBeenCalledWith('user_id', 'user-2')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
   })
 })
