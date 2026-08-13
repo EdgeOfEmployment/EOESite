@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
   }
 
   const payload = JSON.parse(body)
+
+  if (payload.repository?.full_name !== process.env.GITHUB_SOURCE_REPO) {
+    return NextResponse.json({ ok: true, skipped: 'unexpected repository' })
+  }
+
   const pusherLogin = payload.sender?.login as string | undefined
 
   if (!pusherLogin) {

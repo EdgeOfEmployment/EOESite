@@ -12,6 +12,7 @@ vi.mock('@supabase/supabase-js', () => ({
 import { POST } from './route'
 
 const SECRET = 'test-secret'
+const REPO = 'EdgeOfEmployment/Coding-Test'
 
 function sign(body: string) {
   return 'sha256=' + crypto.createHmac('sha256', SECRET).update(body).digest('hex')
@@ -34,13 +35,18 @@ function buildRequest(body: string, options: { signature?: string; event?: strin
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('GITHUB_WEBHOOK_SECRET', SECRET)
+  vi.stubEnv('GITHUB_SOURCE_REPO', REPO)
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
   vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-role-key')
 })
 
 describe('POST /api/github-webhook', () => {
   it('rejects a request with an invalid signature', async () => {
-    const body = JSON.stringify({ sender: { login: 'kimminsu-dev' }, commits: [] })
+    const body = JSON.stringify({
+      repository: { full_name: REPO },
+      sender: { login: 'kimminsu-dev' },
+      commits: [],
+    })
     const request = buildRequest(body, { signature: 'sha256=deadbeef' })
 
     const response = await POST(request)
@@ -50,13 +56,32 @@ describe('POST /api/github-webhook', () => {
   })
 
   it('skips non-push events', async () => {
-    const body = JSON.stringify({ sender: { login: 'kimminsu-dev' }, commits: [] })
+    const body = JSON.stringify({
+      repository: { full_name: REPO },
+      sender: { login: 'kimminsu-dev' },
+      commits: [],
+    })
     const request = buildRequest(body, { event: 'ping' })
 
     const response = await POST(request)
     const json = await response.json()
 
     expect(json).toEqual({ ok: true, skipped: 'not a push event' })
+    expect(fromMock).not.toHaveBeenCalled()
+  })
+
+  it('skips a push from an unexpected repository', async () => {
+    const body = JSON.stringify({
+      repository: { full_name: 'someone-else/unrelated-repo' },
+      sender: { login: 'kimminsu-dev' },
+      commits: [{ added: ['kimminsu/두 수의 합/두 수의 합.js'], modified: [] }],
+    })
+    const request = buildRequest(body)
+
+    const response = await POST(request)
+    const json = await response.json()
+
+    expect(json).toEqual({ ok: true, skipped: 'unexpected repository' })
     expect(fromMock).not.toHaveBeenCalled()
   })
 
@@ -69,6 +94,7 @@ describe('POST /api/github-webhook', () => {
     })
 
     const body = JSON.stringify({
+      repository: { full_name: REPO },
       sender: { login: 'unregistered-user' },
       commits: [{ added: ['someone/두 수의 합/두 수의 합.js'], modified: [] }],
     })
@@ -103,6 +129,7 @@ describe('POST /api/github-webhook', () => {
     upsertMock.mockResolvedValue({ error: null })
 
     const body = JSON.stringify({
+      repository: { full_name: REPO },
       sender: { login: 'kimminsu-dev' },
       commits: [{ added: ['kimminsu/두 수의 합/두 수의 합.js'], modified: [] }],
     })
@@ -141,6 +168,7 @@ describe('POST /api/github-webhook', () => {
     upsertMock.mockResolvedValue({ error: null })
 
     const body = JSON.stringify({
+      repository: { full_name: REPO },
       sender: { login: 'kimminsu-dev' },
       commits: [{ added: ['kimminsu/two-sum/two-sum.py'], modified: [] }],
     })
