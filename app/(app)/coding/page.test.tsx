@@ -50,7 +50,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('./actions', () => ({
   createProblem: vi.fn(),
-  toggleCheck: vi.fn(),
+  adminRemoveCheck: vi.fn(),
   deleteProblem: vi.fn(),
   updateGithubUsername: vi.fn(),
 }))

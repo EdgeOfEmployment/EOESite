@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 vi.mock('./actions', () => ({
-  toggleCheck: vi.fn(),
+  adminRemoveCheck: vi.fn(),
   deleteProblem: vi.fn(),
 }))
 
@@ -26,7 +26,7 @@ const members: Member[] = [
 
 describe('ProblemCard', () => {
   it('renders the problem title as a link and lists all members', () => {
-    render(<ProblemCard problem={problem} members={members} currentUserId="user-1" isAdmin={false} />)
+    render(<ProblemCard problem={problem} members={members} isAdmin={false} />)
 
     expect(screen.getByRole('link', { name: '두 수의 합' })).toHaveAttribute(
       'href',
@@ -36,26 +36,32 @@ describe('ProblemCard', () => {
     expect(screen.getByText('이지은')).toBeInTheDocument()
   })
 
-  it('shows a clickable check button for the current user only', () => {
-    render(<ProblemCard problem={problem} members={members} currentUserId="user-1" isAdmin={false} />)
+  it('shows completion status as plain text for every member, never a clickable check button', () => {
+    render(<ProblemCard problem={problem} members={members} isAdmin={false} />)
 
-    expect(screen.getByRole('button', { name: '체크' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '체크' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '완료' })).not.toBeInTheDocument()
+    expect(screen.getByText('완료')).toBeInTheDocument()
+    expect(screen.getByText('미완료')).toBeInTheDocument()
   })
 
-  it("shows another member's completed status as plain text, not a button", () => {
-    render(<ProblemCard problem={problem} members={members} currentUserId="user-1" isAdmin={false} />)
+  it('does not show a cancel button for non-admins', () => {
+    render(<ProblemCard problem={problem} members={members} isAdmin={false} />)
+    expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument()
+  })
 
-    expect(screen.getByText('완료')).toBeInTheDocument()
+  it('shows a cancel button only next to the completed member when viewed by an admin', () => {
+    render(<ProblemCard problem={problem} members={members} isAdmin={true} />)
+    expect(screen.getAllByRole('button', { name: '취소' })).toHaveLength(1)
   })
 
   it('does not show a delete button for non-admins', () => {
-    render(<ProblemCard problem={problem} members={members} currentUserId="user-1" isAdmin={false} />)
+    render(<ProblemCard problem={problem} members={members} isAdmin={false} />)
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
 
   it('shows a delete button for admins', () => {
-    render(<ProblemCard problem={problem} members={members} currentUserId="user-1" isAdmin={true} />)
+    render(<ProblemCard problem={problem} members={members} isAdmin={true} />)
     expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument()
   })
 })

@@ -73,7 +73,6 @@ export default async function CodingPage({
                   key={problem.id}
                   problem={problem}
                   members={members}
-                  currentUserId={user!.id}
                   isAdmin={isAdmin}
                 />
               ))}
