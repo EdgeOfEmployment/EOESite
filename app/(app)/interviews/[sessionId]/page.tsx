@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { QaForm } from './qa-form'
 import { QaCard } from './qa-card'
 import { groupQasByAuthor } from '@/lib/interviews/grouping'
@@ -16,43 +18,35 @@ export default async function InterviewSessionPage({
   const { error: queryError } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [caller, { data: session }, { data: profiles }, { data: qas }] = await Promise.all([
+    getSessionProfile(),
+    supabase
+      .from('interview_sessions')
+      .select('id, title, session_at, description')
+      .eq('id', sessionId)
+      .maybeSingle(),
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('interview_qas')
+      .select('id, author_id, questions, created_at')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false }),
+  ])
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user!.id)
-    .single()
-
-  const isAdmin = callerProfile?.role === 'admin'
-
-  const { data: session } = await supabase
-    .from('interview_sessions')
-    .select('id, title, session_at, description')
-    .eq('id', sessionId)
-    .maybeSingle()
+  const isAdmin = caller?.role === 'admin'
 
   if (!session) {
     redirect('/interviews?error=' + encodeURIComponent('존재하지 않는 세션입니다'))
     return
   }
 
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
-  const { data: qas } = await supabase
-    .from('interview_qas')
-    .select('id, author_id, questions, created_at')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: false })
 
   const qaIds = (qas ?? []).map((q) => q.id)
 
-  const { data: feedbackDocs } = qaIds.length
-    ? await supabase.from('feedback_docs').select('id, interview_qa_id').in('interview_qa_id', qaIds)
-    : { data: [] }
+  const { data: feedbackDocs } = await queryIfAny(qaIds, () =>
+    supabase.from('feedback_docs').select('id, interview_qa_id').in('interview_qa_id', qaIds)
+  )
 
   const feedbackDocIdByQa = new Map((feedbackDocs ?? []).map((d) => [d.interview_qa_id, d.id as string]))
 
@@ -84,7 +78,7 @@ export default async function InterviewSessionPage({
             <ul className="flex flex-col gap-4">
               {group.qas.map((qa) => (
                 <li key={qa.id}>
-                  <QaCard qa={qa} currentUserId={user!.id} isAdmin={isAdmin} />
+                  <QaCard qa={qa} currentUserId={caller!.userId} isAdmin={isAdmin} />
                 </li>
               ))}
             </ul>

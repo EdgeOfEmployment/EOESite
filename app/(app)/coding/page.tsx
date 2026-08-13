@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { groupByWeek, formatWeekLabel } from '@/lib/coding/week'
 import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
@@ -29,9 +30,9 @@ export default async function CodingPage({
 
   const problemIds = (problems ?? []).map((p) => p.id)
 
-  const { data: checks } = problemIds.length
-    ? await supabase.from('coding_checks').select('problem_id, user_id').in('problem_id', problemIds)
-    : { data: [] }
+  const { data: checks } = await queryIfAny(problemIds, () =>
+    supabase.from('coding_checks').select('problem_id, user_id').in('problem_id', problemIds)
+  )
 
   const codingProblems: CodingProblem[] = (problems ?? []).map((problem) => ({
     id: problem.id,
