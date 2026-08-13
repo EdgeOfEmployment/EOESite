@@ -25,7 +25,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblem, toggleCheck, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
+import { createProblem, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
 
 function buildFormData(fields: Record<string, string>) {
   const formData = new FormData()
@@ -117,47 +117,6 @@ describe('createProblem', () => {
       created_by: 'admin-1',
       match_keyword: 'two-sum',
     })
-  })
-})
-
-describe('toggleCheck', () => {
-  function mockFindExisting(existing: { id: string } | null) {
-    const deleteEq = vi.fn().mockResolvedValue({ error: null })
-    const insert = vi.fn().mockResolvedValue({ error: null })
-
-    fromMock.mockImplementation((table: string) => {
-      if (table !== 'coding_checks') throw new Error(`unexpected table ${table}`)
-      return {
-        select: () => ({
-          eq: () => ({
-            eq: () => ({ maybeSingle: async () => ({ data: existing, error: null }) }),
-          }),
-        }),
-        insert,
-        delete: () => ({ eq: deleteEq }),
-      }
-    })
-
-    return { deleteEq, insert }
-  }
-
-  it('inserts a check when none exists yet', async () => {
-    const { insert, deleteEq } = mockFindExisting(null)
-
-    await toggleCheck('problem-1')
-
-    expect(insert).toHaveBeenCalledWith({ problem_id: 'problem-1', user_id: 'admin-1' })
-    expect(deleteEq).not.toHaveBeenCalled()
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
-  })
-
-  it('deletes the existing check when the user already checked it', async () => {
-    const { insert, deleteEq } = mockFindExisting({ id: 'check-1' })
-
-    await toggleCheck('problem-1')
-
-    expect(deleteEq).toHaveBeenCalledWith('id', 'check-1')
-    expect(insert).not.toHaveBeenCalled()
   })
 })
 
