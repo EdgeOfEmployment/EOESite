@@ -40,7 +40,7 @@ app/
 
 - Create: `supabase/migrations/0008_lock_coding_checks.sql`
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 Create `supabase/migrations/0008_lock_coding_checks.sql`:
 
@@ -53,11 +53,11 @@ create policy "Admins can delete coding checks"
   using (public.is_admin());
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open the Supabase project dashboard → SQL Editor → paste the contents of `0008_lock_coding_checks.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard SQL Editor, run:
 
@@ -67,7 +67,7 @@ select policyname, cmd from pg_policies where tablename = 'coding_checks';
 
 Expected: exactly two rows — `"Approved members can read coding checks"` (`SELECT`) and `"Admins can delete coding checks"` (`DELETE`). No `INSERT` policy and no member-scoped `DELETE` policy should remain.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add supabase/migrations/0008_lock_coding_checks.sql
@@ -83,7 +83,7 @@ git commit -m "Lock coding_checks RLS to admin-only delete, remove member self-w
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/(app)/coding/actions.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `app/(app)/coding/actions.test.ts`, update the top-level import to add `adminRemoveCheck`:
 
@@ -138,12 +138,12 @@ describe('adminRemoveCheck', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify the new ones fail**
+- [x] **Step 2: Run the tests to verify the new ones fail**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: FAIL — `Cannot find export 'adminRemoveCheck'`. All other tests (createProblem: 4, toggleCheck: 2, deleteProblem: 2, updateGithubUsername: 3 = 11) still pass.
 
-- [ ] **Step 3: Implement the action**
+- [x] **Step 3: Implement the action**
 
 Add to the end of `app/(app)/coding/actions.ts`:
 
@@ -179,12 +179,12 @@ export async function adminRemoveCheck(problemId: string, userId: string) {
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — all 13 tests green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -202,7 +202,7 @@ git commit -m "Add adminRemoveCheck server action for admin-only check cancellat
 - Modify: `app/(app)/coding/page.tsx`
 - Modify: `app/(app)/coding/page.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the entire contents of `app/(app)/coding/problem-card.test.tsx` with:
 
@@ -276,12 +276,12 @@ describe('ProblemCard', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `npx vitest run "app/(app)/coding/problem-card.test.tsx"`
 Expected: FAIL — the current component still imports `toggleCheck` (not mocked anymore) and renders a clickable "체크"/"완료" button and passes no `isSelf`/`currentUserId` handling matching the new expectations. There is no "취소" button yet.
 
-- [ ] **Step 3: Rewrite the component**
+- [x] **Step 3: Rewrite the component**
 
 Replace the entire contents of `app/(app)/coding/problem-card.tsx` with:
 
@@ -342,12 +342,12 @@ export function ProblemCard({
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/problem-card.test.tsx"`
 Expected: PASS — all 6 tests green.
 
-- [ ] **Step 5: Stop passing the now-unused `currentUserId` prop from the page**
+- [x] **Step 5: Stop passing the now-unused `currentUserId` prop from the page**
 
 In `app/(app)/coding/page.tsx`, find this block:
 
@@ -372,7 +372,7 @@ Replace it with:
                 />
 ```
 
-- [ ] **Step 6: Update the page test's action mock**
+- [x] **Step 6: Update the page test's action mock**
 
 In `app/(app)/coding/page.test.tsx`, find:
 
@@ -396,12 +396,12 @@ vi.mock('./actions', () => ({
 }))
 ```
 
-- [ ] **Step 7: Run the full coding-board test files to verify nothing else broke**
+- [x] **Step 7: Run the full coding-board test files to verify nothing else broke**
 
 Run: `npx vitest run "app/(app)/coding/"`
 Expected: PASS — all test files under `app/(app)/coding/` green (`actions.test.ts`, `problem-card.test.tsx`, `problem-form.test.tsx`, `github-settings-form.test.tsx`, `page.test.tsx`).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add "app/(app)/coding/problem-card.tsx" "app/(app)/coding/problem-card.test.tsx" "app/(app)/coding/page.tsx" "app/(app)/coding/page.test.tsx"
@@ -419,11 +419,11 @@ git commit -m "Replace self-check button with read-only status and admin-only ca
 
 Nothing imports `toggleCheck` anymore after Task 3 — it's dead code sitting behind an RLS policy (Task 1) that no longer permits it to work even if called. Remove it.
 
-- [ ] **Step 1: Remove the `toggleCheck` tests**
+- [x] **Step 1: Remove the `toggleCheck` tests**
 
 In `app/(app)/coding/actions.test.ts`, delete the entire `describe('toggleCheck', ...)` block (the block containing `mockFindExisting`, `'inserts a check when none exists yet'`, and `'deletes the existing check when the user already checked it'`).
 
-- [ ] **Step 2: Remove `toggleCheck` from the import line**
+- [x] **Step 2: Remove `toggleCheck` from the import line**
 
 Change:
 
@@ -437,16 +437,16 @@ to:
 import { createProblem, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
 ```
 
-- [ ] **Step 3: Remove the `toggleCheck` function**
+- [x] **Step 3: Remove the `toggleCheck` function**
 
 In `app/(app)/coding/actions.ts`, delete the entire `toggleCheck` function (from `export async function toggleCheck(problemId: string) {` through its closing `}`).
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/(app)/coding/actions.test.ts"`
 Expected: PASS — 11 tests green (13 from Task 2 minus the 2 removed `toggleCheck` tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts"
@@ -463,7 +463,7 @@ git commit -m "Remove dead toggleCheck action now that completion is push-only"
 - Modify: `app/api/github-webhook/route.test.ts`
 - Modify: `.env.local.example`
 
-- [ ] **Step 1: Document the new env var**
+- [x] **Step 1: Document the new env var**
 
 In `.env.local.example`, add a new line after `GITHUB_WEBHOOK_SECRET=your-webhook-secret`:
 
@@ -481,7 +481,7 @@ GITHUB_WEBHOOK_SECRET=your-webhook-secret
 GITHUB_SOURCE_REPO=EdgeOfEmployment/Coding-Test
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Replace the entire contents of `app/api/github-webhook/route.test.ts` with:
 
@@ -672,12 +672,12 @@ describe('POST /api/github-webhook', () => {
 })
 ```
 
-- [ ] **Step 3: Run the tests to verify the new one fails**
+- [x] **Step 3: Run the tests to verify the new one fails**
 
 Run: `npx vitest run "app/api/github-webhook/route.test.ts"`
 Expected: FAIL — only the new `'skips a push from an unexpected repository'` test fails (the route doesn't check `payload.repository` yet, so it falls through to the member lookup and calls `fromMock`, which throws `unexpected table profiles` since that test didn't set up a `profiles` mock implementation). The other 5 tests still pass.
 
-- [ ] **Step 4: Add the repository check**
+- [x] **Step 4: Add the repository check**
 
 In `app/api/github-webhook/route.ts`, find:
 
@@ -698,17 +698,17 @@ Replace it with:
   const pusherLogin = payload.sender?.login as string | undefined
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npx vitest run "app/api/github-webhook/route.test.ts"`
 Expected: PASS — all 6 tests green.
 
-- [ ] **Step 6: Full test suite + build check**
+- [x] **Step 6: Full test suite + build check**
 
 Run: `npx vitest run && npm run build`
 Expected: All tests pass across the whole project; build succeeds.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/api/github-webhook/route.ts app/api/github-webhook/route.test.ts .env.local.example
