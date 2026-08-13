@@ -167,11 +167,11 @@ create policy "Approved members can create feedback comments"
   with check (author_id = auth.uid() and public.is_approved());
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open the Supabase project dashboard → SQL Editor → paste the contents of `0005_jobposts.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard → Table Editor, confirm `job_posts`, `job_post_reactions`, `feedback_docs`, and `feedback_comments` all exist. In the SQL Editor, run `select * from pg_policies where tablename in ('job_posts','job_post_reactions','feedback_docs','feedback_comments');` and confirm 8 policies exist (3 + 3 + 2 + 2).
 
@@ -2152,7 +2152,7 @@ git commit -m "Add feedback snapshot page with threaded line comments"
 
 This task has no automated test — it is a manual walkthrough to confirm the job posts board and feedback flow work end-to-end with real Supabase RLS.
 
-- [ ] **Step 1: Confirm the migration is live**
+- [x] **Step 1: Confirm the migration is live**
 
 In the Supabase dashboard, re-check that `0005_jobposts.sql` ran successfully (Task 1).
 
@@ -2172,40 +2172,40 @@ npm run build
 
 Expected: build succeeds, `/jobposts`, `/jobposts/calendar`, and `/feedback/[id]` all appear in the route list.
 
-- [ ] **Step 4: Start the dev server**
+- [x] **Step 4: Start the dev server**
 
 ```bash
 npm run dev
 ```
 
-- [ ] **Step 5: Post a job post without requesting feedback**
+- [x] **Step 5: Post a job post without requesting feedback**
 
 Log in as an approved member, visit `http://localhost:3000/jobposts`, submit the form with a company name and cover letter text, leave "피드백 받고 싶어요" unchecked.
 Expected: redirected back to `/jobposts`, the new post appears at the top of the feed, no "피드백 보기" link appears on the card.
 
-- [ ] **Step 6: Post a job post requesting feedback**
+- [x] **Step 6: Post a job post requesting feedback**
 
 Submit another post with multi-line cover letter text and check "피드백 받고 싶어요".
 Expected: the card shows a "피드백 보기" link.
 
-- [ ] **Step 7: React to a post**
+- [x] **Step 7: React to a post**
 
 Click one of the emoji buttons on a post.
 Expected: the button highlights and the count increments; clicking again removes the reaction.
 
-- [ ] **Step 8: Check the calendar**
+- [x] **Step 8: Check the calendar**
 
 Visit `/jobposts/calendar`, confirm today's posts appear under today's date in the 날짜별 view, and confirm the 멤버별 view groups them under your name.
 
-- [ ] **Step 9: Open the feedback snapshot and add comments**
+- [x] **Step 9: Open the feedback snapshot and add comments**
 
 Click "피드백 보기" on the post from Step 6. Confirm every line of the cover letter appears as a separate row. Add a top-level comment on one line, then reply to that comment.
 Expected: both the root comment and the reply appear nested under the correct line after the page reloads.
 
-- [ ] **Step 10: Confirm admin-only delete**
+- [x] **Step 10: Confirm admin-only delete**
 
 Log in as a non-admin member and confirm no "삭제" button appears on any job post card. Log in as an admin and confirm the "삭제" button appears and deleting a post removes it (and its reactions/feedback doc/comments) from the feed.
 
-- [ ] **Step 11: Commit any fixes found during manual verification**
+- [x] **Step 11: Commit any fixes found during manual verification**
 
 If any issues were found and fixed during this walkthrough, commit them with a descriptive message before considering this task done.

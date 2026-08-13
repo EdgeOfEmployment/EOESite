@@ -108,11 +108,11 @@ create policy "Authors can create their own feedback snapshot"
   );
 ```
 
-- [ ] **Step 2: Apply the migration**
+- [x] **Step 2: Apply the migration**
 
 Run the contents of `supabase/migrations/0007_interviews.sql` in the Supabase dashboard SQL Editor (this project has no local Supabase CLI / db push workflow — every prior migration in this repo was applied this way).
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 In the Supabase dashboard, confirm `interview_sessions`, `interview_participants`, `interview_qas` exist, and that `feedback_docs.job_post_id` is now nullable with a new nullable `interview_qa_id` column and a `feedback_docs_exactly_one_parent` check constraint.
 
@@ -2075,11 +2075,11 @@ Check whether the user's `npm run dev` is live in another terminal first (a real
 
 Expected: no output, no errors. Only run `npm run build` if you've confirmed no dev server is currently running.
 
-- [ ] **Step 3: Confirm the migration is live**
+- [x] **Step 3: Confirm the migration is live**
 
 Confirm with the user that `supabase/migrations/0007_interviews.sql` (Task 1) has been applied in the Supabase dashboard — `interview_sessions`, `interview_participants`, `interview_qas` should exist and `feedback_docs.interview_qa_id` should be present.
 
-- [ ] **Step 4: Manual browser walkthrough**
+- [x] **Step 4: Manual browser walkthrough**
 
 With the dev server running, in a browser:
 
@@ -2091,6 +2091,6 @@ With the dev server running, in a browser:
 6. Click a line's `+` trigger, confirm the row expands with a comment box (not the whole background turning solid), submit a comment, confirm the badge updates to `💬 1` and clicking a different line collapses the first.
 7. Confirm `/jobposts` and its existing feedback flow are unaffected (this validates the `feedback_docs` generalization didn't break the pre-existing path).
 
-- [ ] **Step 5: Commit any fixes found during the walkthrough**
+- [x] **Step 5: Commit any fixes found during the walkthrough**
 
 If the walkthrough surfaces a bug, fix it, re-run the affected test file, and commit with a message describing the fix.

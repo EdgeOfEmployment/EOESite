@@ -123,11 +123,11 @@ create policy "Members can delete own coding checks"
   using (user_id = auth.uid());
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open the Supabase project dashboard → SQL Editor → paste the contents of `0003_coding.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard → Table Editor, confirm `coding_problems` and `coding_checks` tables exist. In Authentication/Database → Policies (or the SQL Editor with `select * from pg_policies where tablename = 'profiles';`), confirm a new "Approved members can read all profiles" policy exists on `profiles`.
 
@@ -1149,38 +1149,38 @@ git commit -m "Add coding board page grouped by week"
 
 This task has no automated test — it is a manual walkthrough to confirm the coding board works end-to-end, and specifically to confirm the profiles RLS fix from Task 1.
 
-- [ ] **Step 1: Confirm the migration is live**
+- [x] **Step 1: Confirm the migration is live**
 
 In the Supabase dashboard, re-check that `0003_coding.sql` ran successfully (Task 1).
 
-- [ ] **Step 2: Confirm the profiles RLS fix (regression check on the checkin board)**
+- [x] **Step 2: Confirm the profiles RLS fix (regression check on the checkin board)**
 
 Start the dev server (`npm run dev`) and log in as a **non-admin** approved member (not the admin account). Visit `/checkin` and `/`.
 Expected: Other members' real names now show correctly in the feed, comments, and the dashboard status table (previously, before this plan's Task 1 fix, they may have shown as missing/blank or the dashboard table may have shown only your own row).
 
-- [ ] **Step 3: Register a problem as admin**
+- [x] **Step 3: Register a problem as admin**
 
 Log in as the admin account, visit `/coding`. Confirm the registration form is visible (it should not be visible when logged in as a non-admin, per Step 2's session). Submit a problem with a title, a link, and the default (or a custom) week.
 Expected: Redirected back to `/coding`, the problem appears under its week heading (e.g. "8/11 주차") with every approved member listed.
 
-- [ ] **Step 4: Self-check as a non-admin member**
+- [x] **Step 4: Self-check as a non-admin member**
 
 Log in as a non-admin approved member. Visit `/coding`, click "체크" next to your own name on the problem.
 Expected: Your row switches to "완료" (as a clickable button, still toggleable). Other members' rows still show "미완료" as plain (non-clickable) text. Click "완료" again to confirm it toggles back to "체크".
 
 Log in as a different non-admin member and confirm you cannot check/uncheck the first member's row (no button appears next to their name, only plain text).
 
-- [ ] **Step 5: Confirm admin delete**
+- [x] **Step 5: Confirm admin delete**
 
 Log in as the admin account, click "삭제" on the problem.
 Expected: The problem disappears from `/coding` for all users. Confirm non-admin accounts never see a "삭제" button.
 
-- [ ] **Step 6: Confirm history accumulation**
+- [x] **Step 6: Confirm history accumulation**
 
 Register two problems under two different weeks (e.g. this week and last week, using the week-of date field).
 Expected: Both weeks appear on `/coding`, most recent week first, each with its own problems.
 
-- [ ] **Step 7: Record completion**
+- [x] **Step 7: Record completion**
 
 No commit needed for this task — it's verification only. If any step fails, fix the underlying code/config before moving on to the next board-feature plan (자소서 피드백 + 회사분석).
 

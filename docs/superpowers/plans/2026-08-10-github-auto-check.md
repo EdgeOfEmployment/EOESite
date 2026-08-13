@@ -81,11 +81,11 @@ grant execute on function public.update_own_github_username(text) to authenticat
 alter table coding_problems add column match_keyword text;
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open the Supabase project dashboard → SQL Editor → paste the contents of `0004_github_sync.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard → Table Editor, confirm `profiles` has a new `github_username` column and `coding_problems` has a new `match_keyword` column. In the SQL Editor, run `select proname from pg_proc where proname = 'update_own_github_username';` and confirm it returns one row.
 
@@ -966,11 +966,11 @@ git commit -m "Add GitHub push webhook for automatic problem check-off"
 
 This task has no automated test — it is a manual setup + walkthrough. None of these steps can be done from this environment; they require the Supabase dashboard, the Vercel dashboard, and the GitHub repo's settings UI.
 
-- [ ] **Step 1: Confirm the migration is live**
+- [x] **Step 1: Confirm the migration is live**
 
 In the Supabase dashboard, re-check that `0004_github_sync.sql` ran successfully (Task 1).
 
-- [ ] **Step 2: Add environment variables in Vercel**
+- [x] **Step 2: Add environment variables in Vercel**
 
 In the Vercel project for `eoe-site` → Settings → Environment Variables, add:
 - `SUPABASE_SERVICE_ROLE_KEY` — from the Supabase dashboard → Project Settings → API → `service_role` secret key. **Never expose this to the client or commit it** — it bypasses all RLS.
@@ -978,11 +978,11 @@ In the Vercel project for `eoe-site` → Settings → Environment Variables, add
 
 Redeploy (env var changes require a new deployment — trigger one from the Vercel dashboard or by pushing a commit) so the running app picks up the new variables.
 
-- [ ] **Step 3: Add the same secret locally (optional, for local reference only)**
+- [x] **Step 3: Add the same secret locally (optional, for local reference only)**
 
 Add the same two lines to your local `.env.local` (not committed) using the values from Step 2 — this isn't required for the deployed webhook to work, but keeps your local `.env.local` consistent with `.env.local.example`.
 
-- [ ] **Step 4: Configure the webhook on the GitHub repo**
+- [x] **Step 4: Configure the webhook on the GitHub repo**
 
 In `https://github.com/EdgeOfEmployment/Coding-Test` → Settings → Webhooks → Add webhook:
 - Payload URL: `https://eoe-site.vercel.app/api/github-webhook`
@@ -993,28 +993,28 @@ In `https://github.com/EdgeOfEmployment/Coding-Test` → Settings → Webhooks �
 
 Save.
 
-- [ ] **Step 5: Register your GitHub username**
+- [x] **Step 5: Register your GitHub username**
 
 Log into the app, visit `/coding`, enter your GitHub username in the "내 GitHub 아이디" field, and save.
 Expected: Redirected back to `/coding`, the field still shows your saved username after a refresh.
 
-- [ ] **Step 6: Register a problem**
+- [x] **Step 6: Register a problem**
 
 As the admin, register a problem whose title you'll use as the folder/file name convention (e.g. title `두 수의 합`), leaving the match-keyword field blank.
 
-- [ ] **Step 7: Push a matching file and confirm auto-check**
+- [x] **Step 7: Push a matching file and confirm auto-check**
 
 In the `EdgeOfEmployment/Coding-Test` repo, push a file under a path containing the problem's title (per your convention, e.g. `{당신의이름}/두 수의 합/두 수의 합.py`).
 In the GitHub repo → Settings → Webhooks → click the webhook → "Recent Deliveries", confirm the delivery shows a `200` response.
 Refresh `/coding`.
 Expected: Your row for that problem now shows "완료" without you having clicked the manual check button.
 
-- [ ] **Step 8: Confirm the manual toggle still works independently**
+- [x] **Step 8: Confirm the manual toggle still works independently**
 
 On a different problem, click "체크" manually.
 Expected: Toggles to "완료" as before; clicking again toggles back to "체크". Confirm this doesn't require any GitHub push.
 
-- [ ] **Step 9: Record completion**
+- [x] **Step 9: Record completion**
 
 No commit needed for this task — it's verification only. If the webhook delivery in Step 7 doesn't show `200`, check the delivery's response body in GitHub's UI (it will include validation errors) and the Vercel function logs for the `/api/github-webhook` route before treating this as complete.
 

@@ -66,11 +66,11 @@ alter table job_posts drop column cover_letter_text;
 alter table job_posts alter column questions drop default;
 ```
 
-- [ ] **Step 2: Apply the migration manually**
+- [x] **Step 2: Apply the migration manually**
 
 Open the Supabase project dashboard → SQL Editor → paste the contents of `0006_jobposts_qa.sql` → Run.
 
-- [ ] **Step 3: Verify manually**
+- [x] **Step 3: Verify manually**
 
 In the Supabase dashboard → Table Editor, confirm `job_posts` now has a `questions` column and no longer has `cover_letter_text`.
 
@@ -1690,11 +1690,11 @@ Expected: build succeeds with no TypeScript errors (in particular, confirm no ot
 
 Verified via `npx tsc --noEmit` instead (clean, no errors) rather than a full `next build`, since the user's `npm run dev` was live and a real `next build` would have corrupted its shared `.next/` cache.
 
-- [ ] **Step 3: Confirm the migration is live**
+- [x] **Step 3: Confirm the migration is live**
 
 In the Supabase dashboard, re-check that `0006_jobposts_qa.sql` ran successfully (Task 1) — `job_posts.questions` exists and `cover_letter_text` is gone.
 
-- [ ] **Step 4: Start the dev server and post with two Q&A pairs**
+- [x] **Step 4: Start the dev server and post with two Q&A pairs**
 
 ```bash
 npm run dev
@@ -1703,16 +1703,16 @@ npm run dev
 Log in as an approved member, visit `http://localhost:3000/jobposts`, click "+ 문항 추가" once, fill in two question/answer pairs (make at least one answer span two sentences with a period), check "피드백 받고 싶어요", and submit.
 Expected: redirected back to `/jobposts`; the new card shows both questions with their own answers; a "피드백 보기" link appears.
 
-- [ ] **Step 5: Confirm sentence splitting and question grouping on the feedback page**
+- [x] **Step 5: Confirm sentence splitting and question grouping on the feedback page**
 
 Click "피드백 보기".
 Expected: each question appears as its own heading; the multi-sentence answer is split into separate line rows at each period, with no stray blank lines.
 
-- [ ] **Step 6: Confirm the click-to-expand interaction**
+- [x] **Step 6: Confirm the click-to-expand interaction**
 
 Click the "+" trigger on a line.
 Expected: a comment box opens directly under that line. Add a comment, submit, and confirm the trigger now reads "💬 1" and the line shows the comment when clicked again. Click a different line's trigger and confirm the first line's comment box closes.
 
-- [ ] **Step 7: Commit any fixes found during manual verification**
+- [x] **Step 7: Commit any fixes found during manual verification**
 
 If any issues were found and fixed during this walkthrough, commit them with a descriptive message before considering this task done.
