@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
 import { groupByWeek, formatWeekLabel } from '@/lib/coding/week'
 import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
@@ -12,30 +13,19 @@ export default async function CodingPage({
 }) {
   const { error: queryError } = await searchParams
   const supabase = await createClient()
+  const session = await getSessionProfile()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [{ data: callerProfile }, { data: profiles }, { data: problems }] = await Promise.all([
+    supabase.from('profiles').select('github_username').eq('id', session!.userId).single(),
+    supabase.from('profiles').select('id, name').eq('status', 'approved'),
+    supabase
+      .from('coding_problems')
+      .select('id, title, link, week_of, created_by, created_at')
+      .order('week_of', { ascending: false }),
+  ])
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('role, github_username')
-    .eq('id', user!.id)
-    .single()
-
-  const isAdmin = callerProfile?.role === 'admin'
-
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, name')
-    .eq('status', 'approved')
-
+  const isAdmin = session?.role === 'admin'
   const members: Member[] = (profiles ?? []).map((p) => ({ id: p.id, name: p.name as string }))
-
-  const { data: problems } = await supabase
-    .from('coding_problems')
-    .select('id, title, link, week_of, created_by, created_at')
-    .order('week_of', { ascending: false })
 
   const problemIds = (problems ?? []).map((p) => p.id)
 
@@ -73,7 +63,7 @@ export default async function CodingPage({
                   key={problem.id}
                   problem={problem}
                   members={members}
-                  currentUserId={user!.id}
+                  currentUserId={session!.userId}
                   isAdmin={isAdmin}
                 />
               ))}
