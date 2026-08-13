@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { SessionForm } from './session-form'
 import { SessionCard } from './session-card'
 import type { InterviewSession } from '@/lib/interviews/types'
@@ -11,41 +13,33 @@ export default async function InterviewsPage({
   const { error: queryError } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [session, { data: profiles }, { data: sessions }] = await Promise.all([
+    getSessionProfile(),
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('interview_sessions')
+      .select('id, created_by, title, session_at, description, created_at')
+      .order('session_at', { ascending: true }),
+  ])
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user!.id)
-    .single()
-
-  const isAdmin = callerProfile?.role === 'admin'
-
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
+  const isAdmin = session?.role === 'admin'
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
-  const { data: sessions } = await supabase
-    .from('interview_sessions')
-    .select('id, created_by, title, session_at, description, created_at')
-    .order('session_at', { ascending: true })
 
   const sessionIds = (sessions ?? []).map((s) => s.id)
 
-  const { data: participants } = sessionIds.length
-    ? await supabase.from('interview_participants').select('id, session_id, user_id').in('session_id', sessionIds)
-    : { data: [] }
+  const { data: participants } = await queryIfAny(sessionIds, () =>
+    supabase.from('interview_participants').select('id, session_id, user_id').in('session_id', sessionIds)
+  )
 
-  const interviewSessions: InterviewSession[] = (sessions ?? []).map((session) => ({
-    id: session.id,
-    createdBy: session.created_by,
-    title: session.title,
-    sessionAt: session.session_at,
-    description: session.description,
-    createdAt: session.created_at,
+  const interviewSessions: InterviewSession[] = (sessions ?? []).map((s) => ({
+    id: s.id,
+    createdBy: s.created_by,
+    title: s.title,
+    sessionAt: s.session_at,
+    description: s.description,
+    createdAt: s.created_at,
     participants: (participants ?? [])
-      .filter((p) => p.session_id === session.id)
+      .filter((p) => p.session_id === s.id)
       .map((p) => ({ userId: p.user_id, userName: nameById.get(p.user_id) ?? '알 수 없음' })),
   }))
 
@@ -55,9 +49,9 @@ export default async function InterviewsPage({
       {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
       <SessionForm />
       <ul className="mt-6 flex flex-col gap-4">
-        {interviewSessions.map((session) => (
-          <li key={session.id}>
-            <SessionCard session={session} currentUserId={user!.id} isAdmin={isAdmin} />
+        {interviewSessions.map((s) => (
+          <li key={s.id}>
+            <SessionCard session={s} currentUserId={session!.userId} isAdmin={isAdmin} />
           </li>
         ))}
       </ul>
