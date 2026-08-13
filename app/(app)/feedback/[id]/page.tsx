@@ -17,7 +17,7 @@ export default async function FeedbackPage({
 
   const { data: doc } = await supabase
     .from('feedback_docs')
-    .select('id, job_post_id, lines')
+    .select('id, job_post_id, interview_qa_id, lines')
     .eq('id', id)
     .maybeSingle()
 
@@ -26,11 +26,34 @@ export default async function FeedbackPage({
     return
   }
 
-  const { data: jobPost } = await supabase
-    .from('job_posts')
-    .select('company_name, author_id')
-    .eq('id', doc.job_post_id)
-    .single()
+  let heading: string
+  let authorId: string
+
+  if (doc.job_post_id) {
+    const { data: jobPost } = await supabase
+      .from('job_posts')
+      .select('company_name, author_id')
+      .eq('id', doc.job_post_id)
+      .single()
+
+    heading = `${jobPost?.company_name} 자소서 피드백`
+    authorId = jobPost?.author_id ?? ''
+  } else {
+    const { data: qa } = await supabase
+      .from('interview_qas')
+      .select('author_id, session_id')
+      .eq('id', doc.interview_qa_id)
+      .single()
+
+    const { data: session } = await supabase
+      .from('interview_sessions')
+      .select('title')
+      .eq('id', qa?.session_id)
+      .single()
+
+    heading = `${session?.title} 피드백`
+    authorId = qa?.author_id ?? ''
+  }
 
   const { data: profiles } = await supabase.from('profiles').select('id, name')
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
@@ -53,7 +76,7 @@ export default async function FeedbackPage({
 
   const commentsByLine = groupCommentsByLine(flatComments)
   const lines = doc.lines as FeedbackLine[]
-  const authorName = nameById.get(jobPost?.author_id ?? '') ?? '알 수 없음'
+  const authorName = nameById.get(authorId) ?? '알 수 없음'
 
   const feedbackLines: FeedbackLineWithComments[] = lines.map((line, index) => ({
     index,
@@ -65,7 +88,7 @@ export default async function FeedbackPage({
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="mb-2 text-2xl font-bold">{jobPost?.company_name} 자소서 피드백</h1>
+      <h1 className="mb-2 text-2xl font-bold">{heading}</h1>
       <p className="mb-6 text-sm text-gray-500">작성자: {authorName}</p>
       {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
       <FeedbackLines feedbackDocId={id} lines={feedbackLines} />
