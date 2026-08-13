@@ -2060,14 +2060,14 @@ git commit -m "Resolve feedback heading/author from either a job post or an inte
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `npx vitest run`
 Expected: PASS, all files including the ~40 new/changed tests from Tasks 2–12
 
 If anything fails, fix it and commit the fix before continuing.
 
-- [ ] **Step 2: Type-check**
+- [x] **Step 2: Type-check**
 
 Check whether the user's `npm run dev` is live in another terminal first (a real `next build` while dev is running corrupts the shared `.next/` cache — this has happened before in this project). If dev is live, run:
 
