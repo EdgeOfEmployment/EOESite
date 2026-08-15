@@ -21,14 +21,16 @@ export default async function JobPostsCalendarPage({
   const { start, end } = monthRange(year, month)
   const supabase = await createClient()
 
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
+  const [{ data: profiles }, { data: posts }] = await Promise.all([
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('job_posts')
+      .select('id, author_id, company_name, post_date')
+      .gte('post_date', start)
+      .lt('post_date', end),
+  ])
 
-  const { data: posts } = await supabase
-    .from('job_posts')
-    .select('id, author_id, company_name, post_date')
-    .gte('post_date', start)
-    .lt('post_date', end)
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
 
   const calendarPosts: CalendarJobPost[] = (posts ?? []).map((post) => ({
     id: post.id,
