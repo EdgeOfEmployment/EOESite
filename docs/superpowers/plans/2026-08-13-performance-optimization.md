@@ -1058,7 +1058,7 @@ git commit -m "perf: parallelize independent queries on checkin calendar page"
 **Files:**
 - Modify: `app/(app)/jobposts/calendar/page.tsx`
 
-- [ ] **Step 1: Replace the fetch logic**
+- [x] **Step 1: Replace the fetch logic**
 
 ```tsx
 import { createClient } from '@/lib/supabase/server'
@@ -1166,7 +1166,7 @@ export default async function JobPostsCalendarPage({
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npx tsc --noEmit && npm run lint`
 Expected: no errors
@@ -1175,7 +1175,7 @@ Expected: no errors
 
 With `npm run dev` running, load `/jobposts/calendar` in both `date` and `member` views.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add "app/(app)/jobposts/calendar/page.tsx"
@@ -1191,7 +1191,7 @@ git commit -m "perf: parallelize independent queries on jobposts calendar page"
 
 `profiles` and `feedback_comments` only depend on the route's `id` param, not on `doc`, so they can start alongside the `doc` lookup instead of after it. The heading resolution (`job_posts` or `interview_qas` → `interview_sessions`) genuinely depends on `doc` and stays sequential.
 
-- [ ] **Step 1: Replace the fetch logic**
+- [x] **Step 1: Replace the fetch logic**
 
 ```tsx
 import { createClient } from '@/lib/supabase/server'
@@ -1290,7 +1290,7 @@ export default async function FeedbackPage({
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npx tsc --noEmit && npm run lint`
 Expected: no errors
@@ -1299,7 +1299,7 @@ Expected: no errors
 
 With `npm run dev` running, load a feedback page reached from a job post and one reached from an interview QA, plus a nonexistent feedback id to confirm the redirect still works.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add "app/(app)/feedback/[id]/page.tsx"
@@ -1313,7 +1313,7 @@ git commit -m "perf: parallelize independent queries on feedback page"
 **Files:**
 - Modify: `app/(app)/admin/page.tsx`
 
-- [ ] **Step 1: Replace the fetch logic**
+- [x] **Step 1: Replace the fetch logic**
 
 ```tsx
 import { createClient } from '@/lib/supabase/server'
@@ -1401,7 +1401,7 @@ export default async function AdminPage() {
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npx tsc --noEmit && npm run lint`
 Expected: no errors
@@ -1410,7 +1410,7 @@ Expected: no errors
 
 With `npm run dev` running, load `/admin` as an admin account and confirm both lists render and approve/reject still work.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add "app/(app)/admin/page.tsx"
@@ -1423,12 +1423,12 @@ git commit -m "perf: parallelize independent queries on admin page"
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Run the full test suite**
+- [x] **Step 1: Run the full test suite**
 
 Run: `npx vitest run`
 Expected: PASS for every test file, including `proxy.test.ts` and `lib/auth/session.test.ts`
 
-- [ ] **Step 2: Run a production build**
+- [x] **Step 2: Run a production build**
 
 Run: `npm run build`
 Expected: build succeeds with no type errors
