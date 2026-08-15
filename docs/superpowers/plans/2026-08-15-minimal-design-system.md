@@ -759,6 +759,7 @@ Expected: PASS (7 tests total) — note as baseline.
 - [ ] **Step 2: Replace `app/login/page.tsx`**
 
 ```tsx
+import Link from 'next/link'
 import { logIn } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -793,9 +794,9 @@ export default async function LoginPage({
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         계정이 없으신가요?{' '}
-        <a href="/signup" className="underline">
+        <Link href="/signup" className="underline">
           회원가입
-        </a>
+        </Link>
       </p>
     </PageShell>
   )
