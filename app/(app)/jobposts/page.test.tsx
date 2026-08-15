@@ -24,17 +24,9 @@ const feedbackDocs = [{ id: 'doc-1', job_post_id: 'post-1' }]
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
     from: (table: string) => {
       if (table === 'profiles') {
-        return {
-          select: (columns: string) => {
-            if (columns === 'role') {
-              return { eq: () => ({ single: async () => ({ data: { role: 'member' } }) }) }
-            }
-            return Promise.resolve({ data: profiles })
-          },
-        }
+        return { select: () => Promise.resolve({ data: profiles }) }
       }
       if (table === 'job_posts') {
         return { select: () => ({ order: async () => ({ data: posts }) }) }
@@ -54,6 +46,10 @@ vi.mock('./actions', () => ({
   createJobPost: vi.fn(),
   toggleReaction: vi.fn(),
   deleteJobPost: vi.fn(),
+}))
+
+vi.mock('@/lib/auth/session', () => ({
+  getSessionProfile: vi.fn(async () => ({ userId: 'user-1', role: 'member', status: 'approved' })),
 }))
 
 import JobPostsPage from './page'

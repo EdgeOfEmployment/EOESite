@@ -21,16 +21,10 @@ const participants = [{ id: 'p1', session_id: 'session-1', user_id: 'admin-1' }]
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
     from: (table: string) => {
       if (table === 'profiles') {
         return {
-          select: (columns: string) => {
-            if (columns === 'role') {
-              return { eq: () => ({ single: async () => ({ data: { role: 'member' } }) }) }
-            }
-            return Promise.resolve({ data: profiles })
-          },
+          select: () => Promise.resolve({ data: profiles }),
         }
       }
       if (table === 'interview_sessions') {
@@ -42,6 +36,10 @@ vi.mock('@/lib/supabase/server', () => ({
       throw new Error(`unexpected table ${table}`)
     },
   })),
+}))
+
+vi.mock('@/lib/auth/session', () => ({
+  getSessionProfile: vi.fn(async () => ({ userId: 'user-1', role: 'member', status: 'approved' })),
 }))
 
 vi.mock('./actions', () => ({

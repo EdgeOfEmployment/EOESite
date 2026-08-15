@@ -86,7 +86,7 @@ describe('proxy', () => {
     expect(getRedirectPathMock).toHaveBeenCalledWith(null, '/login')
   })
 
-  it('returns the refreshed supabase response unchanged when no redirect is needed', async () => {
+  it('carries the refreshed session cookie onto the response when no redirect is needed', async () => {
     const supabaseResponse = buildSupabaseResponse()
     updateSessionMock.mockResolvedValue({ supabaseResponse, supabase: { from: vi.fn() }, user: null })
     getRedirectPathMock.mockReturnValue(null)
@@ -94,6 +94,42 @@ describe('proxy', () => {
     const request = new NextRequest('https://example.com/login')
     const response = await proxy(request)
 
-    expect(response).toBe(supabaseResponse)
+    expect(response.cookies.get('sb-access-token')?.value).toBe('refreshed-token')
+  })
+
+  it('strips any client-supplied session headers before forwarding', async () => {
+    const supabaseResponse = buildSupabaseResponse()
+    updateSessionMock.mockResolvedValue({ supabaseResponse, supabase: { from: vi.fn() }, user: null })
+    getRedirectPathMock.mockReturnValue(null)
+
+    const request = new NextRequest('https://example.com/login', {
+      headers: { 'x-user-role': 'admin', 'x-user-id': 'attacker', 'x-user-status': 'approved' },
+    })
+    const response = await proxy(request)
+
+    const forwarded = (response.headers.get('x-middleware-override-headers') ?? '').split(',')
+    expect(forwarded).not.toContain('x-user-role')
+    expect(response.headers.get('x-middleware-request-x-user-role')).toBeNull()
+  })
+
+  it('forwards the verified identity as request headers for an authenticated, allowed visitor', async () => {
+    const supabaseResponse = buildSupabaseResponse()
+    const single = vi.fn().mockResolvedValue({ data: { status: 'approved', role: 'admin' } })
+    const eq = vi.fn().mockReturnValue({ single })
+    const select = vi.fn().mockReturnValue({ eq })
+    const fromMock = vi.fn().mockReturnValue({ select })
+    updateSessionMock.mockResolvedValue({
+      supabaseResponse,
+      supabase: { from: fromMock },
+      user: { id: 'user-1' },
+    })
+    getRedirectPathMock.mockReturnValue(null)
+
+    const request = new NextRequest('https://example.com/admin')
+    const response = await proxy(request)
+
+    expect(response.headers.get('x-middleware-request-x-user-id')).toBe('user-1')
+    expect(response.headers.get('x-middleware-request-x-user-role')).toBe('admin')
+    expect(response.headers.get('x-middleware-request-x-user-status')).toBe('approved')
   })
 })

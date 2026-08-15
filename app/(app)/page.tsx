@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
 import { buildTodayStatus, getMissingTypes, CHECKIN_TYPES } from '@/lib/checkin/status'
 import { CHECKIN_TYPE_LABELS, type CheckinType } from '@/lib/checkin/types'
 
@@ -11,25 +12,19 @@ function todayRangeUtc() {
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const { data: members } = await supabase.from('profiles').select('id, name').eq('status', 'approved')
-
   const { start, end } = todayRangeUtc()
-  const { data: todaysPosts } = await supabase
-    .from('checkin_posts')
-    .select('author_id, type')
-    .gte('created_at', start)
-    .lt('created_at', end)
+
+  const [session, { data: members }, { data: todaysPosts }] = await Promise.all([
+    getSessionProfile(),
+    supabase.from('profiles').select('id, name').eq('status', 'approved'),
+    supabase.from('checkin_posts').select('author_id, type').gte('created_at', start).lt('created_at', end),
+  ])
 
   const memberSummaries = (members ?? []).map((m) => ({ id: m.id, name: m.name as string }))
   const posts = (todaysPosts ?? []).map((p) => ({ authorId: p.author_id, type: p.type as CheckinType }))
 
   const statusRows = buildTodayStatus(memberSummaries, posts)
-  const missingTypes = user ? getMissingTypes(user.id, posts) : []
+  const missingTypes = session ? getMissingTypes(session.userId, posts) : []
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">

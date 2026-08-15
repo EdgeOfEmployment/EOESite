@@ -22,14 +22,16 @@ export default async function CheckinCalendarPage({
   const { start, end } = monthRange(year, month)
   const supabase = await createClient()
 
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
+  const [{ data: profiles }, { data: posts }] = await Promise.all([
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('checkin_posts')
+      .select('id, author_id, type, created_at')
+      .gte('created_at', start)
+      .lt('created_at', end),
+  ])
 
-  const { data: posts } = await supabase
-    .from('checkin_posts')
-    .select('id, author_id, type, created_at')
-    .gte('created_at', start)
-    .lt('created_at', end)
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
 
   const calendarPosts: CalendarPost[] = (posts ?? []).map((post) => ({
     id: post.id,

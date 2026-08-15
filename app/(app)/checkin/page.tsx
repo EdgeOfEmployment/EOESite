@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
@@ -11,39 +13,32 @@ export default async function CheckinPage({
   const { error: queryError } = await searchParams
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const [session, { data: profiles }, { data: posts }] = await Promise.all([
+    getSessionProfile(),
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('checkin_posts')
+      .select('id, author_id, type, body, photo_url, created_at')
+      .order('created_at', { ascending: false }),
+  ])
 
-  const { data: callerProfile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user!.id)
-    .single()
-
-  const isAdmin = callerProfile?.role === 'admin'
-
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
+  const isAdmin = session?.role === 'admin'
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
-  const { data: posts } = await supabase
-    .from('checkin_posts')
-    .select('id, author_id, type, body, photo_url, created_at')
-    .order('created_at', { ascending: false })
 
   const postIds = (posts ?? []).map((p) => p.id)
 
-  const { data: comments } = postIds.length
-    ? await supabase
+  const [{ data: comments }, { data: reactions }] = await Promise.all([
+    queryIfAny(postIds, () =>
+      supabase
         .from('checkin_comments')
         .select('id, post_id, author_id, body, created_at')
         .in('post_id', postIds)
         .order('created_at', { ascending: true })
-    : { data: [] }
-
-  const { data: reactions } = postIds.length
-    ? await supabase.from('checkin_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds)
-    : { data: [] }
+    ),
+    queryIfAny(postIds, () =>
+      supabase.from('checkin_reactions').select('id, post_id, author_id, emoji').in('post_id', postIds)
+    ),
+  ])
 
   const checkinPosts: CheckinPost[] = (posts ?? []).map((post) => ({
     id: post.id,
@@ -80,7 +75,7 @@ export default async function CheckinPage({
       <ul className="mt-6 flex flex-col gap-4">
         {checkinPosts.map((post) => (
           <li key={post.id}>
-            <PostCard post={post} currentUserId={user!.id} isAdmin={isAdmin} />
+            <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
           </li>
         ))}
       </ul>

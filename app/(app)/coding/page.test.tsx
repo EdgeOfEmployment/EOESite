@@ -21,15 +21,14 @@ const checks = [{ problem_id: 'problem-1', user_id: 'user-1' }]
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: vi.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
     from: (table: string) => {
       if (table === 'profiles') {
         return {
           select: (columns: string) => {
-            if (columns === 'role, github_username') {
+            if (columns === 'github_username') {
               return {
                 eq: () => ({
-                  single: async () => ({ data: { role: 'member', github_username: 'kimminsu-dev' } }),
+                  single: async () => ({ data: { github_username: 'kimminsu-dev' } }),
                 }),
               }
             }
@@ -46,6 +45,10 @@ vi.mock('@/lib/supabase/server', () => ({
       throw new Error(`unexpected table ${table}`)
     },
   })),
+}))
+
+vi.mock('@/lib/auth/session', () => ({
+  getSessionProfile: vi.fn(async () => ({ userId: 'user-1', role: 'member', status: 'approved' })),
 }))
 
 vi.mock('./actions', () => ({
