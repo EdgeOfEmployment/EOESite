@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buildMonthCalendar, groupPostsByMember, type CalendarJobPost } from '@/lib/jobposts/calendar'
+import { PageShell } from '@/components/ui/page-shell'
 
 function monthRange(year: number, month: number) {
   const start = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10)
@@ -42,11 +43,7 @@ export default async function JobPostsCalendarPage({
   }))
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold">
-        자소서 달력 ({year}년 {month}월)
-      </h1>
-
+    <PageShell title={`자소서 달력 (${year}년 ${month}월)`} width="3xl">
       <div className="mb-4 flex gap-3 text-sm">
         <Link
           href={`/jobposts/calendar?year=${year}&month=${month}&view=date`}
@@ -68,7 +65,12 @@ export default async function JobPostsCalendarPage({
             {buildMonthCalendar(year, month, calendarPosts).map((week, i) => (
               <tr key={i}>
                 {week.map((day) => (
-                  <td key={day.date} className={`border p-2 align-top ${day.inMonth ? '' : 'text-gray-300'}`}>
+                  <td
+                    key={day.date}
+                    className={`border border-gray-200 p-2 align-top dark:border-gray-800 ${
+                      day.inMonth ? '' : 'text-gray-300 dark:text-gray-600'
+                    }`}
+                  >
                     <div>{Number(day.date.slice(8, 10))}</div>
                     <div className="mt-1 flex flex-col gap-0.5">
                       {day.posts.map((post) => (
@@ -88,7 +90,7 @@ export default async function JobPostsCalendarPage({
           {groupPostsByMember(calendarPosts).map((member) => (
             <li key={member.authorId}>
               <h2 className="font-semibold">{member.authorName}</h2>
-              <ul className="mt-1 flex flex-col gap-0.5 text-sm text-gray-600">
+              <ul className="mt-1 flex flex-col gap-0.5 text-sm text-gray-600 dark:text-gray-400">
                 {member.posts.map((post) => (
                   <li key={post.id}>
                     {post.postDate} · {post.companyName}
@@ -99,6 +101,6 @@ export default async function JobPostsCalendarPage({
           ))}
         </ul>
       )}
-    </main>
+    </PageShell>
   )
 }

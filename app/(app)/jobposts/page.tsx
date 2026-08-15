@@ -5,6 +5,8 @@ import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { JobPost } from '@/lib/jobposts/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 export default async function JobPostsPage({
   searchParams,
@@ -56,14 +58,19 @@ export default async function JobPostsPage({
   }))
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">자소서 / 공고</h1>
-        <Link href="/jobposts/calendar" className="text-sm text-gray-500 underline">
+    <PageShell
+      title="자소서 / 공고"
+      headerExtra={
+        <Link href="/jobposts/calendar" className="text-sm text-gray-500 underline dark:text-gray-400">
           달력 보기
         </Link>
-      </div>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+      }
+    >
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <PostForm />
       <ul className="mt-6 flex flex-col gap-4">
         {jobPosts.map((post) => (
@@ -72,6 +79,6 @@ export default async function JobPostsPage({
           </li>
         ))}
       </ul>
-    </main>
+    </PageShell>
   )
 }
