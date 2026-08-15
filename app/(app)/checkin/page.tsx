@@ -5,6 +5,8 @@ import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 export default async function CheckinPage({
   searchParams,
@@ -64,14 +66,19 @@ export default async function CheckinPage({
   }))
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">인증</h1>
-        <Link href="/checkin/calendar" className="text-sm text-gray-500 underline">
+    <PageShell
+      title="인증"
+      headerExtra={
+        <Link href="/checkin/calendar" className="text-sm text-gray-500 underline dark:text-gray-400">
           달력 보기
         </Link>
-      </div>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+      }
+    >
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <PostForm />
       <ul className="mt-6 flex flex-col gap-4">
         {checkinPosts.map((post) => (
@@ -80,6 +87,6 @@ export default async function CheckinPage({
           </li>
         ))}
       </ul>
-    </main>
+    </PageShell>
   )
 }
