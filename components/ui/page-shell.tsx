@@ -37,7 +37,7 @@ export function PageShell({
       )}
     >
       {title && (
-        <div className={cn('mb-6 flex items-center', headerExtra && 'justify-between')}>
+        <div className={cn('mb-6 flex items-center', headerExtra ? 'justify-between' : false)}>
           <h1 className="text-2xl font-bold">{title}</h1>
           {headerExtra}
         </div>
