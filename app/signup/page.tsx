@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { signUp } from './actions'
 
 export default async function SignupPage({
@@ -51,9 +52,9 @@ export default async function SignupPage({
       </form>
       <p className="mt-4 text-sm text-gray-500">
         이미 계정이 있으신가요?{' '}
-        <a href="/login" className="underline">
+        <Link href="/login" className="underline">
           로그인
-        </a>
+        </Link>
       </p>
     </main>
   )

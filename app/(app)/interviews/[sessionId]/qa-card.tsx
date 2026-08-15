@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { InterviewQa } from '@/lib/interviews/types'
 import { deleteInterviewQa } from './actions'
 
@@ -34,9 +35,9 @@ export function QaCard({
         ))}
       </div>
 
-      <a href={`/feedback/${qa.feedbackDocId}`} className="mt-3 inline-block text-sm text-gray-500 underline">
+      <Link href={`/feedback/${qa.feedbackDocId}`} className="mt-3 inline-block text-sm text-gray-500 underline">
         피드백 보기
-      </a>
+      </Link>
     </article>
   )
 }

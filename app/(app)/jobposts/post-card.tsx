@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { REACTION_EMOJIS } from '@/lib/checkin/types'
 import type { JobPost } from '@/lib/jobposts/types'
 import { toggleReaction, deleteJobPost } from './actions'
@@ -58,9 +59,9 @@ export function PostCard({
       </div>
 
       {post.feedbackDocId && (
-        <a href={`/feedback/${post.feedbackDocId}`} className="mt-3 inline-block text-sm text-gray-500 underline">
+        <Link href={`/feedback/${post.feedbackDocId}`} className="mt-3 inline-block text-sm text-gray-500 underline">
           피드백 보기
-        </a>
+        </Link>
       )}
     </article>
   )

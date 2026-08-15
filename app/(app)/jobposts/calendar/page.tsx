@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buildMonthCalendar, groupPostsByMember, type CalendarJobPost } from '@/lib/jobposts/calendar'
 
@@ -47,18 +48,18 @@ export default async function JobPostsCalendarPage({
       </h1>
 
       <div className="mb-4 flex gap-3 text-sm">
-        <a
+        <Link
           href={`/jobposts/calendar?year=${year}&month=${month}&view=date`}
           className={view === 'date' ? 'font-bold underline' : ''}
         >
           날짜별
-        </a>
-        <a
+        </Link>
+        <Link
           href={`/jobposts/calendar?year=${year}&month=${month}&view=member`}
           className={view === 'member' ? 'font-bold underline' : ''}
         >
           멤버별
-        </a>
+        </Link>
       </div>
 
       {view === 'date' ? (

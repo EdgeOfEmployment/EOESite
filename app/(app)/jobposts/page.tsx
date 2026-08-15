@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
@@ -58,9 +59,9 @@ export default async function JobPostsPage({
     <main className="mx-auto max-w-2xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">자소서 / 공고</h1>
-        <a href="/jobposts/calendar" className="text-sm text-gray-500 underline">
+        <Link href="/jobposts/calendar" className="text-sm text-gray-500 underline">
           달력 보기
-        </a>
+        </Link>
       </div>
       {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
       <PostForm />

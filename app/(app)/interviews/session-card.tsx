@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import type { InterviewSession } from '@/lib/interviews/types'
 import { toggleParticipation, deleteSession } from './actions'
 
@@ -17,9 +18,9 @@ export function SessionCard({
     <article className="rounded border p-4">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <a href={`/interviews/${session.id}`} className="font-medium underline">
+          <Link href={`/interviews/${session.id}`} className="font-medium underline">
             {session.title}
-          </a>
+          </Link>
           <p className="text-xs text-gray-500">{session.sessionAt}</p>
         </div>
         {canDelete && (

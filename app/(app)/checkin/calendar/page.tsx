@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buildMonthCalendar, groupPostsByMember, type CalendarPost } from '@/lib/checkin/calendar'
 import { CHECKIN_TYPE_LABELS, type CheckinType } from '@/lib/checkin/types'
@@ -48,18 +49,18 @@ export default async function CheckinCalendarPage({
       </h1>
 
       <div className="mb-4 flex gap-3 text-sm">
-        <a
+        <Link
           href={`/checkin/calendar?year=${year}&month=${month}&view=date`}
           className={view === 'date' ? 'font-bold underline' : ''}
         >
           날짜별
-        </a>
-        <a
+        </Link>
+        <Link
           href={`/checkin/calendar?year=${year}&month=${month}&view=member`}
           className={view === 'member' ? 'font-bold underline' : ''}
         >
           멤버별
-        </a>
+        </Link>
       </div>
 
       {view === 'date' ? (
