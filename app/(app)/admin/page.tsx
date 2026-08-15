@@ -4,21 +4,25 @@ import { approveUser, rejectUser } from './actions'
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  const { data: pendingUsers, error: pendingError } = await supabase
-    .from('profiles')
-    .select('id, name, created_at')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
+  const [
+    { data: pendingUsers, error: pendingError },
+    { data: approvedMembers, error: approvedError },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, name, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('profiles')
+      .select('id, name, role')
+      .eq('status', 'approved')
+      .order('name', { ascending: true }),
+  ])
 
   if (pendingError) {
     console.error('admin page: failed to fetch pending users', pendingError)
   }
-
-  const { data: approvedMembers, error: approvedError } = await supabase
-    .from('profiles')
-    .select('id, name, role')
-    .eq('status', 'approved')
-    .order('name', { ascending: true })
 
   if (approvedError) {
     console.error('admin page: failed to fetch approved members', approvedError)
