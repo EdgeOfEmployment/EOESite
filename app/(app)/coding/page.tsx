@@ -6,6 +6,8 @@ import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
 import { GithubSettingsForm } from './github-settings-form'
 import type { CodingProblem, Member } from '@/lib/coding/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 export default async function CodingPage({
   searchParams,
@@ -49,9 +51,12 @@ export default async function CodingPage({
   const weekGroups = groupByWeek(codingProblems)
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold">코테 스터디</h1>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+    <PageShell title="코테 스터디">
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <GithubSettingsForm currentUsername={callerProfile?.github_username ?? null} />
       {isAdmin && <ProblemForm />}
       <div className="mt-6 flex flex-col gap-6">
@@ -71,9 +76,9 @@ export default async function CodingPage({
           </section>
         ))}
         {weekGroups.length === 0 && (
-          <p className="text-sm text-gray-500">아직 등록된 문제가 없습니다.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">아직 등록된 문제가 없습니다.</p>
         )}
       </div>
-    </main>
+    </PageShell>
   )
 }

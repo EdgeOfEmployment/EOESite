@@ -1,11 +1,9 @@
 import { updateGithubUsername } from './actions'
+import { Card } from '@/components/ui/card'
 
 export function GithubSettingsForm({ currentUsername }: { currentUsername: string | null }) {
   return (
-    <form
-      action={updateGithubUsername}
-      className="mb-6 flex items-center gap-2 rounded border p-4 text-sm"
-    >
+    <Card as="form" action={updateGithubUsername} className="mb-6 flex items-center gap-2 text-sm">
       <label htmlFor="githubUsername" className="whitespace-nowrap font-medium">
         내 GitHub 아이디
       </label>
@@ -15,11 +13,11 @@ export function GithubSettingsForm({ currentUsername }: { currentUsername: strin
         placeholder="GitHub 아이디"
         defaultValue={currentUsername ?? ''}
         required
-        className="flex-1 rounded border px-3 py-1"
+        className="flex-1 rounded border border-gray-300 px-3 py-1 dark:border-gray-700"
       />
-      <button type="submit" className="rounded border px-3 py-1">
+      <button type="submit" className="rounded border border-gray-300 px-3 py-1 dark:border-gray-700">
         저장
       </button>
-    </form>
+    </Card>
   )
 }
