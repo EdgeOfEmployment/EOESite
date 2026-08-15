@@ -4,6 +4,8 @@ import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { SessionForm } from './session-form'
 import { SessionCard } from './session-card'
 import type { InterviewSession } from '@/lib/interviews/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 export default async function InterviewsPage({
   searchParams,
@@ -44,9 +46,12 @@ export default async function InterviewsPage({
   }))
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold">모의면접</h1>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+    <PageShell title="모의면접">
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <SessionForm />
       <ul className="mt-6 flex flex-col gap-4">
         {interviewSessions.map((s) => (
@@ -55,6 +60,6 @@ export default async function InterviewsPage({
           </li>
         ))}
       </ul>
-    </main>
+    </PageShell>
   )
 }
