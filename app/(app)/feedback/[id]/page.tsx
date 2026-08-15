@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { groupCommentsByLine } from '@/lib/jobposts/comments'
 import { FeedbackLines, type FeedbackLineWithComments } from './feedback-lines'
 import type { FeedbackLine } from '@/lib/jobposts/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 export default async function FeedbackPage({
   params,
@@ -84,11 +86,14 @@ export default async function FeedbackPage({
   }))
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="mb-2 text-2xl font-bold">{heading}</h1>
-      <p className="mb-6 text-sm text-gray-500">작성자: {authorName}</p>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+    <PageShell title={heading} width="3xl">
+      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">작성자: {authorName}</p>
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <FeedbackLines feedbackDocId={id} lines={feedbackLines} />
-    </main>
+    </PageShell>
   )
 }

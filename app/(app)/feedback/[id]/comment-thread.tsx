@@ -16,7 +16,7 @@ function CommentNode({
         <span className="font-medium">{comment.authorName}</span> {comment.body}
       </div>
       {comment.replies.length > 0 && (
-        <ul className="ml-4 border-l pl-2">
+        <ul className="ml-4 border-l border-gray-200 pl-2 dark:border-gray-800">
           {comment.replies.map((reply) => (
             <CommentNode key={reply.id} feedbackDocId={feedbackDocId} lineIndex={lineIndex} comment={reply} />
           ))}
@@ -26,8 +26,13 @@ function CommentNode({
         action={addFeedbackComment.bind(null, feedbackDocId, lineIndex, comment.id)}
         className="ml-4 mt-1 flex gap-2"
       >
-        <input name="body" placeholder="답글" required className="flex-1 rounded border px-2 py-1 text-xs" />
-        <button type="submit" className="rounded border px-2 py-1 text-xs">
+        <input
+          name="body"
+          placeholder="답글"
+          required
+          className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700"
+        />
+        <button type="submit" className="rounded border border-gray-300 px-2 py-1 text-xs dark:border-gray-700">
           답글
         </button>
       </form>
@@ -52,8 +57,13 @@ export function CommentThread({
         ))}
       </ul>
       <form action={addFeedbackComment.bind(null, feedbackDocId, lineIndex, null)} className="mt-2 flex gap-2">
-        <input name="body" placeholder="댓글 추가" required className="flex-1 rounded border px-2 py-1 text-sm" />
-        <button type="submit" className="rounded border px-3 py-1 text-sm">
+        <input
+          name="body"
+          placeholder="댓글 추가"
+          required
+          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700"
+        />
+        <button type="submit" className="rounded border border-gray-300 px-3 py-1 text-sm dark:border-gray-700">
           등록
         </button>
       </form>
