@@ -15,11 +15,15 @@ export default async function FeedbackPage({
   const { error: queryError } = await searchParams
   const supabase = await createClient()
 
-  const { data: doc } = await supabase
-    .from('feedback_docs')
-    .select('id, job_post_id, interview_qa_id, lines')
-    .eq('id', id)
-    .maybeSingle()
+  const [{ data: doc }, { data: profiles }, { data: rawComments }] = await Promise.all([
+    supabase.from('feedback_docs').select('id, job_post_id, interview_qa_id, lines').eq('id', id).maybeSingle(),
+    supabase.from('profiles').select('id, name'),
+    supabase
+      .from('feedback_comments')
+      .select('id, line_index, parent_comment_id, author_id, body, created_at')
+      .eq('feedback_doc_id', id)
+      .order('created_at', { ascending: true }),
+  ])
 
   if (!doc) {
     redirect('/jobposts?error=' + encodeURIComponent('존재하지 않는 피드백입니다'))
@@ -55,14 +59,7 @@ export default async function FeedbackPage({
     authorId = qa?.author_id ?? ''
   }
 
-  const { data: profiles } = await supabase.from('profiles').select('id, name')
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
-  const { data: rawComments } = await supabase
-    .from('feedback_comments')
-    .select('id, line_index, parent_comment_id, author_id, body, created_at')
-    .eq('feedback_doc_id', id)
-    .order('created_at', { ascending: true })
 
   const flatComments = (rawComments ?? []).map((c) => ({
     id: c.id,
