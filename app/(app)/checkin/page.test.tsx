@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/checkin',
+  useRouter: () => ({ replace: vi.fn() }),
+}))
+
 const profiles = [
   { id: 'admin-1', name: '관리자' },
   { id: 'user-1', name: '김민수' },

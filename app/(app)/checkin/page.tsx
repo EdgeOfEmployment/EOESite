@@ -7,13 +7,14 @@ import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function CheckinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [session, { data: profiles }, { data: posts }] = await Promise.all([
@@ -74,6 +75,7 @@ export default async function CheckinPage({
         </Link>
       }
     >
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}

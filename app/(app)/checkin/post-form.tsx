@@ -19,7 +19,7 @@ export function PostForm() {
       </Select>
       <Textarea name="body" placeholder="오늘의 인증 내용을 남겨주세요" required />
       <input type="file" name="photo" accept="image/*" className="text-sm" />
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         인증하기
       </Button>
     </Card>
