@@ -24,12 +24,8 @@ export function ProblemForm() {
       <Label htmlFor="matchKeyword" className="sr-only">
         저장소 매칭 키워드 (선택)
       </Label>
-      <Input
-        id="matchKeyword"
-        name="matchKeyword"
-        placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)"
-      />
-      <Button type="submit" className="self-start">
+      <Input id="matchKeyword" name="matchKeyword" placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)" />
+      <Button type="submit" size="lg" className="self-start">
         문제 등록
       </Button>
     </Card>

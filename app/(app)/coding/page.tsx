@@ -8,13 +8,15 @@ import { GithubSettingsForm } from './github-settings-form'
 import type { CodingProblem, Member } from '@/lib/coding/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function CodingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
   const session = await getSessionProfile()
 
@@ -52,6 +54,7 @@ export default async function CodingPage({
 
   return (
     <PageShell title="코테 스터디">
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
@@ -75,9 +78,7 @@ export default async function CodingPage({
             </div>
           </section>
         ))}
-        {weekGroups.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">아직 등록된 문제가 없습니다.</p>
-        )}
+        {weekGroups.length === 0 && <EmptyState message="아직 등록된 문제가 없습니다." />}
       </div>
     </PageShell>
   )
