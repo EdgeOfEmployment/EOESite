@@ -88,7 +88,7 @@ describe('createProblem', () => {
       weekOf: '2026-08-11',
     })
 
-    await createProblem(formData)
+    await expect(createProblem(formData)).rejects.toThrow()
 
     expect(insertMock).toHaveBeenCalledWith({
       title: '두 수의 합',
@@ -98,6 +98,7 @@ describe('createProblem', () => {
       match_keyword: null,
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
   })
 
   it('passes the optional match keyword when provided', async () => {
@@ -108,7 +109,7 @@ describe('createProblem', () => {
       matchKeyword: 'two-sum',
     })
 
-    await createProblem(formData)
+    await expect(createProblem(formData)).rejects.toThrow()
 
     expect(insertMock).toHaveBeenCalledWith({
       title: '두 수의 합',
@@ -117,6 +118,7 @@ describe('createProblem', () => {
       created_by: 'admin-1',
       match_keyword: 'two-sum',
     })
+    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
   })
 })
 
@@ -171,12 +173,15 @@ describe('updateGithubUsername', () => {
   it('calls the update_own_github_username RPC and revalidates /coding', async () => {
     const formData = buildFormData({ githubUsername: 'kimminsu-dev' })
 
-    await updateGithubUsername(formData)
+    await expect(updateGithubUsername(formData)).rejects.toThrow()
 
     expect(rpcMock).toHaveBeenCalledWith('update_own_github_username', {
       new_username: 'kimminsu-dev',
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?success=' + encodeURIComponent('GitHub 아이디를 저장했어요')
+    )
   })
 
   it('redirects with the Supabase error message when the RPC fails', async () => {

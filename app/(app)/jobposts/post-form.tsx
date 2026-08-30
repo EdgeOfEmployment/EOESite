@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { createJobPost } from './actions'
+import { Card } from '@/components/ui/card'
+import { Input, Textarea, Label } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface QuestionField {
   question: string
@@ -25,56 +28,49 @@ export function PostForm() {
   }
 
   return (
-    <form action={createJobPost} className="flex flex-col gap-3 rounded border p-4">
-      <label htmlFor="companyName" className="sr-only">
+    <Card as="form" action={createJobPost} className="flex flex-col gap-3">
+      <Label htmlFor="companyName" className="sr-only">
         회사명
-      </label>
-      <input
-        id="companyName"
-        name="companyName"
-        placeholder="회사명"
-        required
-        className="rounded border px-3 py-2"
-      />
-      <label htmlFor="postingInfo" className="sr-only">
+      </Label>
+      <Input id="companyName" name="companyName" placeholder="회사명" required />
+      <Label htmlFor="postingInfo" className="sr-only">
         공고 정보
-      </label>
-      <textarea
-        id="postingInfo"
-        name="postingInfo"
-        placeholder="공고 링크/정보 (선택)"
-        className="rounded border px-3 py-2"
-      />
+      </Label>
+      <Textarea id="postingInfo" name="postingInfo" placeholder="공고 링크/정보 (선택)" />
 
       <input type="hidden" name="questionCount" value={questions.length} />
 
       <div className="flex flex-col gap-3">
         {questions.map((q, index) => (
-          <div key={index} className="rounded border p-3">
+          <Card key={index} padding="sm">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500">문항 {index + 1}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">문항 {index + 1}</span>
               {questions.length > 1 && (
-                <button type="button" onClick={() => removeQuestion(index)} className="text-xs text-red-600">
+                <button
+                  type="button"
+                  onClick={() => removeQuestion(index)}
+                  className="text-xs text-red-600 dark:text-red-400"
+                >
                   삭제
                 </button>
               )}
             </div>
-            <label htmlFor={`question-${index}`} className="sr-only">
+            <Label htmlFor={`question-${index}`} className="sr-only">
               질문
-            </label>
-            <input
+            </Label>
+            <Input
               id={`question-${index}`}
               name={`question-${index}`}
               placeholder="질문 (예: 지원동기를 작성해주세요)"
               required
               value={q.question}
               onChange={(e) => updateQuestion(index, 'question', e.target.value)}
-              className="mb-2 w-full rounded border px-3 py-2"
+              className="mb-2"
             />
-            <label htmlFor={`answer-${index}`} className="sr-only">
+            <Label htmlFor={`answer-${index}`} className="sr-only">
               답변
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id={`answer-${index}`}
               name={`answer-${index}`}
               placeholder="답변"
@@ -82,34 +78,26 @@ export function PostForm() {
               rows={5}
               value={q.answer}
               onChange={(e) => updateQuestion(index, 'answer', e.target.value)}
-              className="w-full rounded border px-3 py-2"
             />
-          </div>
+          </Card>
         ))}
       </div>
 
-      <button type="button" onClick={addQuestion} className="self-start rounded border px-3 py-1 text-sm">
+      <Button type="button" variant="secondary" onClick={addQuestion} className="self-start">
         + 문항 추가
-      </button>
+      </Button>
 
-      <label htmlFor="postDate" className="sr-only">
+      <Label htmlFor="postDate" className="sr-only">
         날짜
-      </label>
-      <input
-        id="postDate"
-        name="postDate"
-        type="date"
-        defaultValue={today}
-        required
-        className="rounded border px-3 py-2"
-      />
+      </Label>
+      <Input id="postDate" name="postDate" type="date" defaultValue={today} required />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="feedbackRequested" />
         피드백 받고 싶어요
       </label>
-      <button type="submit" className="self-start rounded bg-black px-3 py-2 text-sm text-white">
+      <Button type="submit" size="lg" className="self-start">
         등록
-      </button>
-    </form>
+      </Button>
+    </Card>
   )
 }

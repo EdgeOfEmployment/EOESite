@@ -57,6 +57,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
+  usePathname: () => '/interviews/session-1',
+  useRouter: () => ({ replace: vi.fn() }),
 }))
 
 vi.mock('./actions', () => ({

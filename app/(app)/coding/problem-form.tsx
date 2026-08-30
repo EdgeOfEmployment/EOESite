@@ -1,49 +1,33 @@
 import { createProblem } from './actions'
 import { getMostRecentTuesday } from '@/lib/coding/week'
+import { Card } from '@/components/ui/card'
+import { Input, Label } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export function ProblemForm() {
   const defaultWeek = getMostRecentTuesday(new Date())
 
   return (
-    <form action={createProblem} className="flex flex-col gap-3 rounded border p-4">
-      <label htmlFor="title" className="sr-only">
+    <Card as="form" action={createProblem} className="flex flex-col gap-3">
+      <Label htmlFor="title" className="sr-only">
         문제명
-      </label>
-      <input id="title" name="title" placeholder="문제명" required className="rounded border px-3 py-2" />
-      <label htmlFor="link" className="sr-only">
+      </Label>
+      <Input id="title" name="title" placeholder="문제명" required />
+      <Label htmlFor="link" className="sr-only">
         문제 링크
-      </label>
-      <input
-        id="link"
-        name="link"
-        type="url"
-        placeholder="문제 링크"
-        required
-        className="rounded border px-3 py-2"
-      />
-      <label htmlFor="weekOf" className="sr-only">
+      </Label>
+      <Input id="link" name="link" type="url" placeholder="문제 링크" required />
+      <Label htmlFor="weekOf" className="sr-only">
         대상 주차
-      </label>
-      <input
-        id="weekOf"
-        name="weekOf"
-        type="date"
-        defaultValue={defaultWeek}
-        required
-        className="rounded border px-3 py-2"
-      />
-      <label htmlFor="matchKeyword" className="sr-only">
+      </Label>
+      <Input id="weekOf" name="weekOf" type="date" defaultValue={defaultWeek} required />
+      <Label htmlFor="matchKeyword" className="sr-only">
         저장소 매칭 키워드 (선택)
-      </label>
-      <input
-        id="matchKeyword"
-        name="matchKeyword"
-        placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)"
-        className="rounded border px-3 py-2"
-      />
-      <button type="submit" className="self-start rounded bg-black px-3 py-2 text-sm text-white">
+      </Label>
+      <Input id="matchKeyword" name="matchKeyword" placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)" />
+      <Button type="submit" size="lg" className="self-start">
         문제 등록
-      </button>
-    </form>
+      </Button>
+    </Card>
   )
 }

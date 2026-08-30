@@ -6,16 +6,19 @@ import { QaForm } from './qa-form'
 import { QaCard } from './qa-card'
 import { groupQasByAuthor } from '@/lib/interviews/grouping'
 import type { InterviewQa } from '@/lib/interviews/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewSessionPage({
   params,
   searchParams,
 }: {
   params: Promise<{ sessionId: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
   const { sessionId } = await params
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [caller, { data: session }, { data: profiles }, { data: qas }] = await Promise.all([
@@ -63,18 +66,22 @@ export default async function InterviewSessionPage({
   const qaGroups = groupQasByAuthor(interviewQas)
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-2 text-2xl font-bold">{session.title}</h1>
-      <p className="mb-6 text-sm text-gray-500">{session.session_at}</p>
+    <PageShell title={session.title}>
+      <Toast message={success} />
+      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{session.session_at}</p>
       {session.description && (
-        <p className="mb-6 whitespace-pre-wrap text-sm text-gray-600">{session.description}</p>
+        <p className="mb-6 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{session.description}</p>
       )}
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <QaForm sessionId={sessionId} />
       <div className="mt-6 flex flex-col gap-6">
         {qaGroups.map((group) => (
           <section key={group.authorId}>
-            <h2 className="mb-2 text-sm font-semibold text-gray-700">{group.authorName}</h2>
+            <h2 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">{group.authorName}</h2>
             <ul className="flex flex-col gap-4">
               {group.qas.map((qa) => (
                 <li key={qa.id}>
@@ -85,6 +92,6 @@ export default async function InterviewSessionPage({
           </section>
         ))}
       </div>
-    </main>
+    </PageShell>
   )
 }

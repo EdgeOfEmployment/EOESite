@@ -6,13 +6,17 @@ import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
 import { GithubSettingsForm } from './github-settings-form'
 import type { CodingProblem, Member } from '@/lib/coding/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function CodingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
   const session = await getSessionProfile()
 
@@ -49,9 +53,13 @@ export default async function CodingPage({
   const weekGroups = groupByWeek(codingProblems)
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold">코테 스터디</h1>
-      {queryError && <p className="mb-4 text-sm text-red-600">{queryError}</p>}
+    <PageShell title="코테 스터디">
+      <Toast message={success} />
+      {queryError && (
+        <Alert variant="danger" className="mb-4">
+          {queryError}
+        </Alert>
+      )}
       <GithubSettingsForm currentUsername={callerProfile?.github_username ?? null} />
       {isAdmin && <ProblemForm />}
       <div className="mt-6 flex flex-col gap-6">
@@ -70,10 +78,8 @@ export default async function CodingPage({
             </div>
           </section>
         ))}
-        {weekGroups.length === 0 && (
-          <p className="text-sm text-gray-500">아직 등록된 문제가 없습니다.</p>
-        )}
+        {weekGroups.length === 0 && <EmptyState message="아직 등록된 문제가 없습니다." />}
       </div>
-    </main>
+    </PageShell>
   )
 }

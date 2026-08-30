@@ -45,6 +45,7 @@ export async function createProblem(formData: FormData) {
   }
 
   revalidatePath('/coding')
+  redirect('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
 }
 
 export async function updateGithubUsername(formData: FormData) {
@@ -76,6 +77,7 @@ export async function updateGithubUsername(formData: FormData) {
   }
 
   revalidatePath('/coding')
+  redirect('/coding?success=' + encodeURIComponent('GitHub 아이디를 저장했어요'))
 }
 
 export async function deleteProblem(problemId: string) {

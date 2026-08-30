@@ -46,20 +46,26 @@ export function FeedbackLines({
 
         return (
           <div key={line.index}>
-            {isNewQuestion && <h2 className="mb-1 mt-4 text-sm font-semibold text-gray-700">{line.question}</h2>}
+            {isNewQuestion && (
+              <h2 className="mb-1 mt-4 text-sm font-semibold text-gray-700 dark:text-gray-300">{line.question}</h2>
+            )}
             <div
               className={`flex items-center justify-between gap-2 rounded px-2 py-1 text-sm ${
-                expanded ? 'border border-blue-300' : 'border border-transparent'
+                expanded ? 'border border-accent' : 'border border-transparent'
               }`}
             >
-              <span className="text-xs text-gray-400">{displayNumber}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{displayNumber}</span>
               <p className="flex-1 whitespace-pre-wrap">{line.text}</p>
-              <button type="button" onClick={() => toggle(line.index)} className="shrink-0 text-xs text-gray-500">
+              <button
+                type="button"
+                onClick={() => toggle(line.index)}
+                className="shrink-0 text-xs text-gray-500 dark:text-gray-400"
+              >
                 {commentCount > 0 ? `💬 ${commentCount}` : '+'}
               </button>
             </div>
             {expanded && (
-              <div className="ml-4 mb-2 rounded border border-blue-200 p-3">
+              <div className="ml-4 mb-2 rounded border border-accent/40 p-3">
                 <CommentThread feedbackDocId={feedbackDocId} lineIndex={line.index} comments={line.comments} />
               </div>
             )}

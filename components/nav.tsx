@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { logOut } from '@/lib/auth/logout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const links = [
   { href: '/checkin', label: '인증' },
@@ -10,7 +11,7 @@ const links = [
 
 export function Nav() {
   return (
-    <nav className="flex items-center justify-between border-b px-6 py-4">
+    <nav className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
       <div className="flex gap-4">
         <Link href="/" className="font-bold">
           홈
@@ -21,11 +22,14 @@ export function Nav() {
           </Link>
         ))}
       </div>
-      <form action={logOut}>
-        <button type="submit" className="text-sm text-gray-500">
-          로그아웃
-        </button>
-      </form>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <form action={logOut}>
+          <button type="submit" className="text-sm text-gray-500 dark:text-gray-400">
+            로그아웃
+          </button>
+        </form>
+      </div>
     </nav>
   )
 }

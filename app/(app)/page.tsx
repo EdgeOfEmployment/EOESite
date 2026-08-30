@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { buildTodayStatus, getMissingTypes, CHECKIN_TYPES } from '@/lib/checkin/status'
 import { CHECKIN_TYPE_LABELS, type CheckinType } from '@/lib/checkin/types'
+import { PageShell } from '@/components/ui/page-shell'
+import { Alert } from '@/components/ui/alert'
 
 function todayRangeUtc() {
   const now = new Date()
@@ -27,23 +29,21 @@ export default async function DashboardPage() {
   const missingTypes = session ? getMissingTypes(session.userId, posts) : []
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-2xl font-bold">대시보드</h1>
-
+    <PageShell title="대시보드" width="3xl">
       {missingTypes.length > 0 ? (
-        <p className="mt-2 text-sm text-amber-600">
+        <Alert variant="warning">
           오늘 아직 {missingTypes.map((t) => CHECKIN_TYPE_LABELS[t]).join(', ')} 인증을 하지 않았어요.
-        </p>
+        </Alert>
       ) : (
-        <p className="mt-2 text-sm text-green-600">오늘의 인증을 모두 완료했어요!</p>
+        <Alert variant="success">오늘의 인증을 모두 완료했어요!</Alert>
       )}
 
       <table className="mt-6 w-full border-collapse text-sm">
         <thead>
           <tr>
-            <th className="border p-2 text-left">멤버</th>
+            <th className="border border-gray-200 p-2 text-left dark:border-gray-800">멤버</th>
             {CHECKIN_TYPES.map((type) => (
-              <th key={type} className="border p-2">
+              <th key={type} className="border border-gray-200 p-2 dark:border-gray-800">
                 {CHECKIN_TYPE_LABELS[type]}
               </th>
             ))}
@@ -52,9 +52,9 @@ export default async function DashboardPage() {
         <tbody>
           {statusRows.map((row) => (
             <tr key={row.member.id}>
-              <td className="border p-2">{row.member.name}</td>
+              <td className="border border-gray-200 p-2 dark:border-gray-800">{row.member.name}</td>
               {CHECKIN_TYPES.map((type) => (
-                <td key={type} className="border p-2 text-center">
+                <td key={type} className="border border-gray-200 p-2 text-center dark:border-gray-800">
                   {row.completed[type] ? '✅' : ''}
                 </td>
               ))}
@@ -62,6 +62,6 @@ export default async function DashboardPage() {
           ))}
         </tbody>
       </table>
-    </main>
+    </PageShell>
   )
 }

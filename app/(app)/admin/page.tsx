@@ -1,5 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { approveUser, rejectUser } from './actions'
+import { PageShell } from '@/components/ui/page-shell'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -32,52 +36,49 @@ export default async function AdminPage() {
   const approvedList = approvedMembers ?? []
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold">관리자 페이지</h1>
-
+    <PageShell title="관리자 페이지">
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold">가입 대기 ({pendingList.length})</h2>
-        <ul className="flex flex-col gap-3">
-          {pendingList.map((user) => (
-            <li key={user.id} className="flex items-center justify-between rounded border p-3">
-              <span>{user.name}</span>
-              <div className="flex gap-2">
-                <form action={approveUser.bind(null, user.id)}>
-                  <button type="submit" className="rounded bg-black px-3 py-1 text-sm text-white">
-                    승인
-                  </button>
-                </form>
-                <form action={rejectUser.bind(null, user.id)}>
-                  <button type="submit" className="rounded border px-3 py-1 text-sm">
-                    거부
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
-          {pendingList.length === 0 && (
-            <p className="text-sm text-gray-500">대기 중인 가입 신청이 없습니다.</p>
-          )}
-        </ul>
+        {pendingList.length === 0 ? (
+          <EmptyState message="대기 중인 가입 신청이 없습니다." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {pendingList.map((user) => (
+              <Card key={user.id} as="li" padding="sm" className="flex items-center justify-between">
+                <span>{user.name}</span>
+                <div className="flex gap-2">
+                  <form action={approveUser.bind(null, user.id)}>
+                    <Button type="submit">승인</Button>
+                  </form>
+                  <form action={rejectUser.bind(null, user.id)}>
+                    <Button type="submit" variant="secondary">
+                      거부
+                    </Button>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">멤버 ({approvedList.length})</h2>
         <ul className="flex flex-col gap-3">
           {approvedList.map((member) => (
-            <li key={member.id} className="flex items-center justify-between rounded border p-3">
+            <Card key={member.id} as="li" padding="sm" className="flex items-center justify-between">
               <span>{member.name}</span>
               {member.role !== 'admin' && (
                 <form action={rejectUser.bind(null, member.id)}>
-                  <button type="submit" className="rounded border px-3 py-1 text-sm text-red-600">
+                  <Button type="submit" variant="secondary" className="text-red-600 dark:text-red-400">
                     강퇴
-                  </button>
+                  </Button>
                 </form>
               )}
-            </li>
+            </Card>
           ))}
         </ul>
       </section>
-    </main>
+    </PageShell>
   )
 }

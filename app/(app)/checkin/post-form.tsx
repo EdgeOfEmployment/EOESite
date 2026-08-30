@@ -1,10 +1,13 @@
 import { createCheckinPost } from './actions'
 import { CHECKIN_TYPE_LABELS } from '@/lib/checkin/types'
+import { Card } from '@/components/ui/card'
+import { Select, Textarea } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export function PostForm() {
   return (
-    <form action={createCheckinPost} className="flex flex-col gap-3 rounded border p-4">
-      <select name="type" required defaultValue="" className="rounded border px-3 py-2">
+    <Card as="form" action={createCheckinPost} className="flex flex-col gap-3">
+      <Select name="type" required defaultValue="">
         <option value="" disabled>
           인증 종류 선택
         </option>
@@ -13,17 +16,12 @@ export function PostForm() {
             {label}
           </option>
         ))}
-      </select>
-      <textarea
-        name="body"
-        placeholder="오늘의 인증 내용을 남겨주세요"
-        required
-        className="rounded border px-3 py-2"
-      />
+      </Select>
+      <Textarea name="body" placeholder="오늘의 인증 내용을 남겨주세요" required />
       <input type="file" name="photo" accept="image/*" className="text-sm" />
-      <button type="submit" className="self-start rounded bg-black px-3 py-2 text-sm text-white">
+      <Button type="submit" size="lg" className="self-start">
         인증하기
-      </button>
-    </form>
+      </Button>
+    </Card>
   )
 }

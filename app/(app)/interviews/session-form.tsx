@@ -1,35 +1,27 @@
 import { createSession } from './actions'
+import { Card } from '@/components/ui/card'
+import { Input, Textarea, Label } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export function SessionForm() {
   return (
-    <form action={createSession} className="flex flex-col gap-3 rounded border p-4">
-      <label htmlFor="title" className="sr-only">
+    <Card as="form" action={createSession} className="flex flex-col gap-3">
+      <Label htmlFor="title" className="sr-only">
         세션 제목
-      </label>
-      <input id="title" name="title" placeholder="세션 제목" required className="rounded border px-3 py-2" />
+      </Label>
+      <Input id="title" name="title" placeholder="세션 제목" required />
 
-      <label htmlFor="sessionAt">일시</label>
-      <input
-        id="sessionAt"
-        name="sessionAt"
-        type="datetime-local"
-        required
-        className="rounded border px-3 py-2"
-      />
+      <Label htmlFor="sessionAt">일시</Label>
+      <Input id="sessionAt" name="sessionAt" type="datetime-local" required />
 
-      <label htmlFor="description" className="sr-only">
+      <Label htmlFor="description" className="sr-only">
         설명
-      </label>
-      <textarea
-        id="description"
-        name="description"
-        placeholder="장소/링크 등 (선택)"
-        className="rounded border px-3 py-2"
-      />
+      </Label>
+      <Textarea id="description" name="description" placeholder="장소/링크 등 (선택)" />
 
-      <button type="submit" className="self-start rounded bg-black px-3 py-2 text-sm text-white">
+      <Button type="submit" size="lg" className="self-start">
         세션 만들기
-      </button>
-    </form>
+      </Button>
+    </Card>
   )
 }
