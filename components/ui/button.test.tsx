@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from './button'
 
 describe('Button', () => {
@@ -24,5 +24,32 @@ describe('Button', () => {
   it('merges a caller-provided className', () => {
     render(<Button className="self-start">등록</Button>)
     expect(screen.getByRole('button', { name: '등록' })).toHaveClass('self-start')
+  })
+
+  it('keeps a 44px minimum tap target at every size', () => {
+    const { rerender } = render(<Button size="sm">작게</Button>)
+    expect(screen.getByRole('button', { name: '작게' })).toHaveClass('min-h-11')
+    rerender(<Button size="lg">크게</Button>)
+    expect(screen.getByRole('button', { name: '크게' })).toHaveClass('min-h-12')
+  })
+
+  it('shows a spinner and disables itself while its enclosing form is submitting', async () => {
+    let resolveAction: () => void = () => {}
+    const pending = new Promise<void>((resolve) => {
+      resolveAction = resolve
+    })
+
+    render(
+      <form action={() => pending}>
+        <Button type="submit">제출</Button>
+      </form>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '제출' }))
+
+    expect(await screen.findByText('로딩 중')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toBeDisabled()
+
+    resolveAction()
   })
 })
