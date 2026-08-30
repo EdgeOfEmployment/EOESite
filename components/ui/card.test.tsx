@@ -26,4 +26,18 @@ describe('Card', () => {
     expect(screen.getByTestId('card')).toHaveClass('p-3')
     expect(screen.getByTestId('card')).not.toHaveClass('p-4')
   })
+
+  it('uses roomier padding when padding="lg"', () => {
+    render(
+      <Card padding="lg" data-testid="card">
+        내용
+      </Card>
+    )
+    expect(screen.getByTestId('card')).toHaveClass('p-6')
+  })
+
+  it('applies a subtle shadow by default', () => {
+    render(<Card data-testid="card">내용</Card>)
+    expect(screen.getByTestId('card')).toHaveClass('shadow-sm')
+  })
 })
