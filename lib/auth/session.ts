@@ -8,8 +8,8 @@ export interface SessionProfile {
   status: ProfileStatus
 }
 
-const ROLES: ProfileRole[] = ['member', 'admin']
-const STATUSES: ProfileStatus[] = ['pending', 'approved', 'rejected']
+export const ROLES: ProfileRole[] = ['member', 'admin']
+export const STATUSES: ProfileStatus[] = ['pending', 'approved', 'rejected']
 
 export function parseSessionHeaders(source: { get(name: string): string | null }): SessionProfile | null {
   const userId = source.get('x-user-id')
