@@ -57,6 +57,7 @@ export async function createCheckinPost(formData: FormData) {
 
   revalidatePath('/checkin')
   revalidatePath('/')
+  redirect('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
 }
 
 export async function addComment(postId: string, formData: FormData) {

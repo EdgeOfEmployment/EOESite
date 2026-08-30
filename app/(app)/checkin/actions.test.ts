@@ -71,7 +71,7 @@ describe('createCheckinPost', () => {
   it('creates a post without a photo when none is provided', async () => {
     const formData = buildFormData({ type: 'wake', body: '오늘의 인증' })
 
-    await createCheckinPost(formData)
+    await expect(createCheckinPost(formData)).rejects.toThrow()
 
     expect(uploadMock).not.toHaveBeenCalled()
     expect(insertMock).toHaveBeenCalledWith({
@@ -82,13 +82,14 @@ describe('createCheckinPost', () => {
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
   it('uploads the photo and stores its public URL when provided', async () => {
     const photo = new File(['fake-image-bytes'], 'photo.jpg', { type: 'image/jpeg' })
     const formData = buildFormData({ type: 'wake', body: '오늘의 인증', photo })
 
-    await createCheckinPost(formData)
+    await expect(createCheckinPost(formData)).rejects.toThrow()
 
     expect(uploadMock).toHaveBeenCalled()
     expect(insertMock).toHaveBeenCalledWith({
@@ -97,6 +98,7 @@ describe('createCheckinPost', () => {
       body: '오늘의 인증',
       photo_url: 'https://example.com/photo.jpg',
     })
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 })
 

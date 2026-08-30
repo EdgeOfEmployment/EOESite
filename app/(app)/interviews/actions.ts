@@ -39,6 +39,7 @@ export async function createSession(formData: FormData) {
   }
 
   revalidatePath('/interviews')
+  redirect('/interviews?success=' + encodeURIComponent('세션을 만들었어요'))
 }
 
 export async function toggleParticipation(sessionId: string) {
@@ -158,6 +159,7 @@ export async function createInterviewQa(sessionId: string, formData: FormData) {
   }
 
   revalidatePath(`/interviews/${sessionId}`)
+  redirect(`/interviews/${sessionId}?success=` + encodeURIComponent('답변을 등록했어요'))
 }
 
 export async function deleteInterviewQa(sessionId: string, qaId: string) {

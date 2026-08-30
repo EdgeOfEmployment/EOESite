@@ -99,7 +99,7 @@ describe('createJobPost', () => {
       'answer-1': '문제 해결 능력.',
     })
 
-    await createJobPost(formData)
+    await expect(createJobPost(formData)).rejects.toThrow()
 
     expect(jobPostsInsert).toHaveBeenCalledWith({
       author_id: 'user-1',
@@ -109,6 +109,7 @@ describe('createJobPost', () => {
       questions: [{ question: '강점', answer: '문제 해결 능력.' }],
       feedback_requested: false,
     })
+    expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
   })
 
   it('creates a job post with multiple question/answer pairs', async () => {
@@ -123,7 +124,7 @@ describe('createJobPost', () => {
       'answer-1': '둘째 문장.',
     })
 
-    await createJobPost(formData)
+    await expect(createJobPost(formData)).rejects.toThrow()
 
     expect(jobPostsInsert).toHaveBeenCalledWith({
       author_id: 'user-1',
@@ -137,6 +138,7 @@ describe('createJobPost', () => {
       feedback_requested: false,
     })
     expect(feedbackDocsInsert).not.toHaveBeenCalled()
+    expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
   })
 
   it('creates a feedback snapshot split into per-question lines when feedback is requested', async () => {
@@ -150,7 +152,7 @@ describe('createJobPost', () => {
       feedbackRequested: 'on',
     })
 
-    await createJobPost(formData)
+    await expect(createJobPost(formData)).rejects.toThrow()
 
     expect(feedbackDocsInsert).toHaveBeenCalledWith({
       job_post_id: 'post-1',
@@ -159,6 +161,7 @@ describe('createJobPost', () => {
         { questionIndex: 0, question: '지원동기', text: '둘째 문장.' },
       ],
     })
+    expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
   })
 
   it('redirects with an error when the job post insert fails', async () => {

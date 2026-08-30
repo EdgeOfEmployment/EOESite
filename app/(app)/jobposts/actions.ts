@@ -67,6 +67,7 @@ export async function createJobPost(formData: FormData) {
   }
 
   revalidatePath('/jobposts')
+  redirect('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
 }
 
 export async function toggleReaction(postId: string, emoji: string) {

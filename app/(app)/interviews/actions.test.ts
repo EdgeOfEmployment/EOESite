@@ -72,7 +72,7 @@ describe('createSession', () => {
       description: 'Zoom 링크',
     })
 
-    await createSession(formData)
+    await expect(createSession(formData)).rejects.toThrow()
 
     expect(insert).toHaveBeenCalledWith({
       created_by: 'user-1',
@@ -80,6 +80,7 @@ describe('createSession', () => {
       session_at: '2026-08-20T14:00',
       description: 'Zoom 링크',
     })
+    expect(redirectMock).toHaveBeenCalledWith('/interviews?success=' + encodeURIComponent('세션을 만들었어요'))
   })
 
   it('redirects with an error when the insert fails', async () => {
@@ -213,13 +214,16 @@ describe('createInterviewQa', () => {
       'answer-1': '책임감입니다.',
     })
 
-    await createInterviewQa('session-1', formData)
+    await expect(createInterviewQa('session-1', formData)).rejects.toThrow()
 
     expect(qaInsert).toHaveBeenCalledWith({
       session_id: 'session-1',
       author_id: 'user-1',
       questions: [{ question: '강점은', answer: '책임감입니다.' }],
     })
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/interviews/session-1?success=' + encodeURIComponent('답변을 등록했어요')
+    )
   })
 
   it('creates a QA entry and always generates a feedback snapshot', async () => {
@@ -230,7 +234,7 @@ describe('createInterviewQa', () => {
       'answer-0': '첫 문장. 둘째 문장.',
     })
 
-    await createInterviewQa('session-1', formData)
+    await expect(createInterviewQa('session-1', formData)).rejects.toThrow()
 
     expect(qaInsert).toHaveBeenCalledWith({
       session_id: 'session-1',
@@ -244,6 +248,9 @@ describe('createInterviewQa', () => {
         { questionIndex: 0, question: '자기소개를 해주세요', text: '둘째 문장.' },
       ],
     })
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/interviews/session-1?success=' + encodeURIComponent('답변을 등록했어요')
+    )
   })
 
   it('redirects with an error when the QA insert fails', async () => {
