@@ -6,13 +6,14 @@ import { SessionCard } from './session-card'
 import type { InterviewSession } from '@/lib/interviews/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [session, { data: profiles }, { data: sessions }] = await Promise.all([
@@ -47,6 +48,7 @@ export default async function InterviewsPage({
 
   return (
     <PageShell title="모의면접">
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}

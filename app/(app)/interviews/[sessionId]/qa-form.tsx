@@ -77,7 +77,7 @@ export function QaForm({ sessionId }: { sessionId: string }) {
         + 문항 추가
       </Button>
 
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         등록
       </Button>
     </Card>

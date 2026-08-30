@@ -8,16 +8,17 @@ import { groupQasByAuthor } from '@/lib/interviews/grouping'
 import type { InterviewQa } from '@/lib/interviews/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewSessionPage({
   params,
   searchParams,
 }: {
   params: Promise<{ sessionId: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
   const { sessionId } = await params
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [caller, { data: session }, { data: profiles }, { data: qas }] = await Promise.all([
@@ -66,6 +67,7 @@ export default async function InterviewSessionPage({
 
   return (
     <PageShell title={session.title}>
+      <Toast message={success} />
       <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{session.session_at}</p>
       {session.description && (
         <p className="mb-6 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{session.description}</p>

@@ -19,7 +19,7 @@ export function SessionForm() {
       </Label>
       <Textarea id="description" name="description" placeholder="장소/링크 등 (선택)" />
 
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         세션 만들기
       </Button>
     </Card>
