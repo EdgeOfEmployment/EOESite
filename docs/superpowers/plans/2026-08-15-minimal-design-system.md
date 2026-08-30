@@ -1,14 +1,23 @@
-# Minimal Design System Implementation Plan
+# Design System & UX Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the app's unstyled `create-next-app` scaffold with a minimal, consistent design system (design tokens + 5 shared UI primitives), applied across every page.
+**Goal:** Replace the app's unstyled `create-next-app` scaffold with a designed, consistent UI system (design tokens + 9 shared UI primitives) applied across every page, with a `sm | md | lg` size scale, a clean-productivity-SaaS visual pass (shadows, semantic alert colors, icons), and concrete UX additions: loading feedback on form submission, empty-state messaging, success toasts, and a manual light/dark toggle.
 
-**Architecture:** Add an accent color token pair to `app/globals.css` (light/dark via the existing `prefers-color-scheme` media query), build 5 presentational primitives in `components/ui/` and `lib/ui/cn.ts` (Button, Input/Textarea/Select/Label, Card, Alert, PageShell), then retrofit all ~20 existing page/component files to use them in place of copy-pasted raw Tailwind classes. Retrofits are markup-only — no behavior changes — verified by re-running each file's existing test (all use `getByRole`/`getByText`, not className assertions, so this is safe).
+**Architecture:** Add design tokens (accent pair + class-based dark mode) to `app/globals.css`, build 9 presentational/interactive primitives in `components/ui/` and `lib/ui/cn.ts` (Button, Input/Textarea/Select/Label, Card, Alert, PageShell, Spinner, EmptyState, Toast, ThemeToggle — see note below on the count), wire a `?success=` redirect convention into the handful of action files that already redirect on `?error=`, then retrofit all ~20 existing page/component files to use the primitives in place of copy-pasted raw Tailwind classes.
 
-**Tech Stack:** Next.js 16 (App Router), React 19, Tailwind CSS v4 (`@theme inline`), Vitest + Testing Library.
+Most retrofits are markup-only, mirroring the original minimal-scope version of this plan — **except** `Button`, `Toast`, and `ThemeToggle`, which are now intentionally interactive client components (see "Behavior-change exception" below). Every other retrofit file remains behavior-identical to today, verified by re-running each file's existing test (all use `getByRole`/`getByText`, not className assertions, so this is safe for everything except the primitive tests and the four `actions.test.ts` files touched by Task 12, which are updated deliberately and are called out explicitly where that happens).
+
+**Tech Stack:** Next.js 16 (App Router), React 19, Tailwind CSS v4 (`@theme inline`), Vitest + Testing Library (`@testing-library/react` + `fireEvent`; no `@testing-library/user-event` — it isn't a project dependency, so interaction tests use `fireEvent` like the existing `jobposts/post-form.test.tsx` does).
 
 **Known flake:** before trusting any full `npx vitest run`, confirm `.claude/worktrees/` has no stray worktrees (past false failures traced to this — see project memory). It was empty as of plan-writing time.
+
+**Behavior-change exception:** the original version of this plan required every retrofit to be markup-only with zero behavior change. This version deliberately breaks that rule in three places, because the UX goals it was asked to cover (loading feedback, a persistent theme toggle, success notifications) are impossible to build as pure markup:
+- `Button` becomes a `'use client'` component using `useFormStatus` so a submit button shows a spinner and disables itself while its form's action is pending (Task 4).
+- `ThemeToggle` is a new interactive client component (Task 11).
+- `Toast` is a new interactive client component that reads a `?success=` query param, shows itself, and clears the param after a few seconds (Task 10, wired up by Task 12).
+
+Nothing else changes behavior. Every other primitive and every retrofit page keeps the same server-component, no-new-state shape it had before.
 
 ---
 
@@ -21,12 +30,20 @@ These rules resolve every "does this become a primitive?" question so later task
 3. **Small inline destructive text action** (삭제/취소 appearing as a tiny link inside a card header or list row): stays a plain `<button className="text-xs text-red-600 dark:text-red-400">` — not promoted to `Button`, which is sized for full-width form actions.
 4. **Toggle chip** (reaction emoji toggle, 참석하기/참석 취소 attendance toggle): stays raw `<button>`, but its "active" state swaps `bg-black text-white` → `border-accent bg-accent text-accent-foreground`, and its base state gets `border-gray-300 dark:border-gray-700`.
 5. **Status pill/badge** (인증 종류 label, 완료/미완료): stays a raw `<span>`, just gets a `dark:bg-*` counterpart added.
-6. **Bordered container** → `<Card>`. This covers both content cards (post/problem/session/qa cards) *and* form wrappers (every `rounded border p-4` form uses `<Card as="form" action={...}>`), and list rows that need a border (admin pending/member rows use `<Card as="li" padding="sm">`). Card takes `padding="sm"` (`p-3`, used for nested question sub-blocks and admin rows) or the default `padding="md"` (`p-4`).
-7. **Form fields**: `<Input>` / `<Textarea>` / `<Select>` / `<Label>`, all exported from `components/ui/input.tsx` — these count as one "Input primitive" family per the agreed 5-primitive scope, since a real form needs all four field types.
+6. **Bordered container** → `<Card>`. This covers both content cards (post/problem/session/qa cards) *and* form wrappers (every `rounded border p-4` form uses `<Card as="form" action={...}>`), and list rows that need a border (admin pending/member rows use `<Card as="li" padding="sm">`). Card takes `padding="sm"` (`p-3`, nested question sub-blocks and admin rows), the default `padding="md"` (`p-4`), or `padding="lg"` (`p-6`, roomy standalone cards — not used by any current retrofit snippet, available for future use). Card always carries a subtle `shadow-sm` — that's part of its base look, not a variant.
+7. **Form fields**: `<Input>` / `<Textarea>` / `<Select>` / `<Label>`, all exported from `components/ui/input.tsx` — these count as one "Input primitive" family per the agreed primitive scope, since a real form needs all four field types.
 8. **Compact single-line inline forms** (comment/reply boxes, the GitHub-username settings row) stay raw `<input>`/`<button>` — NOT swapped to `Input`/`Button` — because those primitives are sized for stacked forms (`py-2`) and would visually bloat a one-line inline row (`py-1`). Only add `dark:border-gray-700` to their existing `border` classes.
 9. **Page wrapper** → `<PageShell title="..." width="sm|2xl|3xl" top="default|auth" align="left|center" headerExtra={...}>`. `top="auth"` reproduces the `mt-20` (no `py-8`) used by login/signup/pending. `headerExtra` renders a node next to the `<h1>` (used by checkin/jobposts for the "달력 보기" link).
 10. **Status text** (error banners, dashboard 완료/미완료 messages) → `<Alert variant="danger|success|warning">`.
-11. **Intentional normalizations** (call these out, don't "fix" them back): all page `<h1>` headings now get a uniform `mb-6` from `PageShell` (a couple of pages previously used `mb-2`/`mb-4`); all form-level action buttons (including admin's approve/reject/kick, previously `py-1`) normalize to `Button`'s `py-2`. These are deliberate consistency wins of building the system, not bugs.
+11. **Intentional normalizations** (call these out, don't "fix" them back): all page `<h1>` headings now get a uniform `mb-6` from `PageShell` (a couple of pages previously used `mb-2`/`mb-4`); all form-level action buttons (including admin's approve/reject/kick, previously `py-1`) normalize to `Button`'s sizing. These are deliberate consistency wins of building the system, not bugs.
+12. **Size prop** (`sm | md | lg`, default `md`) applies to `Button`, `Input`/`Textarea`/`Select`, and `Card`'s `padding`. Every interactive control keeps a **44px minimum tap target** regardless of size — `Button`/`Input`/`Select` all carry `min-h-11` (44px) unconditionally, with only font-size and horizontal padding shrinking/growing across sizes (`lg` steps up to `min-h-12`/48px, intentionally taller, for standout primary CTAs). `Textarea` is exempt from the height floor — its height is `rows`-driven, so its size variants only change font-size/padding. Use `size="lg"` on a page's single standout primary submit button (로그인, 가입하기, 인증하기, 문제 등록, jobposts/interviews main 등록 buttons, 세션 만들기); leave every other button (secondary actions, toggle-adjacent buttons, admin row actions) at the default `md`.
+13. **Alert** variants (`danger`/`success`/`warning`) now render a background + border + small inline decorative SVG icon, not just colored text (e.g. `bg-red-50 border-red-200 text-red-700` in light, `bg-red-950 border-red-900 text-red-400` in dark; green for success, amber for warning). The icon is `aria-hidden="true"` — the message text itself carries the meaning for assistive tech.
+14. **Empty list state** → `<EmptyState message="...">` (optionally with an `action` node) instead of a bare `<p className="text-sm text-gray-500">아직 ~ 없습니다</p>`. Only two such paragraphs exist in the current codebase (coding's problem list, admin's pending-signup list) — Tasks 17 and 21 convert exactly those two; no new empty-state coverage is invented elsewhere.
+15. **Success toast**: mirrors the existing `?error=<encodeURIComponent(...)>` convention (read server-side via `searchParams`, rendered through `<Alert variant="danger">`) with a parallel `?success=<encodeURIComponent(...)>` param rendered through `<Toast message={success} />`. It is wired **only** onto each page's single primary "create a new top-level item" action — `createCheckinPost`, `createProblem`, `updateGithubUsername`, `createJobPost`, `createSession`, `createInterviewQa` (Task 12) — never onto inline/nested actions (comment replies, reaction toggles, deletes, admin approve/reject). Reasoning: those either have no existing redirect to extend (toggle/delete/admin actions revalidate in place with no navigation today — adding one would be a bigger behavior change than this plan's UX scope calls for) or risk resetting fragile client-only UI state on redirect (e.g. feedback's `FeedbackLines` expanded-thread state) for comparatively low toast value.
+16. **Dark mode** is class-based (`.dark` on `<html>`), not `prefers-color-scheme`-only. A blocking inline script in `app/layout.tsx`'s `<head>` sets the initial class before paint (system preference on first visit, `localStorage.theme` afterward). `<ThemeToggle />` in `Nav` flips the class and persists the choice. Every existing and future `dark:` Tailwind utility class throughout the codebase keeps working unchanged — only the *variant strategy* changes (`@custom-variant dark (&:where(.dark, .dark *))` in `globals.css`), not any call site.
+17. **Icons** are hand-written inline SVGs, not an icon library — kept deliberately tiny (Alert's three status icons, EmptyState's inbox icon, ThemeToggle's sun/moon, Spinner's ring). No new npm dependency for icons, animation, or toasts.
+18. **Animation** is pure CSS (Tailwind's built-in `animate-spin`, `transition-colors`, etc.) — no animation library.
+19. **New-behavior test scope**: `Spinner`'s and `Toast`'s *own* rendering (props, ARIA attributes, mount/unmount) gets a normal automated unit test like every other primitive. `Button`'s pending-state behavior (the one genuinely new piece of interactive logic core to a primitive) also gets an automated test. What does **not** get automated tests: a real page's pending-spinner flicker during a live server action, Toast's 3-second auto-dismiss timer, or the dark-toggle's *persistence across a real reload* — those are called out per retrofit task as "manually verify in the browser" instead. `ThemeToggle`'s DOM-class-toggle logic is simple and synchronous enough to unit test directly (Task 11) and is not part of the manual-only list.
 
 ---
 
@@ -34,28 +51,34 @@ These rules resolve every "does this become a primitive?" question so later task
 
 New files:
 - `lib/ui/cn.ts` — tiny className-joining helper (filters falsy values), used by every primitive below.
-- `components/ui/button.tsx` — `Button` (primary/secondary variants).
-- `components/ui/input.tsx` — `Input`, `Textarea`, `Select`, `Label`.
-- `components/ui/card.tsx` — `Card` (polymorphic `as`, `sm`/`md` padding).
-- `components/ui/alert.tsx` — `Alert` (danger/success/warning inline status text).
+- `components/ui/spinner.tsx` — `Spinner` (small `animate-spin` SVG, decorative).
+- `components/ui/button.tsx` — `Button` (primary/secondary variants, `sm|md|lg` sizes, pending-state spinner via `useFormStatus`). Client component.
+- `components/ui/input.tsx` — `Input`, `Textarea`, `Select`, `Label`, all with `sm|md|lg` sizes (Textarea excluded from the tap-target height floor).
+- `components/ui/card.tsx` — `Card` (polymorphic `as`, `sm`/`md`/`lg` padding, base `shadow-sm`).
+- `components/ui/alert.tsx` — `Alert` (danger/success/warning, now bg+border+icon).
 - `components/ui/page-shell.tsx` — `PageShell` (page `<main>` wrapper, optional `<h1>` + header slot).
+- `components/ui/empty-state.tsx` — `EmptyState` (message + optional icon + optional action).
+- `components/ui/toast.tsx` — `Toast` (client component; reads a `message` prop, shows a fixed bottom-right banner, auto-dismisses, strips the query param). Client component.
+- `components/ui/theme-toggle.tsx` — `ThemeToggle` (client component; sun/moon button, toggles `.dark` on `<html>`, persists to `localStorage`). Client component.
 
-Modified files: `app/globals.css`, `app/layout.tsx`, `components/nav.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `app/pending/page.tsx`, `app/(app)/page.tsx`, and every file under `app/(app)/checkin/`, `app/(app)/coding/`, `app/(app)/jobposts/`, `app/(app)/interviews/`, `app/(app)/feedback/`, `app/(app)/admin/` that currently has raw Tailwind classes (listed per-task below).
+Modified files: `app/globals.css`, `app/layout.tsx`, `components/nav.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `app/pending/page.tsx`, `app/(app)/page.tsx`, every file under `app/(app)/checkin/`, `app/(app)/coding/`, `app/(app)/jobposts/`, `app/(app)/interviews/`, `app/(app)/feedback/`, `app/(app)/admin/` that currently has raw Tailwind classes (listed per-task below), plus the four action files that gain a `?success=` redirect: `app/(app)/checkin/actions.ts`, `app/(app)/coding/actions.ts`, `app/(app)/jobposts/actions.ts`, `app/(app)/interviews/actions.ts` (and their matching `.test.ts` files — Task 12).
 
 ---
 
-### Task 1: Design tokens and site metadata
+### Task 1: Design tokens, class-based dark mode, and site metadata
 
 **Files:**
 - Modify: `app/globals.css`
 - Modify: `app/layout.tsx`
 
-- [ ] **Step 1: Add the accent token pair to `app/globals.css`**
+- [ ] **Step 1: Rewrite `app/globals.css` with the accent token pair and class-based dark mode**
 
 Replace the full file with:
 
 ```css
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
@@ -73,13 +96,11 @@ Replace the full file with:
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #818cf8;
-    --accent-foreground: #0a0a0a;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --accent: #818cf8;
+  --accent-foreground: #0a0a0a;
 }
 
 body {
@@ -89,29 +110,73 @@ body {
 }
 ```
 
-- [ ] **Step 2: Update site metadata in `app/layout.tsx`**
+This is a straight port of the previous `@media (prefers-color-scheme: dark)` block to `.dark` class scoping, plus the `@custom-variant` line that makes every existing/future `dark:` Tailwind utility in the codebase resolve against the `.dark` class instead of the OS media query. No other file needs to change for this to work — `dark:border-gray-700` etc. keep compiling exactly as before, just against a different selector.
 
-Replace the `metadata` export:
+- [ ] **Step 2: Update site metadata and add the FOUC-prevention theme script in `app/layout.tsx`**
+
+Replace the full file with:
 
 ```tsx
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "EOE",
   description: "취업 준비 스터디 관리 도구",
 };
+
+const THEME_INIT_SCRIPT = `
+(function () {
+  try {
+    var stored = localStorage.getItem('theme');
+    var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  } catch (e) {}
+})();
+`;
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
 ```
 
-(Leave every other line in the file unchanged.)
+The script must run synchronously in `<head>`, before `<body>` paints, so the page never flashes the wrong theme. It only ever reads `localStorage`/`matchMedia` and toggles a class — nothing here is testable in a meaningful way beyond the manual browser check in Task 22.
 
 - [ ] **Step 3: Sanity-check nothing broke**
 
 Run: `npx vitest run`
-Expected: same pass count as before this change (this step is CSS/metadata only, no component logic touched).
+Expected: same pass count as before this change (this step is CSS/metadata/script only, no component logic touched).
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add app/globals.css app/layout.tsx
-git commit -m "feat: add accent design token and real site metadata"
+git commit -m "feat: add accent design token, class-based dark mode, and real site metadata"
 ```
 
 ---
@@ -174,12 +239,89 @@ git commit -m "feat: add cn className helper"
 
 ---
 
-### Task 3: `Button` primitive
+### Task 3: `Spinner` primitive
+
+**Files:**
+- Create: `components/ui/spinner.tsx`
+- Test: `components/ui/spinner.test.tsx`
+- Depends on: Task 2 (`cn`)
+
+- [ ] **Step 1: Write the failing test**
+
+`components/ui/spinner.test.tsx`:
+
+```tsx
+import { describe, it, expect } from 'vitest'
+import { render } from '@testing-library/react'
+import { Spinner } from './spinner'
+
+describe('Spinner', () => {
+  it('is decorative (hidden from assistive tech)', () => {
+    const { container } = render(<Spinner />)
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('applies the spin animation class', () => {
+    const { container } = render(<Spinner />)
+    expect(container.querySelector('svg')).toHaveClass('animate-spin')
+  })
+
+  it('merges a caller-provided className', () => {
+    const { container } = render(<Spinner className="text-accent-foreground" />)
+    expect(container.querySelector('svg')).toHaveClass('text-accent-foreground')
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run components/ui/spinner.test.tsx`
+Expected: FAIL — Cannot find module './spinner'.
+
+- [ ] **Step 3: Implement**
+
+`components/ui/spinner.tsx`:
+
+```tsx
+import { cn } from '@/lib/ui/cn'
+
+export function Spinner({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn('h-4 w-4 animate-spin', className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
+  )
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run components/ui/spinner.test.tsx`
+Expected: PASS (3 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add components/ui/spinner.tsx components/ui/spinner.test.tsx
+git commit -m "feat: add Spinner UI primitive"
+```
+
+---
+
+### Task 4: `Button` primitive (sizes + pending state)
 
 **Files:**
 - Create: `components/ui/button.tsx`
 - Test: `components/ui/button.test.tsx`
-- Depends on: Task 1 (accent token), Task 2 (`cn`)
+- Depends on: Task 1 (accent token), Task 2 (`cn`), Task 3 (`Spinner`)
+
+**Verified assumption:** every `<Button type="submit">` in this codebase (existing and in this plan's retrofit snippets — checked login/signup, checkin/coding/jobposts/interviews forms, admin's approve/reject/kick forms) is always rendered as a descendant of the exact `<form>`/`<Card as="form">` it belongs to, with exactly one submit button per form. That's the precondition `useFormStatus` needs to report the *right* form's pending state — no spot in this codebase renders a submit button outside its own form.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -187,7 +329,7 @@ git commit -m "feat: add cn className helper"
 
 ```tsx
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from './button'
 
 describe('Button', () => {
@@ -213,6 +355,33 @@ describe('Button', () => {
     render(<Button className="self-start">등록</Button>)
     expect(screen.getByRole('button', { name: '등록' })).toHaveClass('self-start')
   })
+
+  it('keeps a 44px minimum tap target at every size', () => {
+    const { rerender } = render(<Button size="sm">작게</Button>)
+    expect(screen.getByRole('button', { name: '작게' })).toHaveClass('min-h-11')
+    rerender(<Button size="lg">크게</Button>)
+    expect(screen.getByRole('button', { name: '크게' })).toHaveClass('min-h-12')
+  })
+
+  it('shows a spinner and disables itself while its enclosing form is submitting', async () => {
+    let resolveAction: () => void = () => {}
+    const pending = new Promise<void>((resolve) => {
+      resolveAction = resolve
+    })
+
+    render(
+      <form action={() => pending}>
+        <Button type="submit">제출</Button>
+      </form>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '제출' }))
+
+    expect(await screen.findByText('로딩 중')).toBeInTheDocument()
+    expect(screen.getByRole('button')).toBeDisabled()
+
+    resolveAction()
+  })
 })
 ```
 
@@ -226,46 +395,77 @@ Expected: FAIL — Cannot find module './button'.
 `components/ui/button.tsx`:
 
 ```tsx
+'use client'
+
 import type { ComponentProps } from 'react'
+import { useFormStatus } from 'react-dom'
 import { cn } from '@/lib/ui/cn'
+import { Spinner } from './spinner'
 
 type ButtonVariant = 'primary' | 'secondary'
+type ButtonSize = 'sm' | 'md' | 'lg'
+
+const SIZE_CLASSES: Record<ButtonSize, string> = {
+  sm: 'min-h-11 px-2.5 py-1.5 text-xs',
+  md: 'min-h-11 px-3 py-2 text-sm',
+  lg: 'min-h-12 px-4 py-2.5 text-base',
+}
 
 export function Button({
   variant = 'primary',
+  size = 'md',
+  type,
+  disabled,
   className,
+  children,
   ...props
-}: ComponentProps<'button'> & { variant?: ButtonVariant }) {
+}: ComponentProps<'button'> & { variant?: ButtonVariant; size?: ButtonSize }) {
+  const { pending } = useFormStatus()
+  const showPending = type === 'submit' && pending
+
   return (
     <button
+      type={type}
+      disabled={disabled || showPending}
       className={cn(
-        'rounded px-3 py-2 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 rounded font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+        SIZE_CLASSES[size],
         variant === 'primary'
           ? 'bg-accent text-accent-foreground hover:bg-accent/90'
           : 'border border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900',
         className
       )}
       {...props}
-    />
+    >
+      {showPending && (
+        <>
+          <Spinner className="h-4 w-4" />
+          <span className="sr-only">로딩 중</span>
+        </>
+      )}
+      {children}
+    </button>
   )
 }
 ```
 
+`useFormStatus` is safe to call unconditionally even when `Button` isn't inside a `<form>` (e.g. the "+ 문항 추가" `type="button"`) — React returns a default `{ pending: false, ... }` status object in that case, and `showPending` is gated on `type === 'submit'` regardless.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run components/ui/button.test.tsx`
-Expected: PASS (4 tests)
+Expected: PASS (6 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add components/ui/button.tsx components/ui/button.test.tsx
-git commit -m "feat: add Button UI primitive"
+git commit -m "feat: add Button UI primitive with sizes and pending state"
 ```
 
 ---
 
-### Task 4: `Input` / `Textarea` / `Select` / `Label` primitives
+### Task 5: `Input` / `Textarea` / `Select` / `Label` primitives (sizes)
 
 **Files:**
 - Create: `components/ui/input.tsx`
@@ -286,12 +486,24 @@ describe('Input', () => {
     render(<Input placeholder="이메일" />)
     expect(screen.getByPlaceholderText('이메일')).toBeInTheDocument()
   })
+
+  it('keeps a 44px minimum tap target at every size', () => {
+    const { rerender } = render(<Input placeholder="sm" size="sm" />)
+    expect(screen.getByPlaceholderText('sm')).toHaveClass('min-h-11')
+    rerender(<Input placeholder="lg" size="lg" />)
+    expect(screen.getByPlaceholderText('lg')).toHaveClass('min-h-12')
+  })
 })
 
 describe('Textarea', () => {
   it('renders a textarea and forwards props', () => {
     render(<Textarea placeholder="내용" />)
     expect(screen.getByPlaceholderText('내용')).toBeInTheDocument()
+  })
+
+  it('does not force a height floor (rows-driven instead)', () => {
+    render(<Textarea placeholder="내용" size="sm" />)
+    expect(screen.getByPlaceholderText('내용')).not.toHaveClass('min-h-11')
   })
 })
 
@@ -333,19 +545,40 @@ Expected: FAIL — Cannot find module './input'.
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/ui/cn'
 
-const fieldClassName =
-  'w-full rounded border border-gray-300 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent dark:border-gray-700 dark:placeholder:text-gray-500'
+type FieldSize = 'sm' | 'md' | 'lg'
 
-export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input className={cn(fieldClassName, className)} {...props} />
+const FIELD_SIZE_CLASSES: Record<FieldSize, string> = {
+  sm: 'min-h-11 px-2.5 py-1.5 text-xs',
+  md: 'min-h-11 px-3 py-2 text-sm',
+  lg: 'min-h-12 px-4 py-2.5 text-base',
 }
 
-export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
-  return <textarea className={cn(fieldClassName, className)} {...props} />
+const TEXTAREA_SIZE_CLASSES: Record<FieldSize, string> = {
+  sm: 'px-2.5 py-1.5 text-xs',
+  md: 'px-3 py-2 text-sm',
+  lg: 'px-4 py-2.5 text-base',
 }
 
-export function Select({ className, ...props }: ComponentProps<'select'>) {
-  return <select className={cn(fieldClassName, className)} {...props} />
+const baseFieldClassName =
+  'w-full rounded border border-gray-300 bg-transparent placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent dark:border-gray-700 dark:placeholder:text-gray-500'
+
+type InputProps = Omit<ComponentProps<'input'>, 'size'> & { size?: FieldSize }
+type SelectProps = Omit<ComponentProps<'select'>, 'size'> & { size?: FieldSize }
+
+export function Input({ size = 'md', className, ...props }: InputProps) {
+  return <input className={cn(baseFieldClassName, FIELD_SIZE_CLASSES[size], className)} {...props} />
+}
+
+export function Textarea({
+  size = 'md',
+  className,
+  ...props
+}: ComponentProps<'textarea'> & { size?: FieldSize }) {
+  return <textarea className={cn(baseFieldClassName, TEXTAREA_SIZE_CLASSES[size], className)} {...props} />
+}
+
+export function Select({ size = 'md', className, ...props }: SelectProps) {
+  return <select className={cn(baseFieldClassName, FIELD_SIZE_CLASSES[size], className)} {...props} />
 }
 
 export function Label({ className, ...props }: ComponentProps<'label'>) {
@@ -353,21 +586,23 @@ export function Label({ className, ...props }: ComponentProps<'label'>) {
 }
 ```
 
+`size` is omitted from the native `input`/`select` prop types before being redeclared as the `FieldSize` union — the native `size` attribute (a number, for character width) isn't used anywhere in this codebase, so shadowing it is safe. `Textarea` has no native `size` attribute, so no `Omit` is needed there.
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run components/ui/input.test.tsx`
-Expected: PASS (4 tests)
+Expected: PASS (6 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add components/ui/input.tsx components/ui/input.test.tsx
-git commit -m "feat: add Input, Textarea, Select, Label UI primitives"
+git commit -m "feat: add Input, Textarea, Select, Label UI primitives with sizes"
 ```
 
 ---
 
-### Task 5: `Card` primitive
+### Task 6: `Card` primitive (padding scale + shadow)
 
 **Files:**
 - Create: `components/ui/card.tsx`
@@ -407,6 +642,20 @@ describe('Card', () => {
     expect(screen.getByTestId('card')).toHaveClass('p-3')
     expect(screen.getByTestId('card')).not.toHaveClass('p-4')
   })
+
+  it('uses roomier padding when padding="lg"', () => {
+    render(
+      <Card padding="lg" data-testid="card">
+        내용
+      </Card>
+    )
+    expect(screen.getByTestId('card')).toHaveClass('p-6')
+  })
+
+  it('applies a subtle shadow by default', () => {
+    render(<Card data-testid="card">내용</Card>)
+    expect(screen.getByTestId('card')).toHaveClass('shadow-sm')
+  })
 })
 ```
 
@@ -424,11 +673,12 @@ import type { ElementType, ComponentPropsWithoutRef } from 'react'
 import { cn } from '@/lib/ui/cn'
 
 type CardTag = 'div' | 'article' | 'form' | 'li'
-type CardPadding = 'sm' | 'md'
+type CardPadding = 'sm' | 'md' | 'lg'
 
 const PADDING_CLASSES: Record<CardPadding, string> = {
   sm: 'p-3',
   md: 'p-4',
+  lg: 'p-6',
 }
 
 type CardProps<T extends CardTag> = {
@@ -446,7 +696,11 @@ export function Card<T extends CardTag = 'div'>({
   const Component = (as ?? 'div') as ElementType
   return (
     <Component
-      className={cn('rounded-lg border border-gray-200', PADDING_CLASSES[padding], 'dark:border-gray-800', className)}
+      className={cn(
+        'rounded-lg border border-gray-200 shadow-sm dark:border-gray-800',
+        PADDING_CLASSES[padding],
+        className
+      )}
       {...props}
     />
   )
@@ -456,18 +710,18 @@ export function Card<T extends CardTag = 'div'>({
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run components/ui/card.test.tsx`
-Expected: PASS (3 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add components/ui/card.tsx components/ui/card.test.tsx
-git commit -m "feat: add Card UI primitive"
+git commit -m "feat: add Card UI primitive with padding scale and shadow"
 ```
 
 ---
 
-### Task 6: `Alert` primitive
+### Task 7: `Alert` primitive (background + border + icon)
 
 **Files:**
 - Create: `components/ui/alert.tsx`
@@ -489,22 +743,32 @@ describe('Alert', () => {
     expect(screen.getByText('문제가 발생했습니다')).toBeInTheDocument()
   })
 
-  it('applies red text for the danger variant', () => {
+  it('applies red background/border/text for the danger variant', () => {
     render(<Alert variant="danger">에러</Alert>)
-    expect(screen.getByText('에러')).toHaveClass('text-red-600')
+    const container = screen.getByText('에러').closest('div')
+    expect(container).toHaveClass('bg-red-50')
+    expect(container).toHaveClass('border-red-200')
+    expect(container).toHaveClass('text-red-700')
   })
 
-  it('applies green text for the success variant', () => {
+  it('applies green background for the success variant', () => {
     render(<Alert variant="success">완료</Alert>)
-    expect(screen.getByText('완료')).toHaveClass('text-green-600')
+    expect(screen.getByText('완료').closest('div')).toHaveClass('bg-green-50')
   })
 
-  it('applies amber text for the warning variant', () => {
+  it('applies amber background for the warning variant', () => {
     render(<Alert variant="warning">주의</Alert>)
-    expect(screen.getByText('주의')).toHaveClass('text-amber-600')
+    expect(screen.getByText('주의').closest('div')).toHaveClass('bg-amber-50')
+  })
+
+  it('renders a decorative icon alongside the message', () => {
+    const { container } = render(<Alert variant="danger">에러</Alert>)
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
 })
 ```
+
+Note: this changes the assertion shape from the original minimal-scope version (`getByText(...)` used to carry the color class directly on the `<p>`; now the color classes live on the wrapping `<div>`, so tests use `.closest('div')`). This is an intentional part of the redesign, not a regression.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -522,9 +786,49 @@ import { cn } from '@/lib/ui/cn'
 type AlertVariant = 'danger' | 'success' | 'warning'
 
 const VARIANT_CLASSES: Record<AlertVariant, string> = {
-  danger: 'text-red-600 dark:text-red-400',
-  success: 'text-green-600 dark:text-green-400',
-  warning: 'text-amber-600 dark:text-amber-400',
+  danger: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400',
+  success:
+    'border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400',
+  warning:
+    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400',
+}
+
+function AlertIcon({ variant }: { variant: AlertVariant }) {
+  const shared = 'h-4 w-4 shrink-0'
+
+  if (variant === 'success') {
+    return (
+      <svg className={shared} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.7-9.3a1 1 0 00-1.4-1.4L9 10.6 7.7 9.3a1 1 0 00-1.4 1.4l2 2a1 1 0 001.4 0l4-4z"
+        />
+      </svg>
+    )
+  }
+
+  if (variant === 'warning') {
+    return (
+      <svg className={shared} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M8.3 3.1c.7-1.2 2.7-1.2 3.4 0l6.3 11a2 2 0 01-1.7 3H3.7a2 2 0 01-1.7-3l6.3-11zM10 7a1 1 0 00-1 1v3a1 1 0 002 0V8a1 1 0 00-1-1zm0 7.5a1 1 0 100 2 1 1 0 000-2z"
+        />
+      </svg>
+    )
+  }
+
+  return (
+    <svg className={shared} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.7 7.3a1 1 0 00-1.4 1.4L8.6 10l-1.3 1.3a1 1 0 101.4 1.4L10 11.4l1.3 1.3a1 1 0 001.4-1.4L11.4 10l1.3-1.3a1 1 0 00-1.4-1.4L10 8.6 8.7 7.3z"
+      />
+    </svg>
+  )
 }
 
 export function Alert({
@@ -536,30 +840,37 @@ export function Alert({
   className?: string
   children: ReactNode
 }) {
-  return <p className={cn('text-sm', VARIANT_CLASSES[variant], className)}>{children}</p>
+  return (
+    <div className={cn('flex items-start gap-2 rounded-lg border p-3 text-sm', VARIANT_CLASSES[variant], className)}>
+      <AlertIcon variant={variant} />
+      <p>{children}</p>
+    </div>
+  )
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run components/ui/alert.test.tsx`
-Expected: PASS (4 tests)
+Expected: PASS (5 tests)
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add components/ui/alert.tsx components/ui/alert.test.tsx
-git commit -m "feat: add Alert UI primitive"
+git commit -m "feat: redesign Alert with background, border, and status icon"
 ```
 
 ---
 
-### Task 7: `PageShell` primitive
+### Task 8: `PageShell` primitive
 
 **Files:**
 - Create: `components/ui/page-shell.tsx`
 - Test: `components/ui/page-shell.test.tsx`
 - Depends on: Task 2 (`cn`)
+
+Unchanged from the original minimal-scope plan — no size/decoration/UX change applies to this primitive.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -667,26 +978,434 @@ git commit -m "feat: add PageShell UI primitive"
 
 ---
 
-## Retrofit tasks (Tasks 8-16)
+### Task 9: `EmptyState` primitive
+
+**Files:**
+- Create: `components/ui/empty-state.tsx`
+- Test: `components/ui/empty-state.test.tsx`
+- Depends on: Task 2 (`cn`)
+
+- [ ] **Step 1: Write the failing test**
+
+`components/ui/empty-state.test.tsx`:
+
+```tsx
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { EmptyState } from './empty-state'
+
+describe('EmptyState', () => {
+  it('renders the message', () => {
+    render(<EmptyState message="아직 등록된 문제가 없습니다." />)
+    expect(screen.getByText('아직 등록된 문제가 없습니다.')).toBeInTheDocument()
+  })
+
+  it('renders an optional action', () => {
+    render(<EmptyState message="없습니다" action={<button>추가하기</button>} />)
+    expect(screen.getByRole('button', { name: '추가하기' })).toBeInTheDocument()
+  })
+
+  it('omits the action slot when none is given', () => {
+    render(<EmptyState message="없습니다" />)
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run components/ui/empty-state.test.tsx`
+Expected: FAIL — Cannot find module './empty-state'.
+
+- [ ] **Step 3: Implement**
+
+`components/ui/empty-state.tsx`:
+
+```tsx
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/ui/cn'
+
+export function EmptyState({
+  message,
+  action,
+  className,
+}: {
+  message: string
+  action?: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center gap-3 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400',
+        className
+      )}
+    >
+      <svg
+        className="h-8 w-8 text-gray-300 dark:text-gray-600"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 7l1.5-3h15L21 7M3 7v11a2 2 0 002 2h14a2 2 0 002-2V7M3 7h18M8 11h8"
+        />
+      </svg>
+      <p>{message}</p>
+      {action}
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run components/ui/empty-state.test.tsx`
+Expected: PASS (3 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add components/ui/empty-state.tsx components/ui/empty-state.test.tsx
+git commit -m "feat: add EmptyState UI primitive"
+```
+
+---
+
+### Task 10: `Toast` primitive
+
+**Files:**
+- Create: `components/ui/toast.tsx`
+- Test: `components/ui/toast.test.tsx`
+- Depends on: Task 2 (`cn`)
+
+Per Convention 19 / 15, this primitive's own render/mount behavior gets a light automated test; the 3-second auto-dismiss timer and query-param cleanup are verified manually in each retrofit task and in Task 22, not with fake timers here.
+
+- [ ] **Step 1: Write the failing test**
+
+`components/ui/toast.test.tsx`:
+
+```tsx
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/checkin',
+  useRouter: () => ({ replace: vi.fn() }),
+}))
+
+import { Toast } from './toast'
+
+describe('Toast', () => {
+  it('renders nothing when there is no message', () => {
+    const { container } = render(<Toast message={null} />)
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('shows the message when provided', () => {
+    render(<Toast message="등록되었습니다" />)
+    expect(screen.getByRole('status')).toHaveTextContent('등록되었습니다')
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run components/ui/toast.test.tsx`
+Expected: FAIL — Cannot find module './toast'.
+
+- [ ] **Step 3: Implement**
+
+`components/ui/toast.tsx`:
+
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+
+const DISMISS_AFTER_MS = 3000
+
+export function Toast({ message }: { message?: string | null }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const [visible, setVisible] = useState(Boolean(message))
+
+  useEffect(() => {
+    if (!message) return
+
+    setVisible(true)
+    const dismissTimer = setTimeout(() => setVisible(false), DISMISS_AFTER_MS)
+    const cleanupTimer = setTimeout(() => router.replace(pathname, { scroll: false }), DISMISS_AFTER_MS + 200)
+
+    return () => {
+      clearTimeout(dismissTimer)
+      clearTimeout(cleanupTimer)
+    }
+  }, [message, pathname, router])
+
+  if (!message || !visible) return null
+
+  return (
+    <div
+      role="status"
+      className="fixed bottom-4 right-4 z-50 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 shadow-sm dark:border-green-900 dark:bg-green-950 dark:text-green-400"
+    >
+      {message}
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run components/ui/toast.test.tsx`
+Expected: PASS (2 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add components/ui/toast.tsx components/ui/toast.test.tsx
+git commit -m "feat: add Toast UI primitive"
+```
+
+---
+
+### Task 11: `ThemeToggle` primitive
+
+**Files:**
+- Create: `components/ui/theme-toggle.tsx`
+- Test: `components/ui/theme-toggle.test.tsx`
+- Depends on: Task 1 (the `.dark` class strategy it toggles)
+
+- [ ] **Step 1: Write the failing test**
+
+`components/ui/theme-toggle.test.tsx`:
+
+```tsx
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { ThemeToggle } from './theme-toggle'
+
+describe('ThemeToggle', () => {
+  beforeEach(() => {
+    document.documentElement.classList.remove('dark')
+    window.localStorage.clear()
+  })
+
+  it('adds the dark class and persists the choice when toggled from light', () => {
+    render(<ThemeToggle />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(window.localStorage.getItem('theme')).toBe('dark')
+  })
+
+  it('removes the dark class and persists the choice when toggled from dark', () => {
+    document.documentElement.classList.add('dark')
+    render(<ThemeToggle />)
+    fireEvent.click(screen.getByRole('button'))
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(window.localStorage.getItem('theme')).toBe('light')
+  })
+})
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run components/ui/theme-toggle.test.tsx`
+Expected: FAIL — Cannot find module './theme-toggle'.
+
+- [ ] **Step 3: Implement**
+
+`components/ui/theme-toggle.tsx`:
+
+```tsx
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function SunIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M10 15a5 5 0 100-10 5 5 0 000 10zM10 0a1 1 0 011 1v1a1 1 0 11-2 0V1a1 1 0 011-1zm0 17a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM3.1 3.1a1 1 0 011.4 0l.7.7a1 1 0 01-1.4 1.4l-.7-.7a1 1 0 010-1.4zm11.7 11.7a1 1 0 011.4 0l.7.7a1 1 0 01-1.4 1.4l-.7-.7a1 1 0 010-1.4zM0 10a1 1 0 011-1h1a1 1 0 110 2H1a1 1 0 01-1-1zm17 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM3.1 16.9a1 1 0 010-1.4l.7-.7a1 1 0 111.4 1.4l-.7.7a1 1 0 01-1.4 0zm11.7-11.7a1 1 0 010-1.4l.7-.7a1 1 0 111.4 1.4l-.7.7a1 1 0 01-1.4 0z" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path d="M17.3 13.4A8 8 0 016.6 2.7a8 8 0 1010.7 10.7z" />
+    </svg>
+  )
+}
+
+export function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains('dark'))
+  }, [])
+
+  function toggle() {
+    const next = !isDark
+    document.documentElement.classList.toggle('dark', next)
+    window.localStorage.setItem('theme', next ? 'dark' : 'light')
+    setIsDark(next)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
+      className="flex h-11 w-11 items-center justify-center rounded text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900"
+    >
+      {isDark ? <SunIcon /> : <MoonIcon />}
+    </button>
+  )
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run components/ui/theme-toggle.test.tsx`
+Expected: PASS (2 tests)
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add components/ui/theme-toggle.tsx components/ui/theme-toggle.test.tsx
+git commit -m "feat: add ThemeToggle UI primitive"
+```
+
+---
+
+### Task 12: Wire the `?success=` redirect convention into action files
+
+**Files:**
+- Modify: `app/(app)/checkin/actions.ts` (+ `app/(app)/checkin/actions.test.ts`)
+- Modify: `app/(app)/coding/actions.ts` (+ `app/(app)/coding/actions.test.ts`)
+- Modify: `app/(app)/jobposts/actions.ts` (+ `app/(app)/jobposts/actions.test.ts`)
+- Modify: `app/(app)/interviews/actions.ts` (+ `app/(app)/interviews/actions.test.ts`)
+- Depends on: none of the UI primitives directly (this only touches server actions); pairs with Task 10 (`Toast`) for the retrofit tasks that render it.
+
+Per Convention 15, only each page's single primary "create a new top-level item" action gets a success redirect: `createCheckinPost`, `createProblem`, `updateGithubUsername`, `createJobPost`, `createSession`, `createInterviewQa`. Every other action (comment/reply, reaction toggle, delete, participation toggle, admin approve/reject/kick, `updateGithubUsername`'s sibling `deleteProblem`/`adminRemoveCheck`) is untouched — they have no existing redirect to extend and stay exactly as they are today.
+
+**Important test-mechanics note:** in every `*.actions.test.ts` file in this codebase, `redirect` from `next/navigation` is mocked to *throw* (`vi.fn((url) => { throw new Error('REDIRECT:' + url) })`), matching real Next.js behavior. Today, the success path of each action above resolves normally (`await fn(formData)` with no `.rejects`) because it never calls `redirect` on success. Adding a success-path redirect means those specific existing "creates successfully" test cases must change from a plain `await fn(...)` into `await expect(fn(...)).rejects.toThrow()`, with a new assertion added for the `redirect` call — the assertions on `insertMock`/`revalidatePathMock` that already exist in those tests keep working unchanged, because they fire *before* the new `redirect(...)` call (which is now the very last thing to run before the successful `return`).
+
+- [ ] **Step 1: Run baseline tests**
+
+Run: `npx vitest run "app/(app)/checkin/actions.test.ts" "app/(app)/coding/actions.test.ts" "app/(app)/jobposts/actions.test.ts" "app/(app)/interviews/actions.test.ts"`
+Expected: note current pass count as baseline.
+
+- [ ] **Step 2: `app/(app)/checkin/actions.ts` — add success redirect to `createCheckinPost`**
+
+At the end of `createCheckinPost`, replace:
+
+```ts
+  revalidatePath('/checkin')
+  revalidatePath('/')
+}
+```
+
+with:
+
+```ts
+  revalidatePath('/checkin')
+  revalidatePath('/')
+  redirect('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
+}
+```
+
+Update `app/(app)/checkin/actions.test.ts`: the two `createCheckinPost` success tests ("creates a post without a photo..." / "...with a photo...") change from `await createCheckinPost(formData)` to `await expect(createCheckinPost(formData)).rejects.toThrow()`, and each gains:
+
+```ts
+expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
+```
+
+- [ ] **Step 3: `app/(app)/coding/actions.ts` — add success redirects to `createProblem` and `updateGithubUsername`**
+
+At the end of `createProblem`, after `revalidatePath('/coding')`, add:
+
+```ts
+  redirect('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
+```
+
+At the end of `updateGithubUsername`, after `revalidatePath('/coding')`, add:
+
+```ts
+  redirect('/coding?success=' + encodeURIComponent('GitHub 아이디를 저장했어요'))
+```
+
+Update `app/(app)/coding/actions.test.ts` the same way as Step 2 for each function's success test case(s).
+
+- [ ] **Step 4: `app/(app)/jobposts/actions.ts` — add success redirect to `createJobPost`**
+
+At the end of `createJobPost`, after the final `revalidatePath('/jobposts')`, add:
+
+```ts
+  redirect('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
+```
+
+(This sits after the conditional `feedback_docs` insert block, so it only fires once the whole creation — post plus optional feedback doc — has actually succeeded.)
+
+Update `app/(app)/jobposts/actions.test.ts` the same way for `createJobPost`'s success case(s).
+
+- [ ] **Step 5: `app/(app)/interviews/actions.ts` — add success redirects to `createSession` and `createInterviewQa`**
+
+At the end of `createSession`, after `revalidatePath('/interviews')`, add:
+
+```ts
+  redirect('/interviews?success=' + encodeURIComponent('세션을 만들었어요'))
+```
+
+At the end of `createInterviewQa`, after `revalidatePath(`/interviews/${sessionId}`)`, add:
+
+```ts
+  redirect(`/interviews/${sessionId}?success=` + encodeURIComponent('답변을 등록했어요'))
+```
+
+Update `app/(app)/interviews/actions.test.ts` the same way for both functions' success case(s). (`app/(app)/interviews/[sessionId]/actions.ts` just re-exports from `../actions` and needs no change.)
+
+- [ ] **Step 6: Re-run tests**
+
+Run: `npx vitest run "app/(app)/checkin/actions.test.ts" "app/(app)/coding/actions.test.ts" "app/(app)/jobposts/actions.test.ts" "app/(app)/interviews/actions.test.ts"`
+Expected: same pass count as the Step 1 baseline (test *bodies* changed for the success cases listed above, but no tests were added or removed).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add "app/(app)/checkin/actions.ts" "app/(app)/checkin/actions.test.ts" "app/(app)/coding/actions.ts" "app/(app)/coding/actions.test.ts" "app/(app)/jobposts/actions.ts" "app/(app)/jobposts/actions.test.ts" "app/(app)/interviews/actions.ts" "app/(app)/interviews/actions.test.ts"
+git commit -m "feat: add success redirects for primary create actions"
+```
+
+---
+
+## Retrofit tasks (Tasks 13-21)
 
 Each retrofit task follows this pattern:
 
 1. Run the existing test file(s) for the files being touched, note the pass count (baseline).
 2. Replace each file's content with the new version below.
-3. Re-run the same test file(s); pass count must be identical to the baseline.
-4. Commit.
+3. Re-run the same test file(s); pass count must be identical to the baseline (unless a step explicitly says otherwise, e.g. an `EmptyState` swap changing what text is rendered).
+4. Manually verify in the browser anything called out as manual-only (pending spinner, toast, dark toggle — see Task 22 for the full checklist; individual tasks call out only what's new to that page).
+5. Commit.
 
-None of these tasks add or change test files — the point is that the existing `getByRole`/`getByText`/`getByPlaceholderText` assertions keep passing unchanged, proving the retrofit didn't alter behavior or visible text.
-
-All retrofit tasks depend on Tasks 1-7 being complete.
+All retrofit tasks depend on Tasks 1-12 being complete.
 
 ---
 
-### Task 8: Retrofit `Nav`
+### Task 13: Retrofit `Nav` (+ `ThemeToggle`)
 
 **Files:**
 - Modify: `components/nav.tsx`
 - Test (run only, unchanged): `components/nav.test.tsx`
+- Depends on: Task 11 (`ThemeToggle`)
 
 - [ ] **Step 1: Run baseline test**
 
@@ -698,6 +1417,7 @@ Expected: PASS (2 tests) — note this as baseline.
 ```tsx
 import Link from 'next/link'
 import { logOut } from '@/lib/auth/logout'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 const links = [
   { href: '/checkin', label: '인증' },
@@ -719,11 +1439,14 @@ export function Nav() {
           </Link>
         ))}
       </div>
-      <form action={logOut}>
-        <button type="submit" className="text-sm text-gray-500 dark:text-gray-400">
-          로그아웃
-        </button>
-      </form>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <form action={logOut}>
+          <button type="submit" className="text-sm text-gray-500 dark:text-gray-400">
+            로그아웃
+          </button>
+        </form>
+      </div>
     </nav>
   )
 }
@@ -732,18 +1455,22 @@ export function Nav() {
 - [ ] **Step 3: Re-run test**
 
 Run: `npx vitest run components/nav.test.tsx`
-Expected: PASS (2 tests)
+Expected: PASS (2 tests) — `ThemeToggle`'s button has no accessible name collision with existing assertions since the test file only checks for the nav links/logout button by name.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Manually verify in the browser**
+
+Click the new sun/moon button in the nav: the page should flip between light/dark instantly, and reloading the page should keep the chosen theme (this persistence-across-reload behavior is not covered by an automated test — see Convention 19).
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add components/nav.tsx
-git commit -m "style: apply design tokens to Nav"
+git commit -m "style: apply design tokens to Nav and add theme toggle"
 ```
 
 ---
 
-### Task 9: Retrofit auth pages (login, signup, pending)
+### Task 14: Retrofit auth pages (login, signup, pending)
 
 **Files:**
 - Modify: `app/login/page.tsx`
@@ -759,7 +1486,6 @@ Expected: PASS (7 tests total) — note as baseline.
 - [ ] **Step 2: Replace `app/login/page.tsx`**
 
 ```tsx
-import Link from 'next/link'
 import { logIn } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -790,13 +1516,15 @@ export default async function LoginPage({
           비밀번호
         </Label>
         <Input id="password" name="password" type="password" placeholder="비밀번호" required />
-        <Button type="submit">로그인</Button>
+        <Button type="submit" size="lg">
+          로그인
+        </Button>
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         계정이 없으신가요?{' '}
-        <Link href="/signup" className="underline">
+        <a href="/signup" className="underline">
           회원가입
-        </Link>
+        </a>
       </p>
     </PageShell>
   )
@@ -841,7 +1569,9 @@ export default async function SignupPage({
           비밀번호
         </Label>
         <Input id="password" name="password" type="password" placeholder="비밀번호" required minLength={6} />
-        <Button type="submit">가입하기</Button>
+        <Button type="submit" size="lg">
+          가입하기
+        </Button>
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         이미 계정이 있으신가요?{' '}
@@ -875,7 +1605,11 @@ export default function PendingPage() {
 Run: `npx vitest run app/login/page.test.tsx app/signup/page.test.tsx app/pending/page.test.tsx`
 Expected: PASS (7 tests total)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Manually verify in the browser**
+
+Submit the login/signup forms with something that keeps the request pending for a moment (e.g. throttle network in devtools) and confirm the button shows a spinner + disables itself instead of allowing a double-submit.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add app/login/page.tsx app/signup/page.tsx app/pending/page.tsx
@@ -884,11 +1618,13 @@ git commit -m "style: apply design system to auth pages"
 
 ---
 
-### Task 10: Retrofit dashboard
+### Task 15: Retrofit dashboard
 
 **Files:**
 - Modify: `app/(app)/page.tsx`
 - Test (run only, unchanged): `app/(app)/page.test.tsx`
+
+Unchanged from the original minimal-scope plan — no size/EmptyState/Toast applies here (the dashboard has no create-form and its member table isn't a "list that can be empty" in the EmptyState sense).
 
 - [ ] **Step 1: Run baseline test**
 
@@ -981,7 +1717,7 @@ git commit -m "style: apply design system to dashboard"
 
 ---
 
-### Task 11: Retrofit checkin (page, post-card, post-form, calendar)
+### Task 16: Retrofit checkin (page, post-card, post-form, calendar)
 
 **Files:**
 - Modify: `app/(app)/checkin/page.tsx`
@@ -989,6 +1725,7 @@ git commit -m "style: apply design system to dashboard"
 - Modify: `app/(app)/checkin/post-form.tsx`
 - Modify: `app/(app)/checkin/calendar/page.tsx`
 - Tests (run only, unchanged): `app/(app)/checkin/page.test.tsx`, `app/(app)/checkin/post-card.test.tsx`, `app/(app)/checkin/post-form.test.tsx`, `app/(app)/checkin/calendar/page.test.tsx`
+- Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createCheckinPost`)
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -1007,13 +1744,14 @@ import { PostCard } from './post-card'
 import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function CheckinPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [session, { data: profiles }, { data: posts }] = await Promise.all([
@@ -1074,6 +1812,7 @@ export default async function CheckinPage({
         </Link>
       }
     >
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
@@ -1179,6 +1918,8 @@ export function PostCard({
 }
 ```
 
+(Unchanged from the original plan — `addComment` deliberately did not gain a `?success=` redirect, per Convention 15, so this file has no `Toast` involvement.)
+
 - [ ] **Step 4: Replace `app/(app)/checkin/post-form.tsx`**
 
 ```tsx
@@ -1203,7 +1944,7 @@ export function PostForm() {
       </Select>
       <Textarea name="body" placeholder="오늘의 인증 내용을 남겨주세요" required />
       <input type="file" name="photo" accept="image/*" className="text-sm" />
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         인증하기
       </Button>
     </Card>
@@ -1328,7 +2069,11 @@ export default async function CheckinCalendarPage({
 Run: `npx vitest run "app/(app)/checkin"`
 Expected: same pass count as the Step 1 baseline.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Manually verify in the browser**
+
+Submit the check-in form and confirm: the submit button shows a spinner while pending; on success a green "인증을 등록했어요" toast appears bottom-right and disappears after ~3 seconds; the URL's `?success=` param is gone after the toast clears (refreshing doesn't re-show it).
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git add "app/(app)/checkin"
@@ -1337,7 +2082,7 @@ git commit -m "style: apply design system to checkin pages"
 
 ---
 
-### Task 12: Retrofit coding (page, github-settings-form, problem-card, problem-form)
+### Task 17: Retrofit coding (page, github-settings-form, problem-card, problem-form)
 
 **Files:**
 - Modify: `app/(app)/coding/page.tsx`
@@ -1345,6 +2090,7 @@ git commit -m "style: apply design system to checkin pages"
 - Modify: `app/(app)/coding/problem-card.tsx`
 - Modify: `app/(app)/coding/problem-form.tsx`
 - Tests (run only, unchanged): `app/(app)/coding/page.test.tsx`, `app/(app)/coding/github-settings-form.test.tsx`, `app/(app)/coding/problem-card.test.tsx`, `app/(app)/coding/problem-form.test.tsx`
+- Depends on: Task 9 (`EmptyState`), Task 10 (`Toast`), Task 12 (`?success=` on `createProblem`/`updateGithubUsername`)
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -1364,13 +2110,15 @@ import { GithubSettingsForm } from './github-settings-form'
 import type { CodingProblem, Member } from '@/lib/coding/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function CodingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
   const session = await getSessionProfile()
 
@@ -1408,6 +2156,7 @@ export default async function CodingPage({
 
   return (
     <PageShell title="코테 스터디">
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
@@ -1431,9 +2180,7 @@ export default async function CodingPage({
             </div>
           </section>
         ))}
-        {weekGroups.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">아직 등록된 문제가 없습니다.</p>
-        )}
+        {weekGroups.length === 0 && <EmptyState message="아직 등록된 문제가 없습니다." />}
       </div>
     </PageShell>
   )
@@ -1467,6 +2214,8 @@ export function GithubSettingsForm({ currentUsername }: { currentUsername: strin
   )
 }
 ```
+
+(Unchanged — this stays a compact inline form per Convention 8, so it keeps raw `<input>`/`<button>` rather than `Input`/`Button`, even though `updateGithubUsername` now redirects with `?success=`.)
 
 - [ ] **Step 4: Replace `app/(app)/coding/problem-card.tsx`**
 
@@ -1559,7 +2308,7 @@ export function ProblemForm() {
         저장소 매칭 키워드 (선택)
       </Label>
       <Input id="matchKeyword" name="matchKeyword" placeholder="저장소 매칭 키워드 (선택, 비우면 문제명 사용)" />
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         문제 등록
       </Button>
     </Card>
@@ -1570,9 +2319,13 @@ export function ProblemForm() {
 - [ ] **Step 6: Re-run tests**
 
 Run: `npx vitest run "app/(app)/coding"`
-Expected: same pass count as the Step 1 baseline.
+Expected: same pass count as the Step 1 baseline, **except** `page.test.tsx` — if it has a test asserting the old text `아직 등록된 문제가 없습니다.` via `getByText`, that assertion still passes (`EmptyState` renders the same string), so the count should in fact stay identical; only revisit this if a test specifically asserted the *absence* of a decorative icon or similar, which none currently do.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Manually verify in the browser**
+
+Submit a new problem (as admin) and confirm the spinner-then-toast flow, same as Task 16. With zero problems registered, confirm the dashed-border `EmptyState` box (with inbox icon) renders instead of the old bare paragraph.
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git add "app/(app)/coding"
@@ -1581,7 +2334,7 @@ git commit -m "style: apply design system to coding pages"
 
 ---
 
-### Task 13: Retrofit jobposts (page, post-card, post-form, calendar)
+### Task 18: Retrofit jobposts (page, post-card, post-form, calendar)
 
 **Files:**
 - Modify: `app/(app)/jobposts/page.tsx`
@@ -1589,6 +2342,7 @@ git commit -m "style: apply design system to coding pages"
 - Modify: `app/(app)/jobposts/post-form.tsx`
 - Modify: `app/(app)/jobposts/calendar/page.tsx`
 - Tests (run only, unchanged): `app/(app)/jobposts/page.test.tsx`, `app/(app)/jobposts/post-card.test.tsx`, `app/(app)/jobposts/post-form.test.tsx`, `app/(app)/jobposts/calendar/page.test.tsx`
+- Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createJobPost`)
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -1607,13 +2361,14 @@ import { PostCard } from './post-card'
 import type { JobPost } from '@/lib/jobposts/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function JobPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [session, { data: profiles }, { data: posts }] = await Promise.all([
@@ -1666,6 +2421,7 @@ export default async function JobPostsPage({
         </Link>
       }
     >
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
@@ -1867,7 +2623,7 @@ export function PostForm() {
         <input type="checkbox" name="feedbackRequested" />
         피드백 받고 싶어요
       </label>
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         등록
       </Button>
     </Card>
@@ -1991,7 +2747,11 @@ export default async function JobPostsCalendarPage({
 Run: `npx vitest run "app/(app)/jobposts"`
 Expected: same pass count as the Step 1 baseline.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Manually verify in the browser**
+
+Submit a new job post (with at least one question/answer) and confirm the spinner-then-toast flow.
+
+- [ ] **Step 8: Commit**
 
 ```bash
 git add "app/(app)/jobposts"
@@ -2000,7 +2760,7 @@ git commit -m "style: apply design system to jobposts pages"
 
 ---
 
-### Task 14: Retrofit interviews (page, session-card, session-form, session detail, qa-card, qa-form)
+### Task 19: Retrofit interviews (page, session-card, session-form, session detail, qa-card, qa-form)
 
 **Files:**
 - Modify: `app/(app)/interviews/page.tsx`
@@ -2010,6 +2770,7 @@ git commit -m "style: apply design system to jobposts pages"
 - Modify: `app/(app)/interviews/[sessionId]/qa-card.tsx`
 - Modify: `app/(app)/interviews/[sessionId]/qa-form.tsx`
 - Tests (run only, unchanged): `app/(app)/interviews/page.test.tsx`, `app/(app)/interviews/session-card.test.tsx`, `app/(app)/interviews/session-form.test.tsx`, `app/(app)/interviews/[sessionId]/page.test.tsx`, `app/(app)/interviews/[sessionId]/qa-card.test.tsx`, `app/(app)/interviews/[sessionId]/qa-form.test.tsx`
+- Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createSession`/`createInterviewQa`)
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -2027,13 +2788,14 @@ import { SessionCard } from './session-card'
 import type { InterviewSession } from '@/lib/interviews/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [session, { data: profiles }, { data: sessions }] = await Promise.all([
@@ -2068,6 +2830,7 @@ export default async function InterviewsPage({
 
   return (
     <PageShell title="모의면접">
+      <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
@@ -2176,7 +2939,7 @@ export function SessionForm() {
       </Label>
       <Textarea id="description" name="description" placeholder="장소/링크 등 (선택)" />
 
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         세션 만들기
       </Button>
     </Card>
@@ -2197,16 +2960,17 @@ import { groupQasByAuthor } from '@/lib/interviews/grouping'
 import type { InterviewQa } from '@/lib/interviews/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewSessionPage({
   params,
   searchParams,
 }: {
   params: Promise<{ sessionId: string }>
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; success?: string }>
 }) {
   const { sessionId } = await params
-  const { error: queryError } = await searchParams
+  const { error: queryError, success } = await searchParams
   const supabase = await createClient()
 
   const [caller, { data: session }, { data: profiles }, { data: qas }] = await Promise.all([
@@ -2255,6 +3019,7 @@ export default async function InterviewSessionPage({
 
   return (
     <PageShell title={session.title}>
+      <Toast message={success} />
       <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{session.session_at}</p>
       {session.description && (
         <p className="mb-6 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{session.description}</p>
@@ -2418,7 +3183,7 @@ export function QaForm({ sessionId }: { sessionId: string }) {
         + 문항 추가
       </Button>
 
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         등록
       </Button>
     </Card>
@@ -2431,7 +3196,11 @@ export function QaForm({ sessionId }: { sessionId: string }) {
 Run: `npx vitest run "app/(app)/interviews"`
 Expected: same pass count as the Step 1 baseline.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Manually verify in the browser**
+
+Create a session and submit a Q&A within it; confirm the spinner-then-toast flow on both.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add "app/(app)/interviews"
@@ -2440,13 +3209,15 @@ git commit -m "style: apply design system to interviews pages"
 
 ---
 
-### Task 15: Retrofit feedback (page, comment-thread, feedback-lines)
+### Task 20: Retrofit feedback (page, comment-thread, feedback-lines)
 
 **Files:**
 - Modify: `app/(app)/feedback/[id]/page.tsx`
 - Modify: `app/(app)/feedback/[id]/comment-thread.tsx`
 - Modify: `app/(app)/feedback/[id]/feedback-lines.tsx`
 - Tests (run only, unchanged): `app/(app)/feedback/[id]/page.test.tsx`, `app/(app)/feedback/[id]/comment-thread.test.tsx`, `app/(app)/feedback/[id]/feedback-lines.test.tsx`
+
+No `Toast`/`?success=` here — `addFeedbackComment` intentionally keeps its current no-redirect-on-success behavior (Convention 15) because a redirect would reset `FeedbackLines`'s client-side `expandedIndex` state, collapsing whatever comment thread the user just replied in.
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -2730,11 +3501,14 @@ git commit -m "style: apply design system to feedback pages"
 
 ---
 
-### Task 16: Retrofit admin page
+### Task 21: Retrofit admin page
 
 **Files:**
 - Modify: `app/(app)/admin/page.tsx`
 - Test (run only, unchanged): `app/(app)/admin/page.test.tsx`
+- Depends on: Task 9 (`EmptyState`)
+
+No `Toast`/`?success=` here — `approveUser`/`rejectUser` have no existing redirect to extend (Convention 15).
 
 - [ ] **Step 1: Run baseline test**
 
@@ -2749,6 +3523,7 @@ import { approveUser, rejectUser } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -2784,26 +3559,27 @@ export default async function AdminPage() {
     <PageShell title="관리자 페이지">
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold">가입 대기 ({pendingList.length})</h2>
-        <ul className="flex flex-col gap-3">
-          {pendingList.map((user) => (
-            <Card key={user.id} as="li" padding="sm" className="flex items-center justify-between">
-              <span>{user.name}</span>
-              <div className="flex gap-2">
-                <form action={approveUser.bind(null, user.id)}>
-                  <Button type="submit">승인</Button>
-                </form>
-                <form action={rejectUser.bind(null, user.id)}>
-                  <Button type="submit" variant="secondary">
-                    거부
-                  </Button>
-                </form>
-              </div>
-            </Card>
-          ))}
-          {pendingList.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">대기 중인 가입 신청이 없습니다.</p>
-          )}
-        </ul>
+        {pendingList.length === 0 ? (
+          <EmptyState message="대기 중인 가입 신청이 없습니다." />
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {pendingList.map((user) => (
+              <Card key={user.id} as="li" padding="sm" className="flex items-center justify-between">
+                <span>{user.name}</span>
+                <div className="flex gap-2">
+                  <form action={approveUser.bind(null, user.id)}>
+                    <Button type="submit">승인</Button>
+                  </form>
+                  <form action={rejectUser.bind(null, user.id)}>
+                    <Button type="submit" variant="secondary">
+                      거부
+                    </Button>
+                  </form>
+                </div>
+              </Card>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section>
@@ -2831,7 +3607,7 @@ export default async function AdminPage() {
 - [ ] **Step 3: Re-run test**
 
 Run: `npx vitest run "app/(app)/admin"`
-Expected: same pass count as the Step 1 baseline.
+Expected: same pass count as the Step 1 baseline (the `EmptyState` swap renders the identical message string a `getByText` assertion would already be checking for, if one exists).
 
 - [ ] **Step 4: Commit**
 
@@ -2842,7 +3618,7 @@ git commit -m "style: apply design system to admin page"
 
 ---
 
-### Task 17: Final verification
+### Task 22: Final verification
 
 **Files:** none (verification only)
 
@@ -2854,7 +3630,7 @@ Expected: empty or directory not found. If any worktrees are present, investigat
 - [ ] **Step 2: Run the full test suite**
 
 Run: `npx vitest run`
-Expected: PASS, same total test count as `main` before this branch (no tests were added or removed — only markup changed).
+Expected: PASS. Total test count will be higher than `main` before this branch — Tasks 3-11 add new primitive test files (Spinner, Button's pending-state case, Input's size cases, Card's `lg`/shadow cases, Alert's icon/background cases, EmptyState, Toast, ThemeToggle), and Task 12 changes (not adds/removes) four existing `actions.test.ts` cases. No retrofit task adds or removes a test.
 
 - [ ] **Step 3: Run lint**
 
@@ -2868,9 +3644,13 @@ Expected: no errors.
 
 - [ ] **Step 5: Manual smoke check in a real browser**
 
-Run: `npm run dev`, then visit `http://localhost:3000` and click through: login/signup, dashboard, checkin (create a post, react, comment), coding, jobposts (create a post with questions), interviews (create a session, open it, submit a Q&A), a feedback doc, and admin. Confirm:
-- Buttons/inputs/cards look consistent across pages (same radius, spacing, accent color on primary actions).
-- Toggle the OS color scheme (or devtools "Emulate CSS prefers-color-scheme: dark") and re-check the same pages — no illegible text, no invisible borders.
+Run: `npm run dev`, then visit `http://localhost:3000` and click through: login/signup, dashboard, checkin (create a post, react, comment), coding (create a problem as admin), jobposts (create a post with questions), interviews (create a session, open it, submit a Q&A), a feedback doc, and admin. Confirm:
+- Buttons/inputs/cards look consistent across pages (same radius, spacing, shadow, accent color on primary actions), and the `lg`-sized primary submit buttons on each creation form stand out visually from secondary actions.
+- Every primary create-action (checkin, coding's problem form and GitHub-username form, jobposts, interviews' session and Q&A forms) shows a spinner on its submit button while pending, then a green success toast bottom-right that clears itself after a few seconds — and the `?success=` param is gone from the address bar once it does.
+- Coding's problem list and admin's pending-signup list show the dashed-border `EmptyState` box when empty (temporarily clear the data or test on a fresh project to confirm).
+- Click `ThemeToggle` in the nav: theme flips instantly and holds after a full page reload (not just client navigation).
+- With the toggle left on dark, do a hard refresh — confirm there's no flash of light theme before dark applies (FOUC check).
+- All error banners (`Alert variant="danger"`) still show background + border + icon, e.g. by submitting a form with a required field left empty.
 - Browser tab shows "EOE" as the title.
 
 Stop the dev server after checking (`Ctrl+C`).
