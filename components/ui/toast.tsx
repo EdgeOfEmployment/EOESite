@@ -13,6 +13,10 @@ export function Toast({ message }: { message?: string | null }) {
   useEffect(() => {
     if (!message) return
 
+    // Re-arms visibility when a new message arrives after a previous toast
+    // already dismissed itself (visible=false) — the initial-render case is
+    // already covered by useState's initializer, so this only fires on change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true)
     const dismissTimer = setTimeout(() => setVisible(false), DISMISS_AFTER_MS)
     const cleanupTimer = setTimeout(() => router.replace(pathname, { scroll: false }), DISMISS_AFTER_MS + 200)

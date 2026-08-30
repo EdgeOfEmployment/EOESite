@@ -22,6 +22,10 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
+    // Reads the class Task 1's blocking pre-hydration script already set on <html>.
+    // Can't be a lazy useState initializer: this component is server-rendered too
+    // (no `document`), so the effect is the only SSR-safe place to read it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
