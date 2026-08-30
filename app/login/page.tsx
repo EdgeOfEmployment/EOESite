@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { logIn } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -29,13 +28,15 @@ export default async function LoginPage({
           비밀번호
         </Label>
         <Input id="password" name="password" type="password" placeholder="비밀번호" required />
-        <Button type="submit">로그인</Button>
+        <Button type="submit" size="lg">
+          로그인
+        </Button>
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         계정이 없으신가요?{' '}
-        <Link href="/signup" className="underline">
+        <a href="/signup" className="underline">
           회원가입
-        </Link>
+        </a>
       </p>
     </PageShell>
   )

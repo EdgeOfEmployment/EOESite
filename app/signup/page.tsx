@@ -33,7 +33,9 @@ export default async function SignupPage({
           비밀번호
         </Label>
         <Input id="password" name="password" type="password" placeholder="비밀번호" required minLength={6} />
-        <Button type="submit">가입하기</Button>
+        <Button type="submit" size="lg">
+          가입하기
+        </Button>
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         이미 계정이 있으신가요?{' '}
