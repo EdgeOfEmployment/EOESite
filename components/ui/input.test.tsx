@@ -7,12 +7,24 @@ describe('Input', () => {
     render(<Input placeholder="이메일" />)
     expect(screen.getByPlaceholderText('이메일')).toBeInTheDocument()
   })
+
+  it('keeps a 44px minimum tap target at every size', () => {
+    const { rerender } = render(<Input placeholder="sm" size="sm" />)
+    expect(screen.getByPlaceholderText('sm')).toHaveClass('min-h-11')
+    rerender(<Input placeholder="lg" size="lg" />)
+    expect(screen.getByPlaceholderText('lg')).toHaveClass('min-h-12')
+  })
 })
 
 describe('Textarea', () => {
   it('renders a textarea and forwards props', () => {
     render(<Textarea placeholder="내용" />)
     expect(screen.getByPlaceholderText('내용')).toBeInTheDocument()
+  })
+
+  it('does not force a height floor (rows-driven instead)', () => {
+    render(<Textarea placeholder="내용" size="sm" />)
+    expect(screen.getByPlaceholderText('내용')).not.toHaveClass('min-h-11')
   })
 })
 
