@@ -1138,6 +1138,10 @@ export function Toast({ message }: { message?: string | null }) {
   useEffect(() => {
     if (!message) return
 
+    // Re-arms visibility when a new message arrives after a previous toast
+    // already dismissed itself (visible=false) — the initial-render case is
+    // already covered by useState's initializer, so this only fires on change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true)
     const dismissTimer = setTimeout(() => setVisible(false), DISMISS_AFTER_MS)
     const cleanupTimer = setTimeout(() => router.replace(pathname, { scroll: false }), DISMISS_AFTER_MS + 200)
@@ -1248,6 +1252,10 @@ export function ThemeToggle() {
   const [isDark, setIsDark] = useState(false)
 
   useEffect(() => {
+    // Reads the class Task 1's blocking pre-hydration script already set on <html>.
+    // Can't be a lazy useState initializer: this component is server-rendered too
+    // (no `document`), so the effect is the only SSR-safe place to read it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
@@ -1486,6 +1494,7 @@ Expected: PASS (7 tests total) — note as baseline.
 - [ ] **Step 2: Replace `app/login/page.tsx`**
 
 ```tsx
+import Link from 'next/link'
 import { logIn } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -1522,14 +1531,16 @@ export default async function LoginPage({
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
         계정이 없으신가요?{' '}
-        <a href="/signup" className="underline">
+        <Link href="/signup" className="underline">
           회원가입
-        </a>
+        </Link>
       </p>
     </PageShell>
   )
 }
 ```
+
+This login snippet uses `next/link`'s `Link` (not a plain `<a>`) for the `/signup` cross-link, matching the site's existing internal-navigation convention (commit `5e3c808`, "use next/link for internal navigation instead of `<a>` tags" — prefetching/client-side transitions). Keep this consistent when retrofitting.
 
 - [ ] **Step 3: Replace `app/signup/page.tsx`**
 
@@ -1724,8 +1735,10 @@ git commit -m "style: apply design system to dashboard"
 - Modify: `app/(app)/checkin/post-card.tsx`
 - Modify: `app/(app)/checkin/post-form.tsx`
 - Modify: `app/(app)/checkin/calendar/page.tsx`
-- Tests (run only, unchanged): `app/(app)/checkin/page.test.tsx`, `app/(app)/checkin/post-card.test.tsx`, `app/(app)/checkin/post-form.test.tsx`, `app/(app)/checkin/calendar/page.test.tsx`
+- Tests: `app/(app)/checkin/page.test.tsx` (needs one small addition, see note below), `app/(app)/checkin/post-card.test.tsx`, `app/(app)/checkin/post-form.test.tsx`, `app/(app)/checkin/calendar/page.test.tsx` (these three: run only, unchanged)
 - Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createCheckinPost`)
+
+**Test-mechanics note (discovered during execution, applies to every later task that wires `<Toast>` into a page — Tasks 17/18/19 too):** `Toast` calls `useRouter()`/`usePathname()` from `next/navigation`, which throws outside an App Router test context. `page.test.tsx` doesn't otherwise need to know about routing, so add the same `vi.mock('next/navigation', ...)` block already used in `components/ui/toast.test.tsx` (`usePathname: () => '<this page's own path>'`, `useRouter: () => ({ replace: vi.fn() })`) to the top of `page.test.tsx` — this is a one-time addition, not a pass-count change (still "run only" in spirit, just needs this one mock to keep passing once `<Toast>` is actually rendered).
 
 - [ ] **Step 1: Run baseline tests**
 
@@ -2089,7 +2102,7 @@ git commit -m "style: apply design system to checkin pages"
 - Modify: `app/(app)/coding/github-settings-form.tsx`
 - Modify: `app/(app)/coding/problem-card.tsx`
 - Modify: `app/(app)/coding/problem-form.tsx`
-- Tests (run only, unchanged): `app/(app)/coding/page.test.tsx`, `app/(app)/coding/github-settings-form.test.tsx`, `app/(app)/coding/problem-card.test.tsx`, `app/(app)/coding/problem-form.test.tsx`
+- Tests: `app/(app)/coding/page.test.tsx` (needs the `next/navigation` mock — see Task 16's note), `app/(app)/coding/github-settings-form.test.tsx`, `app/(app)/coding/problem-card.test.tsx`, `app/(app)/coding/problem-form.test.tsx` (these three: run only, unchanged)
 - Depends on: Task 9 (`EmptyState`), Task 10 (`Toast`), Task 12 (`?success=` on `createProblem`/`updateGithubUsername`)
 
 - [ ] **Step 1: Run baseline tests**
@@ -2341,7 +2354,7 @@ git commit -m "style: apply design system to coding pages"
 - Modify: `app/(app)/jobposts/post-card.tsx`
 - Modify: `app/(app)/jobposts/post-form.tsx`
 - Modify: `app/(app)/jobposts/calendar/page.tsx`
-- Tests (run only, unchanged): `app/(app)/jobposts/page.test.tsx`, `app/(app)/jobposts/post-card.test.tsx`, `app/(app)/jobposts/post-form.test.tsx`, `app/(app)/jobposts/calendar/page.test.tsx`
+- Tests: `app/(app)/jobposts/page.test.tsx` (needs the `next/navigation` mock — see Task 16's note), `app/(app)/jobposts/post-card.test.tsx`, `app/(app)/jobposts/post-form.test.tsx`, `app/(app)/jobposts/calendar/page.test.tsx` (these three: run only, unchanged)
 - Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createJobPost`)
 
 - [ ] **Step 1: Run baseline tests**
@@ -2769,7 +2782,7 @@ git commit -m "style: apply design system to jobposts pages"
 - Modify: `app/(app)/interviews/[sessionId]/page.tsx`
 - Modify: `app/(app)/interviews/[sessionId]/qa-card.tsx`
 - Modify: `app/(app)/interviews/[sessionId]/qa-form.tsx`
-- Tests (run only, unchanged): `app/(app)/interviews/page.test.tsx`, `app/(app)/interviews/session-card.test.tsx`, `app/(app)/interviews/session-form.test.tsx`, `app/(app)/interviews/[sessionId]/page.test.tsx`, `app/(app)/interviews/[sessionId]/qa-card.test.tsx`, `app/(app)/interviews/[sessionId]/qa-form.test.tsx`
+- Tests: `app/(app)/interviews/page.test.tsx` AND `app/(app)/interviews/[sessionId]/page.test.tsx` (both render `<Toast>` in this task — both need the `next/navigation` mock, see Task 16's note), `app/(app)/interviews/session-card.test.tsx`, `app/(app)/interviews/session-form.test.tsx`, `app/(app)/interviews/[sessionId]/qa-card.test.tsx`, `app/(app)/interviews/[sessionId]/qa-form.test.tsx` (these four: run only, unchanged)
 - Depends on: Task 10 (`Toast`), Task 12 (`?success=` on `createSession`/`createInterviewQa`)
 
 - [ ] **Step 1: Run baseline tests**
@@ -3635,7 +3648,7 @@ Expected: PASS. Total test count will be higher than `main` before this branch �
 - [ ] **Step 3: Run lint**
 
 Run: `npx eslint .`
-Expected: no errors.
+Expected: no errors from files this plan touches. `eslint-config-next`'s `react-hooks/set-state-in-effect` rule flags the mount-time `setState` calls in `ThemeToggle` (Task 11) and `Toast` (Task 10) — both are legitimate SSR-safe reads of external state with no cleaner alternative (see the `eslint-disable-next-line` comments already in those tasks' code blocks). Separately, `app/(app)/feedback/[id]/feedback-lines.tsx:40` trips `react-hooks/immutability` on a `lastQuestionIndex` reassignment during render — this line predates this plan entirely (confirmed via `git log`, present since the original `feedback-lines.tsx` was added, untouched by Task 20's retrofit) and is out of scope here; leave it alone rather than fixing unrelated pre-existing code.
 
 - [ ] **Step 4: Run typecheck**
 
