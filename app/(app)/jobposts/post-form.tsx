@@ -95,7 +95,7 @@ export function PostForm() {
         <input type="checkbox" name="feedbackRequested" />
         피드백 받고 싶어요
       </label>
-      <Button type="submit" className="self-start">
+      <Button type="submit" size="lg" className="self-start">
         등록
       </Button>
     </Card>
