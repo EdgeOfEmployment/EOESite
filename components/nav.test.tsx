@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 let mockPathname = '/'
@@ -9,6 +9,10 @@ vi.mock('next/navigation', () => ({
 import { Nav } from './nav'
 
 describe('Nav', () => {
+  beforeEach(() => {
+    mockPathname = '/'
+  })
+
   it('renders links to the dashboard and each board', () => {
     render(<Nav />)
 
@@ -29,5 +33,11 @@ describe('Nav', () => {
     render(<Nav />)
     expect(screen.getByRole('link', { name: '인증' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: '코테 스터디' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: '홈' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('marks 홈 as active only on the root path', () => {
+    render(<Nav />)
+    expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
 })

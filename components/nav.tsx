@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/ui/cn'
 
 const links = [
+  { href: '/', label: '홈' },
   { href: '/checkin', label: '인증' },
   { href: '/coding', label: '코테 스터디' },
   { href: '/jobposts', label: '자소서/공고' },
@@ -19,11 +20,8 @@ export function Nav() {
   return (
     <nav className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
       <div className="flex gap-4">
-        <Link href="/" className={cn('font-bold', pathname === '/' && 'text-blue-600 dark:text-blue-400')}>
-          홈
-        </Link>
         {links.map((link) => {
-          const isActive = pathname === link.href || pathname.startsWith(`${link.href}/`)
+          const isActive = link.href === '/' ? pathname === '/' : pathname === link.href || pathname.startsWith(`${link.href}/`)
           return (
             <Link
               key={link.href}

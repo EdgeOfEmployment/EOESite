@@ -29,7 +29,7 @@ export function PageShell({
   return (
     <main
       className={cn(
-        'mx-auto px-6',
+        'mx-auto w-full px-6',
         WIDTH_CLASSES[width],
         top === 'auth' ? 'mt-20' : 'py-8',
         align === 'center' && 'text-center',
