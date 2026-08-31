@@ -4,9 +4,9 @@ import { cn } from '@/lib/ui/cn'
 type PageShellWidth = 'sm' | '2xl' | '3xl'
 
 const WIDTH_CLASSES: Record<PageShellWidth, string> = {
-  sm: 'max-w-sm',
-  '2xl': 'max-w-2xl',
-  '3xl': 'max-w-3xl',
+  sm: 'max-w-sm lg:max-w-md',
+  '2xl': 'max-w-2xl lg:max-w-4xl xl:max-w-5xl',
+  '3xl': 'max-w-3xl lg:max-w-5xl xl:max-w-6xl',
 }
 
 export function PageShell({

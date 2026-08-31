@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+
+let mockPathname = '/'
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+}))
+
 import { Nav } from './nav'
 
 describe('Nav', () => {
@@ -16,5 +22,12 @@ describe('Nav', () => {
   it('renders a logout button', () => {
     render(<Nav />)
     expect(screen.getByRole('button', { name: '로그아웃' })).toBeInTheDocument()
+  })
+
+  it('marks the current page link as active, including nested routes', () => {
+    mockPathname = '/checkin/calendar'
+    render(<Nav />)
+    expect(screen.getByRole('link', { name: '인증' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: '코테 스터디' })).not.toHaveAttribute('aria-current')
   })
 })
