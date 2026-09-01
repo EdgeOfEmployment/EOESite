@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthlyFineTotals } from './fines'
+import { buildMonthlyFineTotals, groupLateFinesByMonth } from './fines'
 
 describe('buildMonthlyFineTotals', () => {
   it('sums fine amounts per member for the given posts', () => {
@@ -22,5 +22,44 @@ describe('buildMonthlyFineTotals', () => {
   it('returns zero for a member with no posts this month', () => {
     const members = [{ id: 'u1', name: '김민수' }]
     expect(buildMonthlyFineTotals(members, [])).toEqual([{ member: { id: 'u1', name: '김민수' }, totalFine: 0 }])
+  })
+})
+
+describe('groupLateFinesByMonth', () => {
+  it('groups rows by UTC calendar month, newest month first', () => {
+    const rows = [
+      { postId: 'p1', memberName: '김민수', createdAt: '2026-09-05T01:00:00.000Z', fineAmount: 11000, paid: false },
+      { postId: 'p2', memberName: '이지은', createdAt: '2026-08-20T01:00:00.000Z', fineAmount: 10000, paid: true },
+      { postId: 'p3', memberName: '김민수', createdAt: '2026-09-01T01:00:00.000Z', fineAmount: 12000, paid: false },
+    ]
+
+    expect(groupLateFinesByMonth(rows)).toEqual([
+      {
+        monthLabel: '2026년 9월',
+        rows: [
+          { postId: 'p1', memberName: '김민수', createdAt: '2026-09-05T01:00:00.000Z', fineAmount: 11000, paid: false },
+          { postId: 'p3', memberName: '김민수', createdAt: '2026-09-01T01:00:00.000Z', fineAmount: 12000, paid: false },
+        ],
+      },
+      {
+        monthLabel: '2026년 8월',
+        rows: [
+          { postId: 'p2', memberName: '이지은', createdAt: '2026-08-20T01:00:00.000Z', fineAmount: 10000, paid: true },
+        ],
+      },
+    ])
+  })
+
+  it('preserves the input order of rows within a group', () => {
+    const rows = [
+      { postId: 'p1', memberName: 'a', createdAt: '2026-09-01T00:00:00.000Z', fineAmount: 1000, paid: false },
+      { postId: 'p2', memberName: 'b', createdAt: '2026-09-02T00:00:00.000Z', fineAmount: 2000, paid: false },
+    ]
+
+    expect(groupLateFinesByMonth(rows)[0].rows.map((r) => r.postId)).toEqual(['p1', 'p2'])
+  })
+
+  it('returns an empty array for no rows', () => {
+    expect(groupLateFinesByMonth([])).toEqual([])
   })
 })
