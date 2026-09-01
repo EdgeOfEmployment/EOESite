@@ -26,6 +26,7 @@ export default async function AdminPage({
   const [
     { data: pendingUsers, error: pendingError },
     { data: approvedMembers, error: approvedError },
+    { data: allProfiles, error: allProfilesError },
     { data: lateFines, error: lateFinesError },
   ] = await Promise.all([
     supabase
@@ -38,6 +39,7 @@ export default async function AdminPage({
       .select('id, name, role')
       .eq('status', 'approved')
       .order('name', { ascending: true }),
+    supabase.from('profiles').select('id, name'),
     supabase
       .from('checkin_posts')
       .select('id, author_id, created_at, fine_amount, paid')
@@ -54,13 +56,19 @@ export default async function AdminPage({
     console.error('admin page: failed to fetch approved members', approvedError)
   }
 
+  if (allProfilesError) {
+    console.error('admin page: failed to fetch profiles for fine list names', allProfilesError)
+  }
+
   if (lateFinesError) {
     console.error('admin page: failed to fetch late fines', lateFinesError)
   }
 
   const pendingList = pendingUsers ?? []
   const approvedList = approvedMembers ?? []
-  const nameById = new Map(approvedList.map((m) => [m.id, m.name as string]))
+  // Looked up from all profiles (not just approved) so a member who was later
+  // rejected/kicked still shows by name against any fine they still owe.
+  const nameById = new Map((allProfiles ?? []).map((p) => [p.id, p.name as string]))
 
   const lateFineRows: LateFineRow[] = (lateFines ?? [])
     .filter((post) => showPaid || !post.paid)

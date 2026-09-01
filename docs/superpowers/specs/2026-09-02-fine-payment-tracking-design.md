@@ -77,9 +77,11 @@ New section, "지각 벌금 관리", added below the existing 가입 대기/멤�
 - Query: `checkin_posts` where `is_late = true` and `fine_amount > 0`, selecting
   `id, author_id, created_at, fine_amount, paid`, ordered by `created_at` descending.
   When `showPaid` is not set, filter to `paid = false` before rendering.
-- Join with the already-fetched member name map (reuse the approved-members query
-  already on this page; fall back to the raw id if a name isn't found, matching the
-  `checkin/page.tsx` pattern of `nameById.get(...) ?? '알 수 없음'`).
+- Join with a name map built from *all* profiles (not just approved members), so a
+  member who is later rejected/kicked while still owing a fine is still identifiable
+  by name — not just the approved-members query already on this page. Falls back to
+  `'알 수 없음'` if a name still isn't found, matching the `checkin/page.tsx` pattern
+  of `nameById.get(...) ?? '알 수 없음'`.
 - Grouping: a new pure function in `lib/checkin/fines.ts`,
   `groupLateFinesByMonth(rows: LateFineRow[]): { monthLabel: string; rows: LateFineRow[] }[]`,
   where `LateFineRow = { postId, memberName, createdAt, fineAmount, paid }`. Grouping
