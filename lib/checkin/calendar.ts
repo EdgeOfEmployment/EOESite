@@ -1,11 +1,9 @@
-import type { CheckinType } from './types'
-
 export interface CalendarPost {
   id: string
   authorId: string
   authorName: string
-  type: CheckinType
   createdAt: string
+  isLate: boolean
 }
 
 export interface CalendarDay {
