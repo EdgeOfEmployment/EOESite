@@ -1605,7 +1605,7 @@ git commit -m "feat: query single-type checkin posts with goals on the feed page
 
 ---
 
-### Task 11: `app/(app)/checkin/calendar/page.tsx` — drop type, show lateness, add back link
+### Task 11: `app/(app)/checkin/calendar/page.tsx` — drop type, show lateness, add back link ✅ DONE (9a40531)
 
 **Files:**
 - Modify: `app/(app)/checkin/calendar/page.tsx`
