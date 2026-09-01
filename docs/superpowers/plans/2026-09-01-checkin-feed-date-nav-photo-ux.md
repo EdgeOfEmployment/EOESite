@@ -683,7 +683,7 @@ git commit -m "feat: style the checkin photo input and add a local thumbnail pre
 
 ---
 
-### Task 4: Full verification pass
+### Task 4: Full verification pass ✅ DONE — 303/303 tests pass, tsc clean, lint clean (1 pre-existing unrelated issue predating this branch). Step 4's live-browser smoke test was NOT performed: this environment has no configured Supabase project (only `.env.local.example` exists, no real `.env.local`), so the dev server cannot be driven through a real login → checkin flow here. The day-nav/photo-preview UX is unverified against a live browser — flag this for manual smoke-testing once Supabase is set up.
 
 **Files:** none (verification only)
 
