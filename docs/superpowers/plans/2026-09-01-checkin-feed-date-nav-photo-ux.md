@@ -439,7 +439,7 @@ git commit -m "feat: filter checkin feed to one KST day with prev/next navigatio
 
 ---
 
-### Task 3: `app/(app)/checkin/post-form.tsx` — styled photo button + thumbnail preview
+### Task 3: `app/(app)/checkin/post-form.tsx` — styled photo button + thumbnail preview ✅ DONE (cf8f0ca)
 
 **Files:**
 - Modify: `app/(app)/checkin/post-form.tsx`
