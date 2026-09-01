@@ -67,6 +67,11 @@ describe('kstDayRangeUtc', () => {
     const { start } = kstDayRangeUtc('2026-08-10')
     expect(getKstDateString(start)).toBe('2026-08-10')
   })
+
+  it('returns an end that is the exclusive boundary — it belongs to the next KST day', () => {
+    const { end } = kstDayRangeUtc('2026-08-10')
+    expect(getKstDateString(end)).toBe('2026-08-11')
+  })
 })
 
 describe('shiftKstDateString', () => {
