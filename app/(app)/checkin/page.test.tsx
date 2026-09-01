@@ -99,6 +99,7 @@ describe('CheckinPage', () => {
     expect(screen.getByText('2026년 8월 9일')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '10시 인증하기' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: '▶' })).toHaveAttribute('href', '/checkin?date=2026-08-10')
+    expect(screen.getByRole('link', { name: '◀' })).toHaveAttribute('href', '/checkin?date=2026-08-08')
   })
 
   it('falls back to todays date for an invalid date parameter', async () => {
@@ -108,8 +109,22 @@ describe('CheckinPage', () => {
     expect(screen.getByText('2026년 8월 10일 (오늘)')).toBeInTheDocument()
   })
 
+  it('falls back to todays date for a calendrically invalid date parameter', async () => {
+    const ui = await CheckinPage({ searchParams: Promise.resolve({ date: '2026-02-30' }) })
+    render(ui)
+
+    expect(screen.getByText('2026년 8월 10일 (오늘)')).toBeInTheDocument()
+  })
+
   it('clamps a future date parameter to today', async () => {
     const ui = await CheckinPage({ searchParams: Promise.resolve({ date: '2026-08-15' }) })
+    render(ui)
+
+    expect(screen.getByText('2026년 8월 10일 (오늘)')).toBeInTheDocument()
+  })
+
+  it('does not clamp a date parameter that exactly equals today', async () => {
+    const ui = await CheckinPage({ searchParams: Promise.resolve({ date: '2026-08-10' }) })
     render(ui)
 
     expect(screen.getByText('2026년 8월 10일 (오늘)')).toBeInTheDocument()

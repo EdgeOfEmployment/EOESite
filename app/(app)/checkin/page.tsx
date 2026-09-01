@@ -17,7 +17,9 @@ function resolveSelectedDate(dateParam: string | undefined, todayKst: string): s
     return todayKst
   }
 
-  if (Number.isNaN(new Date(`${dateParam}T00:00:00.000Z`).getTime())) {
+  const parsed = new Date(`${dateParam}T00:00:00.000Z`)
+
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== dateParam) {
     return todayKst
   }
 
