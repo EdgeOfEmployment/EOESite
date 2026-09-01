@@ -39,8 +39,12 @@ describe('PostForm', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
     fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
 
+    fireEvent.change(screen.getByPlaceholderText('목표 1'), { target: { value: 'A' } })
+    fireEvent.change(screen.getByPlaceholderText('목표 2'), { target: { value: 'B' } })
+
     fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[0])
 
     expect(screen.queryByPlaceholderText('목표 2')).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('목표 1')).toHaveValue('B')
   })
 })
