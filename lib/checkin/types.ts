@@ -1,12 +1,10 @@
-export type CheckinType = 'wake' | 'study' | 'goal'
-
-export const CHECKIN_TYPE_LABELS: Record<CheckinType, string> = {
-  wake: '기상',
-  study: '스터디',
-  goal: '목표달성',
-}
-
 export const REACTION_EMOJIS = ['👍', '🎉', '💪'] as const
+
+export interface CheckinGoal {
+  body: string
+  completed: boolean
+  completedAt: string | null
+}
 
 export interface CheckinComment {
   id: string
@@ -26,10 +24,11 @@ export interface CheckinPost {
   id: string
   authorId: string
   authorName: string
-  type: CheckinType
-  photoUrl: string | null
-  body: string
+  photoUrl: string
+  goals: CheckinGoal[]
   createdAt: string
+  isLate: boolean
+  fineAmount: number
   comments: CheckinComment[]
   reactions: CheckinReaction[]
 }
