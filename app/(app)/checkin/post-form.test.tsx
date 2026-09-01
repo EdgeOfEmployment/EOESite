@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 
 vi.mock('./actions', () => ({
   createCheckinPost: vi.fn(),
@@ -8,19 +8,39 @@ vi.mock('./actions', () => ({
 import { PostForm } from './post-form'
 
 describe('PostForm', () => {
-  it('renders the type select, body textarea, photo input, and submit button', () => {
+  it('renders a required photo input, no goals by default, and the submit button', () => {
     render(<PostForm />)
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('오늘의 인증 내용을 남겨주세요')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '인증하기' })).toBeInTheDocument()
+    expect(screen.getByLabelText('책상 인증 사진')).toBeRequired()
+    expect(screen.queryByPlaceholderText(/목표/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '10시 인증하기' })).toBeInTheDocument()
   })
 
-  it('lists all three checkin types as options', () => {
+  it('adds a goal field when clicking the add-goal button', () => {
     render(<PostForm />)
 
-    expect(screen.getByRole('option', { name: '기상' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '스터디' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '목표달성' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+
+    expect(screen.getByPlaceholderText('목표 1')).toBeInTheDocument()
+  })
+
+  it('adds a second goal field on a second click', () => {
+    render(<PostForm />)
+
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+
+    expect(screen.getByPlaceholderText('목표 1')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('목표 2')).toBeInTheDocument()
+  })
+
+  it('removes a goal field when clicking its delete button', () => {
+    render(<PostForm />)
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: '삭제' })[0])
+
+    expect(screen.queryByPlaceholderText('목표 2')).not.toBeInTheDocument()
   })
 })
