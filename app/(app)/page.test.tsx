@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/server', () => ({
         return {
           select: () => ({
             gte: () => ({
-              lt: async () => ({ data: [{ author_id: 'user-2', type: 'wake' }] }),
+              lt: async () => ({ data: [{ author_id: 'user-2', fine_amount: 11000 }] }),
             }),
           }),
         }
@@ -39,17 +39,31 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: '대시보드' })).toBeInTheDocument()
   })
 
-  it('shows the missing-checkin message for the current user', async () => {
+  it('shows the not-yet-posted message when the current user has no post today', async () => {
     const ui = await DashboardPage()
     render(ui)
-    expect(screen.getByText(/기상, 스터디, 목표달성 인증을 하지 않았어요/)).toBeInTheDocument()
+    expect(screen.getByText('오늘 아직 10시 인증을 하지 않았어요.')).toBeInTheDocument()
   })
 
-  it('renders a status row per approved member with a checkmark for completed types', async () => {
+  it('renders a status row per approved member with a checkmark for who posted today', async () => {
     const ui = await DashboardPage()
     render(ui)
-    expect(screen.getByText('김민수')).toBeInTheDocument()
-    expect(screen.getByText('이지은')).toBeInTheDocument()
+    expect(screen.getAllByText('김민수')).toHaveLength(2)
+    expect(screen.getAllByText('이지은')).toHaveLength(2)
     expect(screen.getAllByText('✅')).toHaveLength(1)
+  })
+
+  it('shows this months fine total per member', async () => {
+    const ui = await DashboardPage()
+    render(ui)
+    expect(screen.getByText('이번 달 벌금 정산')).toBeInTheDocument()
+    expect(screen.getByText('11,000원')).toBeInTheDocument()
+    expect(screen.getByText('0원')).toBeInTheDocument()
+  })
+
+  it('links to the checkin feed', async () => {
+    const ui = await DashboardPage()
+    render(ui)
+    expect(screen.getByRole('link', { name: '인증 보러가기' })).toHaveAttribute('href', '/checkin')
   })
 })
