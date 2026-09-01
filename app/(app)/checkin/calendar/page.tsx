@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { buildMonthCalendar, groupPostsByMember, type CalendarPost } from '@/lib/checkin/calendar'
-import { CHECKIN_TYPE_LABELS, type CheckinType } from '@/lib/checkin/types'
 import { PageShell } from '@/components/ui/page-shell'
 
 function monthRange(year: number, month: number) {
@@ -28,7 +27,7 @@ export default async function CheckinCalendarPage({
     supabase.from('profiles').select('id, name'),
     supabase
       .from('checkin_posts')
-      .select('id, author_id, type, created_at')
+      .select('id, author_id, created_at, is_late')
       .gte('created_at', start)
       .lt('created_at', end),
   ])
@@ -39,12 +38,20 @@ export default async function CheckinCalendarPage({
     id: post.id,
     authorId: post.author_id,
     authorName: nameById.get(post.author_id) ?? '알 수 없음',
-    type: post.type as CheckinType,
     createdAt: post.created_at,
+    isLate: post.is_late,
   }))
 
   return (
-    <PageShell title={`인증 달력 (${year}년 ${month}월)`} width="3xl">
+    <PageShell
+      title={`인증 달력 (${year}년 ${month}월)`}
+      width="3xl"
+      headerExtra={
+        <Link href="/checkin" className="text-sm text-gray-500 underline dark:text-gray-400">
+          ← 인증으로 돌아가기
+        </Link>
+      }
+    >
       <div className="mb-4 flex gap-3 text-sm">
         <Link
           href={`/checkin/calendar?year=${year}&month=${month}&view=date`}
@@ -76,7 +83,8 @@ export default async function CheckinCalendarPage({
                     <div className="mt-1 flex flex-col gap-0.5">
                       {day.posts.map((post) => (
                         <span key={post.id} className="text-xs">
-                          {post.authorName} · {CHECKIN_TYPE_LABELS[post.type]}
+                          {post.authorName}
+                          {post.isLate ? ' · 지각' : ''}
                         </span>
                       ))}
                     </div>
@@ -94,7 +102,8 @@ export default async function CheckinCalendarPage({
               <ul className="mt-1 flex flex-col gap-0.5 text-sm text-gray-600 dark:text-gray-400">
                 {member.posts.map((post) => (
                   <li key={post.id}>
-                    {post.createdAt.slice(0, 10)} · {CHECKIN_TYPE_LABELS[post.type]}
+                    {post.createdAt.slice(0, 10)}
+                    {post.isLate ? ' · 지각' : ''}
                   </li>
                 ))}
               </ul>
