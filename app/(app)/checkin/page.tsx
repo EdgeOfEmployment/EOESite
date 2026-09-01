@@ -4,7 +4,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
-import type { CheckinPost, CheckinType } from '@/lib/checkin/types'
+import type { CheckinPost, CheckinGoal } from '@/lib/checkin/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
@@ -22,7 +22,7 @@ export default async function CheckinPage({
     supabase.from('profiles').select('id, name'),
     supabase
       .from('checkin_posts')
-      .select('id, author_id, type, body, photo_url, created_at')
+      .select('id, author_id, photo_url, goals, created_at, is_late, fine_amount')
       .order('created_at', { ascending: false }),
   ])
 
@@ -48,10 +48,11 @@ export default async function CheckinPage({
     id: post.id,
     authorId: post.author_id,
     authorName: nameById.get(post.author_id) ?? '알 수 없음',
-    type: post.type as CheckinType,
     photoUrl: post.photo_url,
-    body: post.body,
+    goals: (post.goals ?? []) as CheckinGoal[],
     createdAt: post.created_at,
+    isLate: post.is_late,
+    fineAmount: post.fine_amount,
     comments: (comments ?? [])
       .filter((c) => c.post_id === post.id)
       .map((c) => ({
@@ -68,7 +69,7 @@ export default async function CheckinPage({
 
   return (
     <PageShell
-      title="인증"
+      title="10시 인증"
       headerExtra={
         <Link href="/checkin/calendar" className="text-sm text-gray-500 underline dark:text-gray-400">
           달력 보기

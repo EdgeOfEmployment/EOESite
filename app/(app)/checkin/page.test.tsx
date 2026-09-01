@@ -15,15 +15,16 @@ const posts = [
   {
     id: 'post-1',
     author_id: 'user-1',
-    type: 'wake',
-    body: '기상 완료',
-    photo_url: null,
-    created_at: '2026-08-10T00:00:00.000Z',
+    photo_url: 'https://example.com/photo.jpg',
+    goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+    created_at: '2026-08-10T01:05:00.000Z',
+    is_late: true,
+    fine_amount: 11000,
   },
 ]
 
 const comments = [
-  { id: 'c1', post_id: 'post-1', author_id: 'admin-1', body: '축하해요', created_at: '2026-08-10T01:00:00.000Z' },
+  { id: 'c1', post_id: 'post-1', author_id: 'admin-1', body: '축하해요', created_at: '2026-08-10T01:10:00.000Z' },
 ]
 
 const reactions = [{ id: 'r1', post_id: 'post-1', author_id: 'admin-1', emoji: '👍' }]
@@ -56,19 +57,20 @@ vi.mock('./actions', () => ({
   createCheckinPost: vi.fn(),
   addComment: vi.fn(),
   toggleReaction: vi.fn(),
+  toggleGoalCompleted: vi.fn(),
   deleteCheckinPost: vi.fn(),
 }))
 
 import CheckinPage from './page'
 
 describe('CheckinPage', () => {
-  it('renders the post form and the feed of posts with author names and comments', async () => {
+  it('renders the post form and the feed of posts with author names, goals, and comments', async () => {
     const ui = await CheckinPage({ searchParams: Promise.resolve({}) })
     render(ui)
 
-    expect(screen.getByRole('button', { name: '인증하기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '10시 인증하기' })).toBeInTheDocument()
     expect(screen.getByText('김민수')).toBeInTheDocument()
-    expect(screen.getByText('기상 완료')).toBeInTheDocument()
+    expect(screen.getByText('알고리즘 3문제 풀기')).toBeInTheDocument()
     expect(screen.getByText('축하해요')).toBeInTheDocument()
   })
 })
