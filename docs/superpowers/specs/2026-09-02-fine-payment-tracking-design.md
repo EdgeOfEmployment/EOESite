@@ -94,11 +94,11 @@ New section, "지각 벌금 관리", added below the existing 가입 대기/멤�
 
 ## Dashboard (`app/(app)/page.tsx`)
 
-- The existing `monthRangeUtc()` helper moves to `lib/checkin/fines.ts` (exported) so
-  both the dashboard and, if ever needed, the admin page can share the exact same
-  month-boundary definition. (The admin page's month *grouping* labels use the same
-  UTC-month convention but don't need this range helper, since it lists all unpaid
-  records rather than a single bounded month.)
+- The existing inline `monthRangeUtc()` helper in `page.tsx` stays where it is — the
+  admin page doesn't need a bounded month range (it lists all unpaid records
+  regardless of month), so there's no second consumer to justify moving it into
+  `lib/checkin/fines.ts`. The admin page's month *grouping* labels use the same
+  UTC-month convention independently, via `groupLateFinesByMonth`.
 - The `monthPosts` query adds `paid` to its selected columns and the dashboard filters
   to `paid === false` before calling `buildMonthlyFineTotals`, so the totals reflect
   outstanding balance only. `buildMonthlyFineTotals` itself is unchanged — it just
