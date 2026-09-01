@@ -1,3 +1,7 @@
+-- WARNING: destructive migration. This drops all existing checkin_posts/checkin_comments/
+-- checkin_reactions data and recreates the schema for the single-type "10시 인증" post model.
+-- Confirmed with the product owner as an intentional, one-time data reset — do not run
+-- against a database whose existing checkin history needs to be preserved.
 drop table if exists checkin_reactions cascade;
 drop table if exists checkin_comments cascade;
 drop table if exists checkin_posts cascade;
