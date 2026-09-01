@@ -290,7 +290,7 @@ git commit -m "feat: collapse checkin types to a single desk+goal post shape"
 
 ---
 
-### Task 4: `lib/checkin/status.ts` — simplify to a single "posted today" boolean
+### Task 4: `lib/checkin/status.ts` — simplify to a single "posted today" boolean ✅ DONE (c182964)
 
 **Files:**
 - Modify: `lib/checkin/status.ts`
