@@ -49,6 +49,12 @@ create policy "Approved members can create checkin posts"
     and exists (select 1 from profiles p where p.id = auth.uid() and p.status = 'approved')
   );
 
+-- Note: Postgres RLS cannot express column-level restrictions, so this policy lets an
+-- author update ANY column on their own post (not just `goals`, which is all the app's
+-- toggleGoalCompleted action ever writes). An author could in principle bypass the app
+-- and call the Supabase API directly to alter their own is_late/fine_amount/photo_url.
+-- Accepted risk for this small trusted-group app (confirmed with the product owner) —
+-- revisit with a BEFORE UPDATE trigger or a SECURITY DEFINER RPC if that trust model changes.
 create policy "Authors can update their own checkin posts"
   on checkin_posts for update
   using (author_id = auth.uid())
