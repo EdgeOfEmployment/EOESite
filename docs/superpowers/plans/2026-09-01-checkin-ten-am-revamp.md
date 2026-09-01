@@ -447,7 +447,7 @@ git commit -m "feat: add monthly checkin fine total aggregation"
 
 ---
 
-### Task 6: `lib/checkin/calendar.ts` — drop `type`, add `isLate`
+### Task 6: `lib/checkin/calendar.ts` — drop `type`, add `isLate` ✅ DONE (7c0cefd)
 
 **Files:**
 - Modify: `lib/checkin/calendar.ts`
