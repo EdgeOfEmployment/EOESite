@@ -20,7 +20,7 @@
 
 ---
 
-### Task 1: `lib/checkin/time.ts` — KST day-string, day-range, date-shift, and heading helpers
+### Task 1: `lib/checkin/time.ts` — KST day-string, day-range, date-shift, and heading helpers ✅ DONE (569bd71, test fix e6f27b7)
 
 **Files:**
 - Modify: `lib/checkin/time.ts`
