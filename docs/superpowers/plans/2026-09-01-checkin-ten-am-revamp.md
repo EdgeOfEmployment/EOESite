@@ -1397,7 +1397,7 @@ git commit -m "feat: render desk photo, goal checklist, and late badge on checki
 
 ---
 
-### Task 10: `app/(app)/checkin/page.tsx` — feed query without `type`
+### Task 10: `app/(app)/checkin/page.tsx` — feed query without `type` ✅ DONE (54385d9)
 
 **Files:**
 - Modify: `app/(app)/checkin/page.tsx`
