@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const getUserMock = vi.fn()
 const uploadMock = vi.fn()
@@ -26,7 +26,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createCheckinPost, addComment, toggleReaction, deleteCheckinPost } from './actions'
+import { createCheckinPost, addComment, toggleReaction, toggleGoalCompleted, deleteCheckinPost } from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -48,57 +48,59 @@ beforeEach(() => {
   fromMock.mockReturnValue({ insert: insertMock })
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('createCheckinPost', () => {
-  it('redirects with an error when the body is missing', async () => {
-    const formData = buildFormData({ type: 'wake', body: '' })
+  it('redirects with an error when no photo is provided', async () => {
+    const formData = buildFormData({ goalCount: '0' })
 
     await expect(createCheckinPost(formData)).rejects.toThrow()
-    expect(redirectMock).toHaveBeenCalledWith(
-      '/checkin?error=' + encodeURIComponent('인증 종류와 내용을 입력해주세요')
-    )
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?error=' + encodeURIComponent('책상 인증 사진을 첨부해주세요'))
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  it('rejects an invalid checkin type', async () => {
-    const formData = buildFormData({ type: 'invalid', body: '오늘의 인증' })
-
-    await expect(createCheckinPost(formData)).rejects.toThrow()
-    expect(redirectMock).toHaveBeenCalledWith(
-      '/checkin?error=' + encodeURIComponent('인증 종류와 내용을 입력해주세요')
-    )
-  })
-
-  it('creates a post without a photo when none is provided', async () => {
-    const formData = buildFormData({ type: 'wake', body: '오늘의 인증' })
+  it('creates a post with no goals when goalCount is 0', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T00:00:00.000Z'))
+    const photo = new File(['fake-image-bytes'], 'photo.jpg', { type: 'image/jpeg' })
+    const formData = buildFormData({ photo, goalCount: '0' })
 
     await expect(createCheckinPost(formData)).rejects.toThrow()
 
-    expect(uploadMock).not.toHaveBeenCalled()
     expect(insertMock).toHaveBeenCalledWith({
       author_id: 'user-1',
-      type: 'wake',
-      body: '오늘의 인증',
-      photo_url: null,
+      photo_url: 'https://example.com/photo.jpg',
+      goals: [],
+      is_late: false,
+      fine_amount: 0,
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
     expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
-  it('uploads the photo and stores its public URL when provided', async () => {
+  it('inserts non-empty goals as unfinished and skips blank ones, and computes the late fine', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T01:05:00.000Z')) // 10:05 KST -> late, +1000
     const photo = new File(['fake-image-bytes'], 'photo.jpg', { type: 'image/jpeg' })
-    const formData = buildFormData({ type: 'wake', body: '오늘의 인증', photo })
+    const formData = buildFormData({
+      photo,
+      goalCount: '2',
+      'goal-0': '알고리즘 3문제 풀기',
+      'goal-1': '   ',
+    })
 
     await expect(createCheckinPost(formData)).rejects.toThrow()
 
-    expect(uploadMock).toHaveBeenCalled()
     expect(insertMock).toHaveBeenCalledWith({
       author_id: 'user-1',
-      type: 'wake',
-      body: '오늘의 인증',
       photo_url: 'https://example.com/photo.jpg',
+      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+      is_late: true,
+      fine_amount: 11000,
     })
-    expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 })
 
@@ -163,6 +165,60 @@ describe('toggleReaction', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'reaction-1')
     expect(insert).not.toHaveBeenCalled()
+  })
+})
+
+describe('toggleGoalCompleted', () => {
+  function mockPost(
+    goals: { body: string; completed: boolean; completedAt: string | null }[],
+    authorId = 'user-1'
+  ) {
+    const updateEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn(() => ({ eq: updateEq }))
+
+    fromMock.mockImplementation((table: string) => {
+      if (table !== 'checkin_posts') throw new Error(`unexpected table ${table}`)
+      return {
+        select: () => ({
+          eq: () => ({ single: async () => ({ data: { author_id: authorId, goals }, error: null }) }),
+        }),
+        update,
+      }
+    })
+
+    return { update, updateEq }
+  }
+
+  it('marks the goal completed and stamps completedAt', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T02:00:00.000Z'))
+    const { update, updateEq } = mockPost([{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }])
+
+    await toggleGoalCompleted('post-1', 0)
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [{ body: '알고리즘 3문제 풀기', completed: true, completedAt: '2026-08-10T02:00:00.000Z' }],
+    })
+    expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+  })
+
+  it('unchecks a completed goal and clears completedAt', async () => {
+    const { update } = mockPost([
+      { body: '알고리즘 3문제 풀기', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+    ])
+
+    await toggleGoalCompleted('post-1', 0)
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+    })
+  })
+
+  it('throws when the caller is not the post author', async () => {
+    mockPost([{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }], 'other-user')
+
+    await expect(toggleGoalCompleted('post-1', 0)).rejects.toThrow('권한이 없습니다')
   })
 })
 

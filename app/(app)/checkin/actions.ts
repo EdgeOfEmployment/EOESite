@@ -3,20 +3,23 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { CHECKIN_TYPES } from '@/lib/checkin/status'
-import type { CheckinType } from '@/lib/checkin/types'
-
-function isCheckinType(value: string): value is CheckinType {
-  return (CHECKIN_TYPES as string[]).includes(value)
-}
+import { computeLateFine } from '@/lib/checkin/time'
+import type { CheckinGoal } from '@/lib/checkin/types'
 
 export async function createCheckinPost(formData: FormData) {
-  const type = formData.get('type') as string
-  const body = formData.get('body') as string
   const photo = formData.get('photo') as File | null
+  const goalCount = Number(formData.get('goalCount') ?? '0')
 
-  if (!type || !isCheckinType(type) || !body) {
-    redirect('/checkin?error=' + encodeURIComponent('인증 종류와 내용을 입력해주세요'))
+  const goals: CheckinGoal[] = []
+  for (let i = 0; i < goalCount; i++) {
+    const body = ((formData.get(`goal-${i}`) as string) || '').trim()
+    if (body) {
+      goals.push({ body, completed: false, completedAt: null })
+    }
+  }
+
+  if (!photo || photo.size === 0) {
+    redirect('/checkin?error=' + encodeURIComponent('책상 인증 사진을 첨부해주세요'))
     return
   }
 
@@ -31,24 +34,26 @@ export async function createCheckinPost(formData: FormData) {
     return
   }
 
-  let photoUrl: string | null = null
+  const path = `${user.id}/${Date.now()}-${photo.name}`
+  const { error: uploadError } = await supabase.storage.from('checkin-photos').upload(path, photo)
 
-  if (photo && photo.size > 0) {
-    const path = `${user.id}/${Date.now()}-${photo.name}`
-    const { error: uploadError } = await supabase.storage.from('checkin-photos').upload(path, photo)
-
-    if (uploadError) {
-      redirect('/checkin?error=' + encodeURIComponent(uploadError.message))
-      return
-    }
-
-    const { data: publicUrlData } = supabase.storage.from('checkin-photos').getPublicUrl(path)
-    photoUrl = publicUrlData.publicUrl
+  if (uploadError) {
+    redirect('/checkin?error=' + encodeURIComponent(uploadError.message))
+    return
   }
 
-  const { error } = await supabase
-    .from('checkin_posts')
-    .insert({ author_id: user.id, type, body, photo_url: photoUrl })
+  const { data: publicUrlData } = supabase.storage.from('checkin-photos').getPublicUrl(path)
+  const photoUrl = publicUrlData.publicUrl
+
+  const { isLate, fineAmount } = computeLateFine(new Date().toISOString())
+
+  const { error } = await supabase.from('checkin_posts').insert({
+    author_id: user.id,
+    photo_url: photoUrl,
+    goals,
+    is_late: isLate,
+    fine_amount: fineAmount,
+  })
 
   if (error) {
     redirect('/checkin?error=' + encodeURIComponent(error.message))
@@ -91,31 +96,6 @@ export async function addComment(postId: string, formData: FormData) {
   revalidatePath('/checkin')
 }
 
-export async function deleteCheckinPost(postId: string) {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) throw new Error('권한이 없습니다')
-
-  const { data: callerProfile, error: callerError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (callerError) throw new Error(callerError.message)
-  if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
-
-  const { error } = await supabase.from('checkin_posts').delete().eq('id', postId)
-
-  if (error) throw new Error(error.message)
-
-  revalidatePath('/checkin')
-}
-
 export async function toggleReaction(postId: string, emoji: string) {
   const supabase = await createClient()
 
@@ -144,6 +124,67 @@ export async function toggleReaction(postId: string, emoji: string) {
       .insert({ post_id: postId, author_id: user.id, emoji })
     if (error) throw new Error(error.message)
   }
+
+  revalidatePath('/checkin')
+}
+
+export async function toggleGoalCompleted(postId: string, goalIndex: number) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('로그인이 필요합니다')
+
+  const { data: post, error: fetchError } = await supabase
+    .from('checkin_posts')
+    .select('author_id, goals')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError) throw new Error(fetchError.message)
+  if (!post || post.author_id !== user.id) throw new Error('권한이 없습니다')
+
+  const goals = (post.goals ?? []) as CheckinGoal[]
+  const goal = goals[goalIndex]
+  if (!goal) throw new Error('목표를 찾을 수 없습니다')
+
+  const nextCompleted = !goal.completed
+  const updatedGoals = goals.map((g, i) =>
+    i === goalIndex
+      ? { ...g, completed: nextCompleted, completedAt: nextCompleted ? new Date().toISOString() : null }
+      : g
+  )
+
+  const { error } = await supabase.from('checkin_posts').update({ goals: updatedGoals }).eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/checkin')
+}
+
+export async function deleteCheckinPost(postId: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('권한이 없습니다')
+
+  const { data: callerProfile, error: callerError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (callerError) throw new Error(callerError.message)
+  if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
+
+  const { error } = await supabase.from('checkin_posts').delete().eq('id', postId)
+
+  if (error) throw new Error(error.message)
 
   revalidatePath('/checkin')
 }
