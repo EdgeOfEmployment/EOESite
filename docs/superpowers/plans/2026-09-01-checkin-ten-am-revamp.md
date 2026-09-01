@@ -366,7 +366,7 @@ git commit -m "feat: simplify checkin status to a single posted-today flag"
 
 ---
 
-### Task 5: `lib/checkin/fines.ts` — monthly fine totals per member
+### Task 5: `lib/checkin/fines.ts` — monthly fine totals per member ✅ DONE (0eef24f)
 
 **Files:**
 - Create: `lib/checkin/fines.ts`
