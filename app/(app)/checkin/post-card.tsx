@@ -1,5 +1,6 @@
-import { CHECKIN_TYPE_LABELS, REACTION_EMOJIS, type CheckinPost } from '@/lib/checkin/types'
-import { addComment, toggleReaction, deleteCheckinPost } from './actions'
+import { REACTION_EMOJIS, type CheckinPost } from '@/lib/checkin/types'
+import { formatKstTime } from '@/lib/checkin/time'
+import { addComment, toggleReaction, toggleGoalCompleted, deleteCheckinPost } from './actions'
 import { Card } from '@/components/ui/card'
 
 export function PostCard({
@@ -11,14 +12,20 @@ export function PostCard({
   currentUserId: string
   isAdmin: boolean
 }) {
+  const isAuthor = post.authorId === currentUserId
+
   return (
     <Card as="article">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium dark:bg-gray-800">
-            {CHECKIN_TYPE_LABELS[post.type]}
-          </span>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium dark:bg-gray-800">10시 인증</span>
           <span className="font-medium">{post.authorName}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{formatKstTime(post.createdAt)}</span>
+          {post.isLate && (
+            <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-400">
+              지각 · {post.fineAmount.toLocaleString('ko-KR')}원
+            </span>
+          )}
         </div>
         {isAdmin && (
           <form action={deleteCheckinPost.bind(null, post.id)}>
@@ -29,11 +36,34 @@ export function PostCard({
         )}
       </div>
 
-      <p className="whitespace-pre-wrap text-sm">{post.body}</p>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={post.photoUrl} alt="책상 인증 사진" className="mt-2 max-h-64 rounded object-cover" />
 
-      {post.photoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.photoUrl} alt="인증 사진" className="mt-2 max-h-64 rounded object-cover" />
+      {post.goals.length > 0 && (
+        <ul className="mt-3 flex flex-col gap-1">
+          {post.goals.map((goal, index) => (
+            <li key={index} className="flex flex-wrap items-center gap-2 text-sm">
+              {isAuthor ? (
+                <form action={toggleGoalCompleted.bind(null, post.id, index)}>
+                  <button type="submit" className="flex items-center gap-2">
+                    <span aria-hidden="true">{goal.completed ? '☑' : '☐'}</span>
+                    <span className={goal.completed ? 'text-gray-400 line-through' : ''}>{goal.body}</span>
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <span aria-hidden="true">{goal.completed ? '☑' : '☐'}</span>
+                  <span className={goal.completed ? 'text-gray-400 line-through' : ''}>{goal.body}</span>
+                </>
+              )}
+              {goal.completed && goal.completedAt && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  완료 {formatKstTime(goal.completedAt)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="mt-3 flex gap-2">
