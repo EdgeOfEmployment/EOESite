@@ -1172,7 +1172,7 @@ git commit -m "feat: rebuild checkin post form with required photo and dynamic g
 
 ---
 
-### Task 9: `app/(app)/checkin/post-card.tsx` — photo, goals with author-only toggle, late badge
+### Task 9: `app/(app)/checkin/post-card.tsx` — photo, goals with author-only toggle, late badge ✅ DONE (e545b8a)
 
 **Files:**
 - Modify: `app/(app)/checkin/post-card.tsx`
