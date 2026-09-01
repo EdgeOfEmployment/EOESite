@@ -29,3 +29,26 @@ export function formatKstTime(iso: string): string {
   const displayHours = hours % 12 === 0 ? 12 : hours % 12
   return `${period} ${displayHours}:${String(minutes).padStart(2, '0')}`
 }
+
+export function getKstDateString(iso: string): string {
+  const kst = new Date(new Date(iso).getTime() + KST_OFFSET_MS)
+  return kst.toISOString().slice(0, 10)
+}
+
+export function kstDayRangeUtc(dateStr: string): { start: string; end: string } {
+  const startOfDayKst = new Date(`${dateStr}T00:00:00.000Z`)
+  const start = new Date(startOfDayKst.getTime() - KST_OFFSET_MS).toISOString()
+  const end = new Date(startOfDayKst.getTime() + 24 * 60 * 60 * 1000 - KST_OFFSET_MS).toISOString()
+  return { start, end }
+}
+
+export function shiftKstDateString(dateStr: string, deltaDays: number): string {
+  const d = new Date(`${dateStr}T00:00:00.000Z`)
+  d.setUTCDate(d.getUTCDate() + deltaDays)
+  return d.toISOString().slice(0, 10)
+}
+
+export function formatKstDateHeading(dateStr: string): string {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  return `${year}년 ${month}월 ${day}일`
+}
