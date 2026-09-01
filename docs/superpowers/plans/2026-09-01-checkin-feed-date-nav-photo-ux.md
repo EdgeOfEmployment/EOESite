@@ -146,7 +146,7 @@ git commit -m "feat: add KST day-string and day-range helpers for checkin feed d
 
 ---
 
-### Task 2: `app/(app)/checkin/page.tsx` — date-filtered feed with day navigation
+### Task 2: `app/(app)/checkin/page.tsx` — date-filtered feed with day navigation ✅ DONE (8f963e7, fix d40376f)
 
 **Files:**
 - Modify: `app/(app)/checkin/page.tsx`
