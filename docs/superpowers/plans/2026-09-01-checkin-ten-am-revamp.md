@@ -130,7 +130,7 @@ git commit -m "feat: replace checkin schema with single desk+goal post type"
 
 ---
 
-### Task 2: `lib/checkin/time.ts` — KST lateness/fine math and time formatting
+### Task 2: `lib/checkin/time.ts` — KST lateness/fine math and time formatting ✅ DONE (fb548ab)
 
 **Files:**
 - Create: `lib/checkin/time.ts`
