@@ -545,7 +545,7 @@ git commit -m "feat: drop checkin type from calendar grouping, add lateness flag
 
 ---
 
-### Task 7: `app/(app)/checkin/actions.ts` — single-type create + goal toggle
+### Task 7: `app/(app)/checkin/actions.ts` — single-type create + goal toggle ✅ DONE (2f4ff93)
 
 **Files:**
 - Modify: `app/(app)/checkin/actions.ts`
