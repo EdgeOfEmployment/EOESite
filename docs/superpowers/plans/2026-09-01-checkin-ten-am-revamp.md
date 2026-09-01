@@ -1027,7 +1027,7 @@ git commit -m "feat: rewrite checkin actions for single-type posts with goal tog
 
 ---
 
-### Task 8: `app/(app)/checkin/post-form.tsx` — photo required + dynamic goal list
+### Task 8: `app/(app)/checkin/post-form.tsx` — photo required + dynamic goal list ✅ DONE (033c998, test fix 61dbe0a)
 
 **Files:**
 - Modify: `app/(app)/checkin/post-form.tsx`
