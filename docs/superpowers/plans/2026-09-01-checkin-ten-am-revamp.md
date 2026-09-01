@@ -1806,7 +1806,7 @@ git commit -m "feat: show lateness on the checkin calendar and link back to the 
 
 ---
 
-### Task 12: `app/(app)/page.tsx` — dashboard with today status + this month's fine totals
+### Task 12: `app/(app)/page.tsx` — dashboard with today status + this month's fine totals ✅ DONE (fe5e2d6)
 
 **Files:**
 - Modify: `app/(app)/page.tsx`
