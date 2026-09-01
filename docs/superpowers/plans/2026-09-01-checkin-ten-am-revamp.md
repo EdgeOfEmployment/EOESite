@@ -235,7 +235,7 @@ git commit -m "feat: add KST lateness/fine and time formatting helpers"
 
 ---
 
-### Task 3: `lib/checkin/types.ts` — collapse to a single post type with goals
+### Task 3: `lib/checkin/types.ts` — collapse to a single post type with goals ✅ DONE (40bec5d)
 
 **Files:**
 - Modify: `lib/checkin/types.ts`
