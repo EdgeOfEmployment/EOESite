@@ -1865,8 +1865,8 @@ describe('DashboardPage', () => {
   it('renders a status row per approved member with a checkmark for who posted today', async () => {
     const ui = await DashboardPage()
     render(ui)
-    expect(screen.getByText('김민수')).toBeInTheDocument()
-    expect(screen.getByText('이지은')).toBeInTheDocument()
+    expect(screen.getAllByText('김민수')).toHaveLength(2)
+    expect(screen.getAllByText('이지은')).toHaveLength(2)
     expect(screen.getAllByText('✅')).toHaveLength(1)
   })
 
