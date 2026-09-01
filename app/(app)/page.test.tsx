@@ -16,7 +16,12 @@ vi.mock('@/lib/supabase/server', () => ({
         return {
           select: () => ({
             gte: () => ({
-              lt: async () => ({ data: [{ author_id: 'user-2', fine_amount: 11000 }] }),
+              lt: async () => ({
+                data: [
+                  { author_id: 'user-2', fine_amount: 11000, paid: false },
+                  { author_id: 'user-2', fine_amount: 5000, paid: true },
+                ],
+              }),
             }),
           }),
         }
@@ -53,12 +58,14 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('✅')).toHaveLength(1)
   })
 
-  it('shows this months fine total per member', async () => {
+  it('shows this months unpaid fine total per member', async () => {
     const ui = await DashboardPage()
     render(ui)
     expect(screen.getByText('이번 달 벌금 정산')).toBeInTheDocument()
+    expect(screen.getByText('미납액')).toBeInTheDocument()
     expect(screen.getByText('11,000원')).toBeInTheDocument()
     expect(screen.getByText('0원')).toBeInTheDocument()
+    expect(screen.queryByText('16,000원')).not.toBeInTheDocument()
   })
 
   it('links to the checkin feed', async () => {

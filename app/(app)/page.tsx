@@ -31,14 +31,15 @@ export default async function DashboardPage() {
     supabase.from('checkin_posts').select('author_id').gte('created_at', todayStart).lt('created_at', todayEnd),
     supabase
       .from('checkin_posts')
-      .select('author_id, fine_amount')
+      .select('author_id, fine_amount, paid')
       .gte('created_at', monthStart)
       .lt('created_at', monthEnd),
   ])
 
   const memberSummaries = (members ?? []).map((m) => ({ id: m.id, name: m.name as string }))
   const todaysAuthorIds = (todaysPosts ?? []).map((p) => p.author_id as string)
-  const monthFinePosts = (monthPosts ?? []).map((p) => ({
+  const unpaidMonthPosts = (monthPosts ?? []).filter((p) => !p.paid)
+  const monthFinePosts = unpaidMonthPosts.map((p) => ({
     authorId: p.author_id as string,
     fineAmount: p.fine_amount as number,
   }))
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
         <thead>
           <tr>
             <th className="border border-gray-200 p-2 text-left dark:border-gray-800">멤버</th>
-            <th className="border border-gray-200 p-2 dark:border-gray-800">벌금</th>
+            <th className="border border-gray-200 p-2 dark:border-gray-800">미납액</th>
           </tr>
         </thead>
         <tbody>
