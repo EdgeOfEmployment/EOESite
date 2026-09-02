@@ -26,7 +26,14 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createCheckinPost, addComment, toggleReaction, toggleGoalCompleted, deleteCheckinPost } from './actions'
+import {
+  createCheckinPost,
+  addComment,
+  toggleReaction,
+  toggleGoalCompleted,
+  updateCheckinGoals,
+  deleteCheckinPost,
+} from './actions'
 
 function buildFormData(fields: Record<string, FormDataEntryValue>) {
   const formData = new FormData()
@@ -219,6 +226,75 @@ describe('toggleGoalCompleted', () => {
     mockPost([{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }], 'other-user')
 
     await expect(toggleGoalCompleted('post-1', 0)).rejects.toThrow('권한이 없습니다')
+  })
+})
+
+describe('updateCheckinGoals', () => {
+  function mockPost(authorId = 'user-1') {
+    const updateEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn(() => ({ eq: updateEq }))
+
+    fromMock.mockImplementation((table: string) => {
+      if (table !== 'checkin_posts') throw new Error(`unexpected table ${table}`)
+      return {
+        select: () => ({
+          eq: () => ({ single: async () => ({ data: { author_id: authorId }, error: null }) }),
+        }),
+        update,
+      }
+    })
+
+    return { update, updateEq }
+  }
+
+  function buildGoalsFormData(
+    goals: { body: string; completed?: boolean; completedAt?: string | null }[]
+  ) {
+    const formData = new FormData()
+    formData.set('goalCount', String(goals.length))
+    goals.forEach((g, i) => {
+      formData.set(`goal-${i}`, g.body)
+      formData.set(`completed-${i}`, g.completed ? 'true' : 'false')
+      formData.set(`completedAt-${i}`, g.completedAt ?? '')
+    })
+    return formData
+  }
+
+  it('updates the goals for the post author', async () => {
+    const { update, updateEq } = mockPost()
+    const formData = buildGoalsFormData([
+      { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
+      { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+    ])
+
+    await updateCheckinGoals('post-1', formData)
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [
+        { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
+        { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+      ],
+    })
+    expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+  })
+
+  it('skips blank goal text', async () => {
+    const { update } = mockPost()
+    const formData = buildGoalsFormData([{ body: '알고리즘 3문제 풀기' }, { body: '   ' }])
+
+    await updateCheckinGoals('post-1', formData)
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+    })
+  })
+
+  it('throws when the caller is not the post author', async () => {
+    mockPost('other-user')
+    const formData = buildGoalsFormData([{ body: '알고리즘 3문제 풀기' }])
+
+    await expect(updateCheckinGoals('post-1', formData)).rejects.toThrow('권한이 없습니다')
   })
 })
 

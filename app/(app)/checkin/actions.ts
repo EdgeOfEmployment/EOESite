@@ -164,6 +164,42 @@ export async function toggleGoalCompleted(postId: string, goalIndex: number) {
   revalidatePath('/checkin')
 }
 
+export async function updateCheckinGoals(postId: string, formData: FormData) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('로그인이 필요합니다')
+
+  const { data: post, error: fetchError } = await supabase
+    .from('checkin_posts')
+    .select('author_id')
+    .eq('id', postId)
+    .single()
+
+  if (fetchError) throw new Error(fetchError.message)
+  if (!post || post.author_id !== user.id) throw new Error('권한이 없습니다')
+
+  const goalCount = Number(formData.get('goalCount') ?? '0')
+  const goals: CheckinGoal[] = []
+  for (let i = 0; i < goalCount; i++) {
+    const body = ((formData.get(`goal-${i}`) as string) || '').trim()
+    if (!body) continue
+
+    const completed = formData.get(`completed-${i}`) === 'true'
+    const completedAt = completed ? ((formData.get(`completedAt-${i}`) as string) || null) : null
+    goals.push({ body, completed, completedAt })
+  }
+
+  const { error } = await supabase.from('checkin_posts').update({ goals }).eq('id', postId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/checkin')
+}
+
 export async function deleteCheckinPost(postId: string) {
   const supabase = await createClient()
 
