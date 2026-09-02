@@ -88,6 +88,17 @@ describe('createCheckinPost', () => {
     expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
+  it('strips spaces and non-ASCII characters from the filename before uploading', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T00:00:00.000Z'))
+    const photo = new File(['fake-image-bytes'], '스크린샷 2026-08-14 143253.png', { type: 'image/png' })
+    const formData = buildFormData({ photo, goalCount: '0' })
+
+    await expect(createCheckinPost(formData)).rejects.toThrow()
+
+    expect(uploadMock).toHaveBeenCalledWith('user-1/1786320000000.png', photo)
+  })
+
   it('inserts non-empty goals as unfinished and skips blank ones, and computes the late fine', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-10T01:05:00.000Z')) // 10:05 KST -> late, +1000

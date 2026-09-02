@@ -6,6 +6,14 @@ import { redirect } from 'next/navigation'
 import { computeLateFine } from '@/lib/checkin/time'
 import type { CheckinGoal } from '@/lib/checkin/types'
 
+// Supabase Storage rejects keys containing spaces or non-ASCII characters
+// (e.g. Korean screenshot filenames like "스크린샷 2026-08-14 143253.png"),
+// so the original filename can't be used as-is in the upload path.
+function resolveExtension(fileName: string): string {
+  const match = /\.([a-zA-Z0-9]+)$/.exec(fileName)
+  return match ? `.${match[1]}` : ''
+}
+
 export async function createCheckinPost(formData: FormData) {
   const photo = formData.get('photo') as File | null
   const goalCount = Number(formData.get('goalCount') ?? '0')
@@ -34,7 +42,7 @@ export async function createCheckinPost(formData: FormData) {
     return
   }
 
-  const path = `${user.id}/${Date.now()}-${photo.name}`
+  const path = `${user.id}/${Date.now()}${resolveExtension(photo.name)}`
   const { error: uploadError } = await supabase.storage.from('checkin-photos').upload(path, photo)
 
   if (uploadError) {
