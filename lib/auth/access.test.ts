@@ -81,4 +81,36 @@ describe('getRedirectPath', () => {
     const profile: Profile = { status: 'rejected', role: 'member' }
     expect(getRedirectPath(profile, '/pending')).toBeNull()
   })
+
+  it('lets unauthenticated users reach /forgot-password', () => {
+    expect(getRedirectPath(null, '/forgot-password')).toBeNull()
+  })
+
+  it('sends approved users away from /forgot-password to the dashboard', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/forgot-password')).toBe('/')
+  })
+
+  it('lets unauthenticated users reach the auth callback', () => {
+    expect(getRedirectPath(null, '/auth/callback')).toBeNull()
+  })
+
+  it('lets logged-in users reach the auth callback without bouncing to the dashboard', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/auth/callback')).toBeNull()
+  })
+
+  it('lets a pending profile reach /reset-password to complete a recovery flow', () => {
+    const profile: Profile = { status: 'pending', role: 'member' }
+    expect(getRedirectPath(profile, '/reset-password')).toBeNull()
+  })
+
+  it('lets an approved profile reach /reset-password without bouncing to the dashboard', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/reset-password')).toBeNull()
+  })
+
+  it('lets unauthenticated users reach /reset-password (submitting fails server-side without a recovery session)', () => {
+    expect(getRedirectPath(null, '/reset-password')).toBeNull()
+  })
 })

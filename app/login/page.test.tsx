@@ -25,4 +25,14 @@ describe('LoginPage', () => {
 
     expect(screen.getByRole('link', { name: '회원가입' })).toHaveAttribute('href', '/signup')
   })
+
+  it('links to the forgot-password page', async () => {
+    const ui = await LoginPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByRole('link', { name: '비밀번호를 잊으셨나요?' })).toHaveAttribute(
+      'href',
+      '/forgot-password'
+    )
+  })
 })

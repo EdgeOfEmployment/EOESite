@@ -1,45 +1,42 @@
 import Link from 'next/link'
-import { logIn } from './actions'
+import { requestPasswordReset } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
 import { Card } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
-export default async function LoginPage({
+export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; sent?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, sent } = await searchParams
 
   return (
-    <PageShell title="로그인" width="sm" top="auth">
+    <PageShell title="비밀번호 찾기" width="sm" top="auth">
       {error && (
         <Alert variant="danger" className="mb-4">
           {error}
         </Alert>
       )}
-      <Card as="form" action={logIn} className="flex flex-col gap-4">
+      {sent && (
+        <Alert variant="success" className="mb-4">
+          입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다.
+        </Alert>
+      )}
+      <Card as="form" action={requestPasswordReset} className="flex flex-col gap-4">
         <Label htmlFor="email" className="sr-only">
           이메일
         </Label>
         <Input id="email" name="email" type="email" placeholder="이메일" required />
-        <Label htmlFor="password" className="sr-only">
-          비밀번호
-        </Label>
-        <Input id="password" name="password" type="password" placeholder="비밀번호" required />
-        <Link href="/forgot-password" className="self-end text-sm text-gray-500 underline dark:text-gray-400">
-          비밀번호를 잊으셨나요?
-        </Link>
         <Button type="submit" size="lg">
-          로그인
+          재설정 링크 보내기
         </Button>
       </Card>
       <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-        계정이 없으신가요?{' '}
-        <Link href="/signup" className="underline">
-          회원가입
+        <Link href="/login" className="underline">
+          로그인으로 돌아가기
         </Link>
       </p>
     </PageShell>
