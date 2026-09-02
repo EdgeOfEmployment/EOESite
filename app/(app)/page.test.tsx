@@ -64,8 +64,14 @@ describe('DashboardPage', () => {
     expect(screen.getByText('이번 달 벌금 정산')).toBeInTheDocument()
     expect(screen.getByText('미납액')).toBeInTheDocument()
     expect(screen.getByText('11,000원')).toBeInTheDocument()
-    expect(screen.getByText('0원')).toBeInTheDocument()
-    expect(screen.queryByText('16,000원')).not.toBeInTheDocument()
+    expect(screen.getAllByText('0원')).toHaveLength(2)
+  })
+
+  it('shows this months total fine (paid and unpaid) per member', async () => {
+    const ui = await DashboardPage()
+    render(ui)
+    expect(screen.getByText('벌금 총액')).toBeInTheDocument()
+    expect(screen.getByText('16,000원')).toBeInTheDocument()
   })
 
   it('links to the checkin feed', async () => {

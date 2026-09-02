@@ -38,14 +38,20 @@ export default async function DashboardPage() {
 
   const memberSummaries = (members ?? []).map((m) => ({ id: m.id, name: m.name as string }))
   const todaysAuthorIds = (todaysPosts ?? []).map((p) => p.author_id as string)
-  const unpaidMonthPosts = (monthPosts ?? []).filter((p) => !p.paid)
-  const monthFinePosts = unpaidMonthPosts.map((p) => ({
+  const allMonthFinePosts = (monthPosts ?? []).map((p) => ({
     authorId: p.author_id as string,
     fineAmount: p.fine_amount as number,
   }))
+  const unpaidMonthFinePosts = (monthPosts ?? [])
+    .filter((p) => !p.paid)
+    .map((p) => ({
+      authorId: p.author_id as string,
+      fineAmount: p.fine_amount as number,
+    }))
 
   const statusRows = buildTodayStatus(memberSummaries, todaysAuthorIds)
-  const fineRows = buildMonthlyFineTotals(memberSummaries, monthFinePosts)
+  const unpaidFineRows = buildMonthlyFineTotals(memberSummaries, unpaidMonthFinePosts)
+  const totalFineRows = buildMonthlyFineTotals(memberSummaries, allMonthFinePosts)
   const posted = session ? hasPostedToday(session.userId, todaysAuthorIds) : false
 
   return (
@@ -85,14 +91,18 @@ export default async function DashboardPage() {
           <tr>
             <th className="border border-gray-200 p-2 text-left dark:border-gray-800">멤버</th>
             <th className="border border-gray-200 p-2 dark:border-gray-800">미납액</th>
+            <th className="border border-gray-200 p-2 dark:border-gray-800">벌금 총액</th>
           </tr>
         </thead>
         <tbody>
-          {fineRows.map((row) => (
+          {unpaidFineRows.map((row, index) => (
             <tr key={row.member.id}>
               <td className="border border-gray-200 p-2 dark:border-gray-800">{row.member.name}</td>
               <td className="border border-gray-200 p-2 text-center dark:border-gray-800">
                 {row.totalFine.toLocaleString('ko-KR')}원
+              </td>
+              <td className="border border-gray-200 p-2 text-center dark:border-gray-800">
+                {totalFineRows[index].totalFine.toLocaleString('ko-KR')}원
               </td>
             </tr>
           ))}
