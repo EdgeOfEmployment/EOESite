@@ -1,7 +1,8 @@
 import { REACTION_EMOJIS, type CheckinPost } from '@/lib/checkin/types'
 import { formatKstTime } from '@/lib/checkin/time'
-import { addComment, toggleReaction, toggleGoalCompleted, deleteCheckinPost } from './actions'
+import { addComment, toggleReaction, deleteCheckinPost } from './actions'
 import { Card } from '@/components/ui/card'
+import { GoalsEditor } from './goals-editor'
 
 export function PostCard({
   post,
@@ -39,32 +40,7 @@ export function PostCard({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={post.photoUrl} alt="책상 인증 사진" className="mt-2 max-h-64 rounded object-cover" />
 
-      {post.goals.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-1">
-          {post.goals.map((goal, index) => (
-            <li key={index} className="flex flex-wrap items-center gap-2 text-sm">
-              {isAuthor ? (
-                <form action={toggleGoalCompleted.bind(null, post.id, index)}>
-                  <button type="submit" className="flex items-center gap-2">
-                    <span aria-hidden="true">{goal.completed ? '☑' : '☐'}</span>
-                    <span className={goal.completed ? 'text-gray-400 line-through' : ''}>{goal.body}</span>
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <span aria-hidden="true">{goal.completed ? '☑' : '☐'}</span>
-                  <span className={goal.completed ? 'text-gray-400 line-through' : ''}>{goal.body}</span>
-                </>
-              )}
-              {goal.completed && goal.completedAt && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  완료 {formatKstTime(goal.completedAt)}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <GoalsEditor postId={post.id} goals={post.goals} isAuthor={isAuthor} />
 
       <div className="mt-3 flex gap-2">
         {REACTION_EMOJIS.map((emoji) => {

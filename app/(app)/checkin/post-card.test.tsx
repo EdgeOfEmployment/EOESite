@@ -5,6 +5,7 @@ vi.mock('./actions', () => ({
   addComment: vi.fn(),
   toggleReaction: vi.fn(),
   toggleGoalCompleted: vi.fn(),
+  updateCheckinGoals: vi.fn(),
   deleteCheckinPost: vi.fn(),
 }))
 
