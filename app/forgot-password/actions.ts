@@ -12,7 +12,10 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const origin = (await headers()).get('origin')
+  // NEXT_PUBLIC_SITE_URL is the canonical deployed origin; the Origin request
+  // header is a local-dev-only fallback since some hosting setups don't pass
+  // it through reliably.
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get('origin')
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?next=/reset-password`,
