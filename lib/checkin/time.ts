@@ -42,6 +42,15 @@ export function kstDayRangeUtc(dateStr: string): { start: string; end: string } 
   return { start, end }
 }
 
+export function kstMonthRangeUtc(dateStr: string): { start: string; end: string } {
+  const [year, month] = dateStr.split('-').map(Number)
+  const startOfMonthKst = new Date(Date.UTC(year, month - 1, 1))
+  const endOfMonthKst = new Date(Date.UTC(year, month, 1))
+  const start = new Date(startOfMonthKst.getTime() - KST_OFFSET_MS).toISOString()
+  const end = new Date(endOfMonthKst.getTime() - KST_OFFSET_MS).toISOString()
+  return { start, end }
+}
+
 export function shiftKstDateString(dateStr: string, deltaDays: number): string {
   const d = new Date(`${dateStr}T00:00:00.000Z`)
   d.setUTCDate(d.getUTCDate() + deltaDays)

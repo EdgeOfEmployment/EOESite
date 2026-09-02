@@ -4,6 +4,7 @@ import {
   formatKstTime,
   getKstDateString,
   kstDayRangeUtc,
+  kstMonthRangeUtc,
   shiftKstDateString,
   formatKstDateHeading,
 } from './time'
@@ -71,6 +72,22 @@ describe('kstDayRangeUtc', () => {
   it('returns an end that is the exclusive boundary — it belongs to the next KST day', () => {
     const { end } = kstDayRangeUtc('2026-08-10')
     expect(getKstDateString(end)).toBe('2026-08-11')
+  })
+})
+
+describe('kstMonthRangeUtc', () => {
+  it('returns the UTC instant range spanning the KST calendar month containing the date', () => {
+    expect(kstMonthRangeUtc('2026-08-15')).toEqual({
+      start: '2026-07-31T15:00:00.000Z',
+      end: '2026-08-31T15:00:00.000Z',
+    })
+  })
+
+  it('rolls the end over into the next year across a December date', () => {
+    expect(kstMonthRangeUtc('2026-12-10')).toEqual({
+      start: '2026-11-30T15:00:00.000Z',
+      end: '2026-12-31T15:00:00.000Z',
+    })
   })
 })
 

@@ -1,10 +1,12 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
 const members = [
   { id: 'user-1', name: '김민수' },
   { id: 'user-2', name: '이지은' },
 ]
+
+const checkinCalls: { fields: string; gte: string; lt: string }[] = []
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -14,14 +16,17 @@ vi.mock('@/lib/supabase/server', () => ({
       }
       if (table === 'checkin_posts') {
         return {
-          select: () => ({
-            gte: () => ({
-              lt: async () => ({
-                data: [
-                  { author_id: 'user-2', fine_amount: 11000, paid: false },
-                  { author_id: 'user-2', fine_amount: 5000, paid: true },
-                ],
-              }),
+          select: (fields: string) => ({
+            gte: (_col: string, gteValue: string) => ({
+              lt: async (_col2: string, ltValue: string) => {
+                checkinCalls.push({ fields, gte: gteValue, lt: ltValue })
+                return {
+                  data: [
+                    { author_id: 'user-2', fine_amount: 11000, paid: false },
+                    { author_id: 'user-2', fine_amount: 5000, paid: true },
+                  ],
+                }
+              },
             }),
           }),
         }
@@ -78,5 +83,45 @@ describe('DashboardPage', () => {
     const ui = await DashboardPage()
     render(ui)
     expect(screen.getByRole('link', { name: '인증 보러가기' })).toHaveAttribute('href', '/checkin')
+  })
+})
+
+describe('DashboardPage KST date boundaries', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("queries today's checkin_posts using the KST calendar day, not the UTC day", async () => {
+    // 2026-08-10T20:00:00Z is still Aug 10 in UTC, but already 2026-08-11 05:00 KST.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T20:00:00.000Z'))
+    checkinCalls.length = 0
+
+    const ui = await DashboardPage()
+    render(ui)
+
+    const todayCall = checkinCalls.find((c) => c.fields === 'author_id')
+    expect(todayCall).toEqual({
+      fields: 'author_id',
+      gte: '2026-08-10T15:00:00.000Z',
+      lt: '2026-08-11T15:00:00.000Z',
+    })
+  })
+
+  it("queries this month's checkin_posts using the KST calendar month, not the UTC month", async () => {
+    // 2026-08-31T20:00:00Z is still August in UTC, but already 2026-09-01 05:00 KST.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-31T20:00:00.000Z'))
+    checkinCalls.length = 0
+
+    const ui = await DashboardPage()
+    render(ui)
+
+    const monthCall = checkinCalls.find((c) => c.fields === 'author_id, fine_amount, paid')
+    expect(monthCall).toEqual({
+      fields: 'author_id, fine_amount, paid',
+      gte: '2026-08-31T15:00:00.000Z',
+      lt: '2026-09-30T15:00:00.000Z',
+    })
   })
 })

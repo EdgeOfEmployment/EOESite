@@ -3,27 +3,15 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { buildTodayStatus, hasPostedToday } from '@/lib/checkin/status'
 import { buildMonthlyFineTotals } from '@/lib/checkin/fines'
+import { getKstDateString, kstDayRangeUtc, kstMonthRangeUtc } from '@/lib/checkin/time'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
 
-function todayRangeUtc() {
-  const now = new Date()
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString()
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString()
-  return { start, end }
-}
-
-function monthRangeUtc() {
-  const now = new Date()
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
-  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).toISOString()
-  return { start, end }
-}
-
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { start: todayStart, end: todayEnd } = todayRangeUtc()
-  const { start: monthStart, end: monthEnd } = monthRangeUtc()
+  const todayKst = getKstDateString(new Date().toISOString())
+  const { start: todayStart, end: todayEnd } = kstDayRangeUtc(todayKst)
+  const { start: monthStart, end: monthEnd } = kstMonthRangeUtc(todayKst)
 
   const [session, { data: members }, { data: todaysPosts }, { data: monthPosts }] = await Promise.all([
     getSessionProfile(),
