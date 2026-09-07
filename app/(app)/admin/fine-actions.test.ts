@@ -29,7 +29,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { setCheckinPostPaid, cancelCheckinFine, addManualFine, deleteManualFine } from './fine-actions'
+import { setCheckinPostPaid, cancelCheckinFine, addManualFine, deleteManualFine, setManualFinePaid } from './fine-actions'
 
 function manualFineFormData(fields: Partial<Record<'userId' | 'amount' | 'reason', string>>): FormData {
   const formData = new FormData()
@@ -225,5 +225,34 @@ describe('deleteManualFine', () => {
 
     await expect(deleteManualFine(MANUAL_FINE_ID)).rejects.toThrow('db error')
     expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('setManualFinePaid', () => {
+  it('marks a manual fine paid with a timestamp and the caller id, then revalidates', async () => {
+    await setManualFinePaid(MANUAL_FINE_ID, true)
+
+    expect(fromMock).toHaveBeenCalledWith('manual_fines')
+    expect(updateMock).toHaveBeenCalledWith({
+      paid: true,
+      paid_at: '2026-09-02T00:00:00.000Z',
+      paid_by: ADMIN_ID,
+    })
+    expect(updateEqMock).toHaveBeenCalledWith('id', MANUAL_FINE_ID)
+    expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+  })
+
+  it('marks a manual fine unpaid and clears paid_at/paid_by', async () => {
+    await setManualFinePaid(MANUAL_FINE_ID, false)
+
+    expect(updateMock).toHaveBeenCalledWith({ paid: false, paid_at: null, paid_by: null })
+  })
+
+  it('throws when the caller is not an admin, without updating', async () => {
+    roleById[ADMIN_ID] = 'member'
+
+    await expect(setManualFinePaid(MANUAL_FINE_ID, true)).rejects.toThrow('권한이 없습니다')
+    expect(updateMock).not.toHaveBeenCalled()
   })
 })

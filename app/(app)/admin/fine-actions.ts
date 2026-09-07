@@ -137,3 +137,36 @@ export async function deleteManualFine(fineId: string) {
   revalidatePath('/admin')
   revalidatePath('/')
 }
+
+export async function setManualFinePaid(fineId: string, paid: boolean) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('권한이 없습니다')
+
+  const { data: callerProfile, error: callerError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (callerError) throw new Error(callerError.message)
+  if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
+
+  const { error } = await supabase
+    .from('manual_fines')
+    .update({
+      paid,
+      paid_at: paid ? new Date().toISOString() : null,
+      paid_by: paid ? user.id : null,
+    })
+    .eq('id', fineId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/admin')
+  revalidatePath('/')
+}
