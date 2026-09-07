@@ -9,6 +9,7 @@ import {
   setManualFinePaid,
 } from './fine-actions'
 import { groupFinesByMonth, type FineRow } from '@/lib/checkin/fines'
+import { getKstDateString, kstMonthRangeUtc } from '@/lib/checkin/time'
 import { PageShell } from '@/components/ui/page-shell'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -111,6 +112,24 @@ export default async function AdminPage({
 
   const fineGroups = groupFinesByMonth([...lateFineRows, ...manualFineRows])
 
+  const todayKst = getKstDateString(new Date().toISOString())
+  const { start: monthStart, end: monthEnd } = kstMonthRangeUtc(todayKst)
+  const isThisMonth = (createdAt: string) => {
+    const time = new Date(createdAt).getTime()
+    return time >= new Date(monthStart).getTime() && time < new Date(monthEnd).getTime()
+  }
+
+  const thisMonthFineAmounts = [
+    ...(lateFines ?? [])
+      .filter((post) => isThisMonth(post.created_at))
+      .map((post) => ({ amount: post.fine_amount as number, paid: post.paid as boolean })),
+    ...(manualFines ?? [])
+      .filter((fine) => isThisMonth(fine.created_at))
+      .map((fine) => ({ amount: fine.amount as number, paid: fine.paid as boolean })),
+  ]
+  const thisMonthTotal = thisMonthFineAmounts.reduce((sum, f) => sum + f.amount, 0)
+  const thisMonthUnpaidTotal = thisMonthFineAmounts.filter((f) => !f.paid).reduce((sum, f) => sum + f.amount, 0)
+
   return (
     <PageShell title="관리자 페이지">
       <section className="mb-10">
@@ -166,6 +185,10 @@ export default async function AdminPage({
             {showPaid ? '미납 건만 보기' : '납부 내역 보기'}
           </Link>
         </div>
+
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          이번 달 미납액 합계 {thisMonthUnpaidTotal.toLocaleString('ko-KR')}원 · 총액 합계 {thisMonthTotal.toLocaleString('ko-KR')}원
+        </p>
 
         <Card
           as="form"

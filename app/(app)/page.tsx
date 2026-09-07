@@ -55,6 +55,9 @@ export default async function DashboardPage() {
   const totalFineRows = buildMonthlyFineTotals(memberSummaries, allMonthFinePosts)
   const posted = session ? hasPostedToday(session.userId, todaysAuthorIds) : false
 
+  const unpaidMonthTotal = unpaidMonthFinePosts.reduce((sum, p) => sum + p.fineAmount, 0)
+  const allMonthTotal = allMonthFinePosts.reduce((sum, p) => sum + p.fineAmount, 0)
+
   return (
     <PageShell title="대시보드" width="3xl">
       {posted ? (
@@ -87,6 +90,9 @@ export default async function DashboardPage() {
       </table>
 
       <h2 className="mt-8 text-lg font-semibold">이번 달 벌금 정산</h2>
+      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        미납액 합계 {unpaidMonthTotal.toLocaleString('ko-KR')}원 · 벌금 총액 합계 {allMonthTotal.toLocaleString('ko-KR')}원
+      </p>
       <table className="mt-2 w-full border-collapse text-sm">
         <thead>
           <tr>
