@@ -255,4 +255,18 @@ describe('setManualFinePaid', () => {
     await expect(setManualFinePaid(MANUAL_FINE_ID, true)).rejects.toThrow('권한이 없습니다')
     expect(updateMock).not.toHaveBeenCalled()
   })
+
+  it('throws when there is no authenticated caller, without updating', async () => {
+    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+
+    await expect(setManualFinePaid(MANUAL_FINE_ID, true)).rejects.toThrow('권한이 없습니다')
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when the update fails', async () => {
+    updateEqMock.mockResolvedValue({ error: { message: 'db error' } })
+
+    await expect(setManualFinePaid(MANUAL_FINE_ID, true)).rejects.toThrow('db error')
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
 })
