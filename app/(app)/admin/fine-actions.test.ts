@@ -25,7 +25,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { setCheckinPostPaid } from './fine-actions'
+import { setCheckinPostPaid, cancelCheckinFine } from './fine-actions'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -91,6 +91,32 @@ describe('setCheckinPostPaid', () => {
     updateEqMock.mockResolvedValue({ error: { message: 'db error' } })
 
     await expect(setCheckinPostPaid(POST_ID, true)).rejects.toThrow('db error')
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('cancelCheckinFine', () => {
+  it('zeroes the fine amount and revalidates', async () => {
+    await cancelCheckinFine(POST_ID)
+
+    expect(fromMock).toHaveBeenCalledWith('checkin_posts')
+    expect(updateMock).toHaveBeenCalledWith({ fine_amount: 0 })
+    expect(updateEqMock).toHaveBeenCalledWith('id', POST_ID)
+    expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+  })
+
+  it('throws when the caller is not an admin, without updating', async () => {
+    roleById[ADMIN_ID] = 'member'
+
+    await expect(cancelCheckinFine(POST_ID)).rejects.toThrow('권한이 없습니다')
+    expect(updateMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when the update fails', async () => {
+    updateEqMock.mockResolvedValue({ error: { message: 'db error' } })
+
+    await expect(cancelCheckinFine(POST_ID)).rejects.toThrow('db error')
     expect(revalidatePathMock).not.toHaveBeenCalled()
   })
 })
