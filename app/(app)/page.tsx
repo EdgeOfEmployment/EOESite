@@ -13,29 +13,42 @@ export default async function DashboardPage() {
   const { start: todayStart, end: todayEnd } = kstDayRangeUtc(todayKst)
   const { start: monthStart, end: monthEnd } = kstMonthRangeUtc(todayKst)
 
-  const [session, { data: members }, { data: todaysPosts }, { data: monthPosts }] = await Promise.all([
-    getSessionProfile(),
-    supabase.from('profiles').select('id, name').eq('status', 'approved'),
-    supabase.from('checkin_posts').select('author_id').gte('created_at', todayStart).lt('created_at', todayEnd),
-    supabase
-      .from('checkin_posts')
-      .select('author_id, fine_amount, paid')
-      .gte('created_at', monthStart)
-      .lt('created_at', monthEnd),
-  ])
+  const [session, { data: members }, { data: todaysPosts }, { data: monthPosts }, { data: monthManualFines }] =
+    await Promise.all([
+      getSessionProfile(),
+      supabase.from('profiles').select('id, name').eq('status', 'approved'),
+      supabase.from('checkin_posts').select('author_id').gte('created_at', todayStart).lt('created_at', todayEnd),
+      supabase
+        .from('checkin_posts')
+        .select('author_id, fine_amount, paid')
+        .gte('created_at', monthStart)
+        .lt('created_at', monthEnd),
+      supabase
+        .from('manual_fines')
+        .select('user_id, amount, paid')
+        .gte('created_at', monthStart)
+        .lt('created_at', monthEnd),
+    ])
 
   const memberSummaries = (members ?? []).map((m) => ({ id: m.id, name: m.name as string }))
   const todaysAuthorIds = (todaysPosts ?? []).map((p) => p.author_id as string)
-  const allMonthFinePosts = (monthPosts ?? []).map((p) => ({
+
+  const monthCheckinFines = (monthPosts ?? []).map((p) => ({
     authorId: p.author_id as string,
     fineAmount: p.fine_amount as number,
+    paid: p.paid as boolean,
   }))
-  const unpaidMonthFinePosts = (monthPosts ?? [])
-    .filter((p) => !p.paid)
-    .map((p) => ({
-      authorId: p.author_id as string,
-      fineAmount: p.fine_amount as number,
-    }))
+  const monthManualFinesList = (monthManualFines ?? []).map((f) => ({
+    authorId: f.user_id as string,
+    fineAmount: f.amount as number,
+    paid: f.paid as boolean,
+  }))
+  const allMonthFines = [...monthCheckinFines, ...monthManualFinesList]
+
+  const allMonthFinePosts = allMonthFines.map(({ authorId, fineAmount }) => ({ authorId, fineAmount }))
+  const unpaidMonthFinePosts = allMonthFines
+    .filter((f) => !f.paid)
+    .map(({ authorId, fineAmount }) => ({ authorId, fineAmount }))
 
   const statusRows = buildTodayStatus(memberSummaries, todaysAuthorIds)
   const unpaidFineRows = buildMonthlyFineTotals(memberSummaries, unpaidMonthFinePosts)

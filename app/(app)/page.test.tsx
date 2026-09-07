@@ -7,6 +7,7 @@ const members = [
 ]
 
 const checkinCalls: { fields: string; gte: string; lt: string }[] = []
+const manualFineCalls: { fields: string; gte: string; lt: string }[] = []
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -26,6 +27,18 @@ vi.mock('@/lib/supabase/server', () => ({
                     { author_id: 'user-2', fine_amount: 5000, paid: true },
                   ],
                 }
+              },
+            }),
+          }),
+        }
+      }
+      if (table === 'manual_fines') {
+        return {
+          select: (fields: string) => ({
+            gte: (_col: string, gteValue: string) => ({
+              lt: async (_col2: string, ltValue: string) => {
+                manualFineCalls.push({ fields, gte: gteValue, lt: ltValue })
+                return { data: [{ user_id: 'user-2', amount: 3000, paid: false }] }
               },
             }),
           }),
@@ -63,20 +76,20 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText('✅')).toHaveLength(1)
   })
 
-  it('shows this months unpaid fine total per member', async () => {
+  it('shows this months unpaid fine total per member, including unpaid manual fines', async () => {
     const ui = await DashboardPage()
     render(ui)
     expect(screen.getByText('이번 달 벌금 정산')).toBeInTheDocument()
     expect(screen.getByText('미납액')).toBeInTheDocument()
-    expect(screen.getByText('11,000원')).toBeInTheDocument()
+    expect(screen.getByText('14,000원')).toBeInTheDocument()
     expect(screen.getAllByText('0원')).toHaveLength(2)
   })
 
-  it('shows this months total fine (paid and unpaid) per member', async () => {
+  it('shows this months total fine (paid and unpaid) per member, including manual fines', async () => {
     const ui = await DashboardPage()
     render(ui)
     expect(screen.getByText('벌금 총액')).toBeInTheDocument()
-    expect(screen.getByText('16,000원')).toBeInTheDocument()
+    expect(screen.getByText('19,000원')).toBeInTheDocument()
   })
 
   it('links to the checkin feed', async () => {
@@ -108,11 +121,12 @@ describe('DashboardPage KST date boundaries', () => {
     })
   })
 
-  it("queries this month's checkin_posts using the KST calendar month, not the UTC month", async () => {
+  it("queries this month's checkin_posts and manual_fines using the KST calendar month, not the UTC month", async () => {
     // 2026-08-31T20:00:00Z is still August in UTC, but already 2026-09-01 05:00 KST.
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-31T20:00:00.000Z'))
     checkinCalls.length = 0
+    manualFineCalls.length = 0
 
     const ui = await DashboardPage()
     render(ui)
@@ -120,6 +134,13 @@ describe('DashboardPage KST date boundaries', () => {
     const monthCall = checkinCalls.find((c) => c.fields === 'author_id, fine_amount, paid')
     expect(monthCall).toEqual({
       fields: 'author_id, fine_amount, paid',
+      gte: '2026-08-31T15:00:00.000Z',
+      lt: '2026-09-30T15:00:00.000Z',
+    })
+
+    const manualCall = manualFineCalls.find((c) => c.fields === 'user_id, amount, paid')
+    expect(manualCall).toEqual({
+      fields: 'user_id, amount, paid',
       gte: '2026-08-31T15:00:00.000Z',
       lt: '2026-09-30T15:00:00.000Z',
     })
