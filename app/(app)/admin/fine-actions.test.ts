@@ -3,11 +3,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const ADMIN_ID = 'admin-1'
 const MEMBER_ID = 'member-1'
 const POST_ID = 'post-1'
+const MANUAL_FINE_ID = 'manual-fine-1'
 
 const selectMock = vi.fn()
 const updateEqMock = vi.fn()
 const updateMock = vi.fn()
 const insertMock = vi.fn()
+const deleteEqMock = vi.fn()
+const deleteMock = vi.fn()
 const fromMock = vi.fn()
 const getUserMock = vi.fn()
 const revalidatePathMock = vi.fn()
@@ -26,7 +29,7 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { setCheckinPostPaid, cancelCheckinFine, addManualFine } from './fine-actions'
+import { setCheckinPostPaid, cancelCheckinFine, addManualFine, deleteManualFine } from './fine-actions'
 
 function manualFineFormData(fields: Partial<Record<'userId' | 'amount' | 'reason', string>>): FormData {
   const formData = new FormData()
@@ -60,7 +63,10 @@ beforeEach(() => {
 
   insertMock.mockResolvedValue({ error: null })
 
-  fromMock.mockReturnValue({ select: selectMock, update: updateMock, insert: insertMock })
+  deleteEqMock.mockResolvedValue({ error: null })
+  deleteMock.mockReturnValue({ eq: deleteEqMock })
+
+  fromMock.mockReturnValue({ select: selectMock, update: updateMock, insert: insertMock, delete: deleteMock })
 })
 
 afterEach(() => {
@@ -193,6 +199,31 @@ describe('addManualFine', () => {
     insertMock.mockResolvedValue({ error: { message: 'db error' } })
 
     await expect(addManualFine(manualFineFormData({}))).rejects.toThrow('db error')
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteManualFine', () => {
+  it('deletes the manual fine and revalidates', async () => {
+    await deleteManualFine(MANUAL_FINE_ID)
+
+    expect(fromMock).toHaveBeenCalledWith('manual_fines')
+    expect(deleteEqMock).toHaveBeenCalledWith('id', MANUAL_FINE_ID)
+    expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+  })
+
+  it('throws when the caller is not an admin, without deleting', async () => {
+    roleById[ADMIN_ID] = 'member'
+
+    await expect(deleteManualFine(MANUAL_FINE_ID)).rejects.toThrow('권한이 없습니다')
+    expect(deleteMock).not.toHaveBeenCalled()
+  })
+
+  it('throws when the delete fails', async () => {
+    deleteEqMock.mockResolvedValue({ error: { message: 'db error' } })
+
+    await expect(deleteManualFine(MANUAL_FINE_ID)).rejects.toThrow('db error')
     expect(revalidatePathMock).not.toHaveBeenCalled()
   })
 })
