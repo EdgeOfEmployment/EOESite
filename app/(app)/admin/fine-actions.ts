@@ -2,13 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function setCheckinPostPaid(postId: string, paid: boolean) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -39,9 +38,7 @@ export async function setCheckinPostPaid(postId: string, paid: boolean) {
 export async function cancelCheckinFine(postId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -73,9 +70,7 @@ export async function addManualFine(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -115,9 +110,7 @@ export async function addManualFine(formData: FormData) {
 export async function deleteManualFine(fineId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -141,9 +134,7 @@ export async function deleteManualFine(fineId: string) {
 export async function setManualFinePaid(fineId: string, paid: boolean) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

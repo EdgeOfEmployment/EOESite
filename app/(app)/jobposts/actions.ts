@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/jobposts/snapshot'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function createJobPost(formData: FormData) {
   const companyName = formData.get('companyName') as string
@@ -28,9 +29,7 @@ export async function createJobPost(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -73,9 +72,7 @@ export async function createJobPost(formData: FormData) {
 export async function toggleReaction(postId: string, emoji: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
 
@@ -105,9 +102,7 @@ export async function toggleReaction(postId: string, emoji: string) {
 export async function deleteJobPost(postId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

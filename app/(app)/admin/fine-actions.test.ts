@@ -12,7 +12,7 @@ const insertMock = vi.fn()
 const deleteEqMock = vi.fn()
 const deleteMock = vi.fn()
 const fromMock = vi.fn()
-const getUserMock = vi.fn()
+const getClaimsMock = vi.fn()
 const revalidatePathMock = vi.fn()
 
 let roleById: Record<string, string | null>
@@ -20,7 +20,7 @@ let statusById: Record<string, string | null>
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: getUserMock },
+    auth: { getClaims: getClaimsMock },
     from: fromMock,
   })),
 }))
@@ -44,7 +44,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date('2026-09-02T00:00:00.000Z'))
 
-  getUserMock.mockResolvedValue({ data: { user: { id: ADMIN_ID } }, error: null })
+  getClaimsMock.mockResolvedValue({ data: { claims: { sub: ADMIN_ID } }, error: null })
 
   roleById = { [ADMIN_ID]: 'admin', [MEMBER_ID]: 'member' }
   statusById = { [MEMBER_ID]: 'approved' }
@@ -104,7 +104,7 @@ describe('setCheckinPostPaid', () => {
   })
 
   it('throws when there is no authenticated caller, without updating', async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    getClaimsMock.mockResolvedValue({ data: null, error: null })
 
     await expect(setCheckinPostPaid(POST_ID, true)).rejects.toThrow('권한이 없습니다')
     expect(updateMock).not.toHaveBeenCalled()
@@ -257,7 +257,7 @@ describe('setManualFinePaid', () => {
   })
 
   it('throws when there is no authenticated caller, without updating', async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    getClaimsMock.mockResolvedValue({ data: null, error: null })
 
     await expect(setManualFinePaid(MANUAL_FINE_ID, true)).rejects.toThrow('권한이 없습니다')
     expect(updateMock).not.toHaveBeenCalled()

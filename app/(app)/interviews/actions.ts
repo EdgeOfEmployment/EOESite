@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/feedback/snapshot'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function createSession(formData: FormData) {
   const title = (formData.get('title') as string) || ''
@@ -17,9 +18,7 @@ export async function createSession(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -45,9 +44,7 @@ export async function createSession(formData: FormData) {
 export async function toggleParticipation(sessionId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
 
@@ -76,9 +73,7 @@ export async function toggleParticipation(sessionId: string) {
 export async function deleteSession(sessionId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -129,9 +124,7 @@ export async function createInterviewQa(sessionId: string, formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -165,9 +158,7 @@ export async function createInterviewQa(sessionId: string, formData: FormData) {
 export async function deleteInterviewQa(sessionId: string, qaId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

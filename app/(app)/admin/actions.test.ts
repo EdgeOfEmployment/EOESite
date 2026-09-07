@@ -9,14 +9,14 @@ const selectMock = vi.fn()
 const updateEqMock = vi.fn()
 const updateMock = vi.fn()
 const fromMock = vi.fn()
-const getUserMock = vi.fn()
+const getClaimsMock = vi.fn()
 const revalidatePathMock = vi.fn()
 
 let roleById: Record<string, string | null>
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: getUserMock },
+    auth: { getClaims: getClaimsMock },
     from: fromMock,
   })),
 }))
@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.clearAllMocks()
 
   // Caller is authenticated as an admin by default.
-  getUserMock.mockResolvedValue({ data: { user: { id: ADMIN_ID } }, error: null })
+  getClaimsMock.mockResolvedValue({ data: { claims: { sub: ADMIN_ID } }, error: null })
 
   // supabase.from('profiles').select('role').eq('id', ...).single() -> role lookup.
   // This chain is used both for the caller's role lookup and the target's role
@@ -102,7 +102,7 @@ describe('authorization', () => {
   })
 
   it('throws when there is no authenticated caller, without updating the target', async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    getClaimsMock.mockResolvedValue({ data: null, error: null })
 
     await expect(rejectUser(TARGET_ID)).rejects.toThrow()
 

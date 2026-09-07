@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { computeLateFine } from '@/lib/checkin/time'
 import type { CheckinGoal } from '@/lib/checkin/types'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 // Supabase Storage rejects keys containing spaces or non-ASCII characters
 // (e.g. Korean screenshot filenames like "스크린샷 2026-08-14 143253.png"),
@@ -33,9 +34,7 @@ export async function createCheckinPost(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -83,9 +82,7 @@ export async function addComment(postId: string, formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -107,9 +104,7 @@ export async function addComment(postId: string, formData: FormData) {
 export async function toggleReaction(postId: string, emoji: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
 
@@ -139,9 +134,7 @@ export async function toggleReaction(postId: string, emoji: string) {
 export async function toggleGoalCompleted(postId: string, goalIndex: number) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
 
@@ -175,9 +168,7 @@ export async function toggleGoalCompleted(postId: string, goalIndex: number) {
 export async function updateCheckinGoals(postId: string, formData: FormData) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
 
@@ -211,9 +202,7 @@ export async function updateCheckinGoals(postId: string, formData: FormData) {
 export async function deleteCheckinPost(postId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

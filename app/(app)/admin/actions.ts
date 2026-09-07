@@ -2,15 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 type UserStatus = 'approved' | 'rejected'
 
 async function setUserStatus(userId: string, status: UserStatus) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

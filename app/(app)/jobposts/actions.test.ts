@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const getUserMock = vi.fn()
+const getClaimsMock = vi.fn()
 const fromMock = vi.fn()
 const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`)
@@ -9,7 +9,7 @@ const revalidatePathMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: getUserMock },
+    auth: { getClaims: getClaimsMock },
     from: fromMock,
   })),
 }))
@@ -37,7 +37,7 @@ beforeEach(() => {
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`REDIRECT:${url}`)
   })
-  getUserMock.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+  getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
 })
 
 describe('createJobPost', () => {

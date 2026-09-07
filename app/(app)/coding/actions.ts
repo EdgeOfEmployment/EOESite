@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function createProblem(formData: FormData) {
   const title = formData.get('title') as string
@@ -17,9 +18,7 @@ export async function createProblem(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -58,9 +57,7 @@ export async function updateGithubUsername(formData: FormData) {
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
@@ -83,9 +80,7 @@ export async function updateGithubUsername(formData: FormData) {
 export async function deleteProblem(problemId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 
@@ -108,9 +103,7 @@ export async function deleteProblem(problemId: string) {
 export async function adminRemoveCheck(problemId: string, userId: string) {
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('권한이 없습니다')
 

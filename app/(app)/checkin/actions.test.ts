@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-const getUserMock = vi.fn()
+const getClaimsMock = vi.fn()
 const uploadMock = vi.fn()
 const getPublicUrlMock = vi.fn()
 const insertMock = vi.fn()
@@ -12,7 +12,7 @@ const revalidatePathMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    auth: { getUser: getUserMock },
+    auth: { getClaims: getClaimsMock },
     storage: { from: () => ({ upload: uploadMock, getPublicUrl: getPublicUrlMock }) },
     from: fromMock,
   })),
@@ -48,7 +48,7 @@ beforeEach(() => {
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`REDIRECT:${url}`)
   })
-  getUserMock.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+  getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
   uploadMock.mockResolvedValue({ error: null })
   getPublicUrlMock.mockReturnValue({ data: { publicUrl: 'https://example.com/photo.jpg' } })
   insertMock.mockResolvedValue({ error: null })

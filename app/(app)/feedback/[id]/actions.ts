@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function addFeedbackComment(
   feedbackDocId: string,
@@ -19,9 +20,7 @@ export async function addFeedbackComment(
 
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
 
   if (!user) {
     redirect('/login')
