@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthlyFineTotals, groupLateFinesByMonth } from './fines'
+import { buildMonthlyFineTotals, groupFinesByMonth, type FineRow } from './fines'
 
 describe('buildMonthlyFineTotals', () => {
   it('sums fine amounts per member for the given posts', () => {
@@ -25,41 +25,130 @@ describe('buildMonthlyFineTotals', () => {
   })
 })
 
-describe('groupLateFinesByMonth', () => {
+describe('groupFinesByMonth', () => {
   it('groups rows by UTC calendar month, newest month first', () => {
-    const rows = [
-      { postId: 'p1', memberName: '김민수', createdAt: '2026-09-05T01:00:00.000Z', fineAmount: 11000, paid: false },
-      { postId: 'p2', memberName: '이지은', createdAt: '2026-08-20T01:00:00.000Z', fineAmount: 10000, paid: true },
-      { postId: 'p3', memberName: '김민수', createdAt: '2026-09-01T01:00:00.000Z', fineAmount: 12000, paid: false },
+    const rows: FineRow[] = [
+      {
+        id: 'p1',
+        kind: 'late',
+        memberName: '김민수',
+        createdAt: '2026-09-05T01:00:00.000Z',
+        amount: 11000,
+        paid: false,
+      },
+      {
+        id: 'p2',
+        kind: 'late',
+        memberName: '이지은',
+        createdAt: '2026-08-20T01:00:00.000Z',
+        amount: 10000,
+        paid: true,
+      },
+      {
+        id: 'p3',
+        kind: 'late',
+        memberName: '김민수',
+        createdAt: '2026-09-01T01:00:00.000Z',
+        amount: 12000,
+        paid: false,
+      },
     ]
 
-    expect(groupLateFinesByMonth(rows)).toEqual([
+    expect(groupFinesByMonth(rows)).toEqual([
       {
         monthLabel: '2026년 9월',
         rows: [
-          { postId: 'p1', memberName: '김민수', createdAt: '2026-09-05T01:00:00.000Z', fineAmount: 11000, paid: false },
-          { postId: 'p3', memberName: '김민수', createdAt: '2026-09-01T01:00:00.000Z', fineAmount: 12000, paid: false },
+          {
+            id: 'p1',
+            kind: 'late',
+            memberName: '김민수',
+            createdAt: '2026-09-05T01:00:00.000Z',
+            amount: 11000,
+            paid: false,
+          },
+          {
+            id: 'p3',
+            kind: 'late',
+            memberName: '김민수',
+            createdAt: '2026-09-01T01:00:00.000Z',
+            amount: 12000,
+            paid: false,
+          },
         ],
       },
       {
         monthLabel: '2026년 8월',
         rows: [
-          { postId: 'p2', memberName: '이지은', createdAt: '2026-08-20T01:00:00.000Z', fineAmount: 10000, paid: true },
+          {
+            id: 'p2',
+            kind: 'late',
+            memberName: '이지은',
+            createdAt: '2026-08-20T01:00:00.000Z',
+            amount: 10000,
+            paid: true,
+          },
+        ],
+      },
+    ])
+  })
+
+  it('groups late and manual fines together within the same month', () => {
+    const rows: FineRow[] = [
+      {
+        id: 'p1',
+        kind: 'late',
+        memberName: '김민수',
+        createdAt: '2026-09-05T01:00:00.000Z',
+        amount: 11000,
+        paid: false,
+      },
+      {
+        id: 'm1',
+        kind: 'manual',
+        memberName: '김민수',
+        createdAt: '2026-09-03T01:00:00.000Z',
+        amount: 5000,
+        paid: false,
+        reason: '지각 3회 누적',
+      },
+    ]
+
+    expect(groupFinesByMonth(rows)).toEqual([
+      {
+        monthLabel: '2026년 9월',
+        rows: [
+          {
+            id: 'p1',
+            kind: 'late',
+            memberName: '김민수',
+            createdAt: '2026-09-05T01:00:00.000Z',
+            amount: 11000,
+            paid: false,
+          },
+          {
+            id: 'm1',
+            kind: 'manual',
+            memberName: '김민수',
+            createdAt: '2026-09-03T01:00:00.000Z',
+            amount: 5000,
+            paid: false,
+            reason: '지각 3회 누적',
+          },
         ],
       },
     ])
   })
 
   it('preserves the input order of rows within a group', () => {
-    const rows = [
-      { postId: 'p1', memberName: 'a', createdAt: '2026-09-01T00:00:00.000Z', fineAmount: 1000, paid: false },
-      { postId: 'p2', memberName: 'b', createdAt: '2026-09-02T00:00:00.000Z', fineAmount: 2000, paid: false },
+    const rows: FineRow[] = [
+      { id: 'p1', kind: 'late', memberName: 'a', createdAt: '2026-09-01T00:00:00.000Z', amount: 1000, paid: false },
+      { id: 'p2', kind: 'late', memberName: 'b', createdAt: '2026-09-02T00:00:00.000Z', amount: 2000, paid: false },
     ]
 
-    expect(groupLateFinesByMonth(rows)[0].rows.map((r) => r.postId)).toEqual(['p1', 'p2'])
+    expect(groupFinesByMonth(rows)[0].rows.map((r) => r.id)).toEqual(['p1', 'p2'])
   })
 
   it('returns an empty array for no rows', () => {
-    expect(groupLateFinesByMonth([])).toEqual([])
+    expect(groupFinesByMonth([])).toEqual([])
   })
 })

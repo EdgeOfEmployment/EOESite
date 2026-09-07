@@ -19,21 +19,25 @@ export function buildMonthlyFineTotals(members: MemberSummary[], monthPosts: Mon
   }))
 }
 
-export interface LateFineRow {
-  postId: string
+export type FineKind = 'late' | 'manual'
+
+export interface FineRow {
+  id: string
+  kind: FineKind
   memberName: string
   createdAt: string
-  fineAmount: number
+  amount: number
   paid: boolean
+  reason?: string
 }
 
 export interface MonthlyFineGroup {
   monthLabel: string
-  rows: LateFineRow[]
+  rows: FineRow[]
 }
 
-export function groupLateFinesByMonth(rows: LateFineRow[]): MonthlyFineGroup[] {
-  const rowsByMonthKey = new Map<string, LateFineRow[]>()
+export function groupFinesByMonth(rows: FineRow[]): MonthlyFineGroup[] {
+  const rowsByMonthKey = new Map<string, FineRow[]>()
 
   for (const row of rows) {
     const date = new Date(row.createdAt)
