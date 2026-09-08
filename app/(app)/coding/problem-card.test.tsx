@@ -13,7 +13,6 @@ const baseProblem: CodingProblem = {
   id: 'problem-1',
   title: '두 수의 합',
   link: 'https://example.com/problem/1',
-  weekOf: '2026-08-11',
   createdBy: 'admin-1',
   createdAt: '2026-08-11T00:00:00.000Z',
   assigneeIds: [],
