@@ -112,4 +112,31 @@ describe('ProblemForm', () => {
     expect(container.querySelectorAll('input[name="assigneeIds-row-2"]')).toHaveLength(members.length)
     expect(container.querySelector('input[name="rowIds"]')).toHaveValue('row-1,row-2')
   })
+
+  it('re-derives weekMode to existing/new-week target when currentWeek prop changes without a remount', () => {
+    const { container, rerender } = render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '새 주차 만들기' }))
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('new')
+
+    const nextWeek: CodingWeek = {
+      id: 'week-2',
+      label: '2주차',
+      startDate: '2026-09-15',
+      endDate: '2026-09-21',
+    }
+    rerender(<ProblemForm members={members} currentWeek={nextWeek} />)
+
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('existing')
+    expect(container.querySelector('input[name="weekId"]')).toHaveValue('week-2')
+    expect(screen.getByRole('button', { name: '새 주차 만들기' })).toBeInTheDocument()
+  })
+
+  it('renders the current-week display as an accessible disabled field', () => {
+    render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
+    const currentWeekField = screen.getByLabelText('등록 대상 주차')
+    expect(currentWeekField).toBeDisabled()
+    expect(currentWeekField).toHaveValue('1주차 (2026-09-08~2026-09-14)')
+  })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createProblems } from './actions'
 import { getTodayDate, addDays, formatWeekHeader } from '@/lib/coding/week'
 import { Card } from '@/components/ui/card'
@@ -28,6 +28,10 @@ export function ProblemForm({
 
   const [rows, setRows] = useState<ProblemRow[]>([{ id: 'row-1' }])
   const [weekMode, setWeekMode] = useState<'existing' | 'new'>(currentWeek ? 'existing' : 'new')
+
+  useEffect(() => {
+    setWeekMode(currentWeek ? 'existing' : 'new')
+  }, [currentWeek?.id])
 
   function addRow() {
     setRows((prev) => [...prev, makeRow()])
@@ -62,7 +66,13 @@ export function ProblemForm({
         </div>
 
         {weekMode === 'existing' && currentWeek ? (
-          <input type="hidden" name="weekId" value={currentWeek.id} />
+          <>
+            <input type="hidden" name="weekId" value={currentWeek.id} />
+            <Label htmlFor="currentWeekDisplay" className="sr-only">
+              등록 대상 주차
+            </Label>
+            <Input id="currentWeekDisplay" value={formatWeekHeader(currentWeek)} disabled readOnly />
+          </>
         ) : (
           <>
             <Label htmlFor="weekLabel" className="sr-only">
