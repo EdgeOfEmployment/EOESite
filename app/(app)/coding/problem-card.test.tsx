@@ -65,6 +65,15 @@ describe('ProblemCard', () => {
     expect(screen.queryByRole('link', { name: '코드 보기' })).not.toBeInTheDocument()
   })
 
+  it('shows "완료" but no link and no "아직 제출 안됨" for a checked member with no commit info', () => {
+    const problem = { ...baseProblem, assigneeIds: ['user-2'] }
+    render(<ProblemCard problem={problem} members={members} isAdmin={false} />)
+
+    expect(screen.getByText('완료')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '코드 보기' })).not.toBeInTheDocument()
+    expect(screen.queryByText('아직 제출 안됨')).not.toBeInTheDocument()
+  })
+
   it('links to the exact commit file when a check has commit info', () => {
     const problem = {
       ...baseProblem,
