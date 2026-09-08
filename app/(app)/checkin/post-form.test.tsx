@@ -92,4 +92,13 @@ describe('PostForm', () => {
     expect(screen.queryByPlaceholderText('목표 2')).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('목표 1')).toHaveValue('B')
   })
+
+  it('renders a drag handle for each goal field', () => {
+    render(<PostForm />)
+
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ 목표 추가' }))
+
+    expect(screen.getAllByRole('button', { name: '순서 변경' })).toHaveLength(2)
+  })
 })

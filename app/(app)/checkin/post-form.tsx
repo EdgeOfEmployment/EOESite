@@ -1,19 +1,40 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { createCheckinPost } from './actions'
 import { Card } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { DragHandleIcon, SortableItem } from '@/components/ui/sortable-item'
+import { reorderById } from '@/lib/ui/reorder'
 
 interface PhotoPreview {
   url: string
   name: string
 }
 
+interface GoalField {
+  id: string
+  value: string
+}
+
 export function PostForm() {
-  const [goals, setGoals] = useState<string[]>([])
+  const [goals, setGoals] = useState<GoalField[]>([])
   const [photoPreview, setPhotoPreview] = useState<PhotoPreview | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   // React runs this cleanup for the *previous* render's photoPreview value right before
   // re-running the effect whenever `photoPreview` changes (not only on unmount) — so this
@@ -28,15 +49,21 @@ export function PostForm() {
   }, [photoPreview])
 
   function addGoal() {
-    setGoals((prev) => [...prev, ''])
+    setGoals((prev) => [...prev, { id: crypto.randomUUID(), value: '' }])
   }
 
-  function removeGoal(index: number) {
-    setGoals((prev) => prev.filter((_, i) => i !== index))
+  function removeGoal(id: string) {
+    setGoals((prev) => prev.filter((goal) => goal.id !== id))
   }
 
-  function updateGoal(index: number, value: string) {
-    setGoals((prev) => prev.map((g, i) => (i === index ? value : g)))
+  function updateGoal(id: string, value: string) {
+    setGoals((prev) => prev.map((goal) => (goal.id === id ? { ...goal, value } : goal)))
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const overId = event.over?.id
+    if (!overId) return
+    setGoals((prev) => reorderById(prev, String(event.active.id), String(overId), (goal) => goal.id))
   }
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -72,29 +99,46 @@ export function PostForm() {
 
       <input type="hidden" name="goalCount" value={goals.length} />
 
-      <div className="flex flex-col gap-2">
-        {goals.map((goal, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <Label htmlFor={`goal-${index}`} className="sr-only">
-              목표 {index + 1}
-            </Label>
-            <Input
-              id={`goal-${index}`}
-              name={`goal-${index}`}
-              placeholder={`목표 ${index + 1}`}
-              value={goal}
-              onChange={(e) => updateGoal(index, e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => removeGoal(index)}
-              className="text-xs text-red-600 dark:text-red-400"
-            >
-              삭제
-            </button>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={goals.map((goal) => goal.id)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-2">
+            {goals.map((goal, index) => (
+              <SortableItem key={goal.id} id={goal.id} className="flex items-center gap-2">
+                {({ attributes, listeners }) => (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="순서 변경"
+                      className="cursor-grab touch-none text-gray-400 active:cursor-grabbing dark:text-gray-500"
+                      {...attributes}
+                      {...listeners}
+                    >
+                      <DragHandleIcon />
+                    </button>
+                    <Label htmlFor={`goal-${goal.id}`} className="sr-only">
+                      목표 {index + 1}
+                    </Label>
+                    <Input
+                      id={`goal-${goal.id}`}
+                      name={`goal-${index}`}
+                      placeholder={`목표 ${index + 1}`}
+                      value={goal.value}
+                      onChange={(e) => updateGoal(goal.id, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGoal(goal.id)}
+                      className="text-xs text-red-600 dark:text-red-400"
+                    >
+                      삭제
+                    </button>
+                  </>
+                )}
+              </SortableItem>
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       <Button type="button" variant="secondary" onClick={addGoal} className="self-start">
         + 목표 추가
