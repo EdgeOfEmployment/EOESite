@@ -7,5 +7,5 @@ export function buildCommitFileUrl(commitSha: string, filePath: string): string 
     .map((segment) => encodeURIComponent(segment))
     .join('/')
 
-  return `https://github.com/${repo}/blob/${commitSha}/${encodedPath}`
+  return `https://github.com/${repo}/blob/${encodeURIComponent(commitSha)}/${encodedPath}`
 }

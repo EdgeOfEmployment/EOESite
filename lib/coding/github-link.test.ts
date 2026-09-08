@@ -24,6 +24,14 @@ describe('buildCommitFileUrl', () => {
     )
   })
 
+  it('URL-encodes the commit sha', () => {
+    const sha = 'abc 123/def'
+    const url = buildCommitFileUrl(sha, 'a/b.js')
+    expect(url).toBe(
+      `https://github.com/EdgeOfEmployment/Coding-Test/blob/${encodeURIComponent(sha)}/a/b.js`
+    )
+  })
+
   it('returns null when GITHUB_SOURCE_REPO is not configured', () => {
     vi.stubEnv('GITHUB_SOURCE_REPO', '')
     expect(buildCommitFileUrl('abc123', 'a/b.js')).toBeNull()
