@@ -68,4 +68,22 @@ describe('ProblemForm', () => {
     expect(screen.getAllByLabelText('문제명')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: '제거' })).not.toBeInTheDocument()
   })
+
+  it('suffixes each row\'s field names with its row id and keeps rowIds in sync, matching the createProblems contract', () => {
+    const { container } = render(<ProblemForm members={members} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '문제 추가' }))
+
+    expect(container.querySelector('input[name="title-row-1"]')).toBeInTheDocument()
+    expect(container.querySelector('input[name="title-row-2"]')).toBeInTheDocument()
+    expect(container.querySelector('input[name="link-row-1"]')).toBeInTheDocument()
+    expect(container.querySelector('input[name="link-row-2"]')).toBeInTheDocument()
+    expect(container.querySelector('input[name="matchKeyword-row-1"]')).toBeInTheDocument()
+    expect(container.querySelector('input[name="matchKeyword-row-2"]')).toBeInTheDocument()
+
+    expect(container.querySelectorAll('input[name="assigneeIds-row-1"]')).toHaveLength(members.length)
+    expect(container.querySelectorAll('input[name="assigneeIds-row-2"]')).toHaveLength(members.length)
+
+    expect(container.querySelector('input[name="rowIds"]')).toHaveValue('row-1,row-2')
+  })
 })
