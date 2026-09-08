@@ -6,11 +6,26 @@ import { redirect } from 'next/navigation'
 import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function createProblems(formData: FormData) {
-  const weekOf = formData.get('weekOf') as string
   const rowIds = ((formData.get('rowIds') as string) || '').split(',').filter(Boolean)
 
-  if (!weekOf || rowIds.length === 0) {
-    redirect('/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요'))
+  if (rowIds.length === 0) {
+    redirect('/coding?error=' + encodeURIComponent('문제를 최소 1개 이상 입력해주세요'))
+    return
+  }
+
+  const weekMode = (formData.get('weekMode') as string) === 'new' ? 'new' : 'existing'
+  const weekId = (formData.get('weekId') as string) || ''
+  const weekLabel = (formData.get('weekLabel') as string) || ''
+  const weekStartDate = (formData.get('weekStartDate') as string) || ''
+  const weekEndDate = (formData.get('weekEndDate') as string) || ''
+
+  if (weekMode === 'new') {
+    if (!weekLabel || !weekStartDate || !weekEndDate) {
+      redirect('/coding?error=' + encodeURIComponent('새 주차의 이름, 시작일, 종료일을 모두 입력해주세요'))
+      return
+    }
+  } else if (!weekId) {
+    redirect('/coding?error=' + encodeURIComponent('대상 주차를 선택해주세요'))
     return
   }
 
@@ -44,11 +59,33 @@ export async function createProblems(formData: FormData) {
   if (callerError) throw new Error(callerError.message)
   if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
 
+  let targetWeekId = weekId
+
+  if (weekMode === 'new') {
+    const { data: newWeek, error: weekError } = await supabase
+      .from('coding_weeks')
+      .insert({
+        label: weekLabel,
+        start_date: weekStartDate,
+        end_date: weekEndDate,
+        created_by: user.id,
+      })
+      .select('id')
+      .single()
+
+    if (weekError || !newWeek) {
+      redirect('/coding?error=' + encodeURIComponent(weekError?.message ?? '주차 생성에 실패했어요'))
+      return
+    }
+
+    targetWeekId = newWeek.id
+  }
+
   const { error } = await supabase.from('coding_problems').insert(
     rows.map((row) => ({
       title: row.title,
       link: row.link,
-      week_of: weekOf,
+      week_id: targetWeekId,
       created_by: user.id,
       match_keyword: row.matchKeyword,
       assignee_ids: row.assigneeIds,
@@ -61,7 +98,7 @@ export async function createProblems(formData: FormData) {
   }
 
   revalidatePath('/coding')
-  redirect('/coding?success=' + encodeURIComponent(`문제 ${rows.length}개를 등록했어요`))
+  redirect(`/coding?week=${targetWeekId}&success=` + encodeURIComponent(`문제 ${rows.length}개를 등록했어요`))
 }
 
 export async function updateGithubUsername(formData: FormData) {

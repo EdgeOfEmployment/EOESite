@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const getClaimsMock = vi.fn()
 const insertMock = vi.fn()
+const codingWeeksInsertMock = vi.fn()
 const fromMock = vi.fn()
 const rpcMock = vi.fn()
 const redirectMock = vi.fn((url: string) => {
@@ -47,6 +48,9 @@ function mockAdminCheck(role: 'admin' | 'member') {
     if (table === 'coding_problems') {
       return { insert: insertMock }
     }
+    if (table === 'coding_weeks') {
+      return { insert: codingWeeksInsertMock }
+    }
     throw new Error(`unexpected table ${table}`)
   })
 }
@@ -58,14 +62,43 @@ beforeEach(() => {
   })
   getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'admin-1' } } })
   insertMock.mockResolvedValue({ error: null })
+  codingWeeksInsertMock.mockReturnValue({
+    select: () => ({ single: async () => ({ data: { id: 'new-week-1' }, error: null }) }),
+  })
   mockAdminCheck('admin')
   rpcMock.mockResolvedValue({ error: null })
 })
 
 describe('createProblems', () => {
-  it('redirects with an error when the week is missing', async () => {
+  it('redirects with an error when no problem rows are present', async () => {
+    const formData = buildFormData({ weekMode: 'existing', weekId: 'week-1', rowIds: '' })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('문제를 최소 1개 이상 입력해주세요')
+    )
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects with an error when adding to an existing week without a weekId', async () => {
     const formData = buildFormData({
-      weekOf: '',
+      weekMode: 'existing',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith('/coding?error=' + encodeURIComponent('대상 주차를 선택해주세요'))
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects with an error when creating a new week without a label, start date, or end date', async () => {
+    const formData = buildFormData({
+      weekMode: 'new',
+      weekLabel: '',
+      weekStartDate: '2026-09-08',
+      weekEndDate: '',
       rowIds: 'row-1',
       'title-row-1': '두 수의 합',
       'link-row-1': 'https://example.com/problem/1',
@@ -73,24 +106,16 @@ describe('createProblems', () => {
 
     await expect(createProblems(formData)).rejects.toThrow()
     expect(redirectMock).toHaveBeenCalledWith(
-      '/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요')
+      '/coding?error=' + encodeURIComponent('새 주차의 이름, 시작일, 종료일을 모두 입력해주세요')
     )
     expect(insertMock).not.toHaveBeenCalled()
-  })
-
-  it('redirects with an error when no problem rows are present', async () => {
-    const formData = buildFormData({ weekOf: '2026-08-11', rowIds: '' })
-
-    await expect(createProblems(formData)).rejects.toThrow()
-    expect(redirectMock).toHaveBeenCalledWith(
-      '/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요')
-    )
-    expect(insertMock).not.toHaveBeenCalled()
+    expect(codingWeeksInsertMock).not.toHaveBeenCalled()
   })
 
   it('redirects with an error when a row is missing its title or link', async () => {
     const formData = buildFormData({
-      weekOf: '2026-08-11',
+      weekMode: 'existing',
+      weekId: 'week-1',
       rowIds: 'row-1',
       'title-row-1': '두 수의 합',
       'link-row-1': '',
@@ -106,7 +131,8 @@ describe('createProblems', () => {
   it('throws when the caller is not an admin', async () => {
     mockAdminCheck('member')
     const formData = buildFormData({
-      weekOf: '2026-08-11',
+      weekMode: 'existing',
+      weekId: 'week-1',
       rowIds: 'row-1',
       'title-row-1': '두 수의 합',
       'link-row-1': 'https://example.com/problem/1',
@@ -116,62 +142,96 @@ describe('createProblems', () => {
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  it('creates a single problem with a null keyword and empty assignee list when none are given', async () => {
+  it('creates problems against an existing week without touching coding_weeks', async () => {
     const formData = buildFormData({
-      weekOf: '2026-08-11',
+      weekMode: 'existing',
+      weekId: 'week-1',
       rowIds: 'row-1',
-      'title-row-1': '두 수의 합',
-      'link-row-1': 'https://example.com/problem/1',
-    })
-
-    await expect(createProblems(formData)).rejects.toThrow()
-
-    expect(insertMock).toHaveBeenCalledWith([
-      {
-        title: '두 수의 합',
-        link: 'https://example.com/problem/1',
-        week_of: '2026-08-11',
-        created_by: 'admin-1',
-        match_keyword: null,
-        assignee_ids: [],
-      },
-    ])
-    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제 1개를 등록했어요'))
-  })
-
-  it('creates multiple problems in one submission, each with its own keyword and assignees', async () => {
-    const formData = buildFormData({
-      weekOf: '2026-08-11',
-      rowIds: 'row-1,row-2',
       'title-row-1': '두 수의 합',
       'link-row-1': 'https://example.com/problem/1',
       'matchKeyword-row-1': 'two-sum',
       'assigneeIds-row-1': ['user-1', 'user-2'],
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+
+    expect(codingWeeksInsertMock).not.toHaveBeenCalled()
+    expect(insertMock).toHaveBeenCalledWith([
+      {
+        title: '두 수의 합',
+        link: 'https://example.com/problem/1',
+        week_id: 'week-1',
+        created_by: 'admin-1',
+        match_keyword: 'two-sum',
+        assignee_ids: ['user-1', 'user-2'],
+      },
+    ])
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?week=week-1&success=' + encodeURIComponent('문제 1개를 등록했어요')
+    )
+  })
+
+  it('creates a new week, then creates problems against its returned id', async () => {
+    const formData = buildFormData({
+      weekMode: 'new',
+      weekLabel: '1주차',
+      weekStartDate: '2026-09-08',
+      weekEndDate: '2026-09-14',
+      rowIds: 'row-1,row-2',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
       'title-row-2': '세 수의 합',
       'link-row-2': 'https://example.com/problem/2',
     })
 
     await expect(createProblems(formData)).rejects.toThrow()
 
+    expect(codingWeeksInsertMock).toHaveBeenCalledWith({
+      label: '1주차',
+      start_date: '2026-09-08',
+      end_date: '2026-09-14',
+      created_by: 'admin-1',
+    })
     expect(insertMock).toHaveBeenCalledWith([
       {
         title: '두 수의 합',
         link: 'https://example.com/problem/1',
-        week_of: '2026-08-11',
+        week_id: 'new-week-1',
         created_by: 'admin-1',
-        match_keyword: 'two-sum',
-        assignee_ids: ['user-1', 'user-2'],
+        match_keyword: null,
+        assignee_ids: [],
       },
       {
         title: '세 수의 합',
         link: 'https://example.com/problem/2',
-        week_of: '2026-08-11',
+        week_id: 'new-week-1',
         created_by: 'admin-1',
         match_keyword: null,
         assignee_ids: [],
       },
     ])
-    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제 2개를 등록했어요'))
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?week=new-week-1&success=' + encodeURIComponent('문제 2개를 등록했어요')
+    )
+  })
+
+  it('redirects with the error when creating the new week fails', async () => {
+    codingWeeksInsertMock.mockReturnValue({
+      select: () => ({ single: async () => ({ data: null, error: { message: 'db error' } }) }),
+    })
+    const formData = buildFormData({
+      weekMode: 'new',
+      weekLabel: '1주차',
+      weekStartDate: '2026-09-08',
+      weekEndDate: '2026-09-14',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith('/coding?error=' + encodeURIComponent('db error'))
+    expect(insertMock).not.toHaveBeenCalled()
   })
 })
 
