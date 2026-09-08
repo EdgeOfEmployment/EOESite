@@ -36,14 +36,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: 'no pusher login' })
   }
 
-  const changedPaths = new Set<string>()
+  // Map changed file path -> the sha of the commit that touched it. Commits
+  // arrive oldest-first, so a later commit for the same path overwrites the
+  // earlier one, leaving the most recent sha per path.
+  const changedFiles = new Map<string, string>()
   for (const commit of payload.commits ?? []) {
+    const sha = commit.id as string
     for (const path of [...(commit.added ?? []), ...(commit.modified ?? [])]) {
-      changedPaths.add(path)
+      changedFiles.set(path, sha)
     }
   }
 
-  if (changedPaths.size === 0) {
+  if (changedFiles.size === 0) {
     return NextResponse.json({ ok: true, skipped: 'no file changes' })
   }
 
@@ -72,15 +76,16 @@ export async function POST(request: NextRequest) {
     const keyword = ((problem.match_keyword as string | null) || (problem.title as string))
       .trim()
       .toLowerCase()
-    const matched = Array.from(changedPaths).some((path) => path.toLowerCase().includes(keyword))
+    const matchedPath = Array.from(changedFiles.keys()).find((path) =>
+      path.toLowerCase().includes(keyword)
+    )
 
-    if (matched) {
-      const { error } = await supabase
-        .from('coding_checks')
-        .upsert(
-          { problem_id: problem.id, user_id: member.id },
-          { onConflict: 'problem_id,user_id', ignoreDuplicates: true }
-        )
+    if (matchedPath) {
+      const commitSha = changedFiles.get(matchedPath)!
+      const { error } = await supabase.from('coding_checks').upsert(
+        { problem_id: problem.id, user_id: member.id, commit_sha: commitSha, file_path: matchedPath },
+        { onConflict: 'problem_id,user_id' }
+      )
       if (!error) checkedProblemIds.push(problem.id)
     }
   }

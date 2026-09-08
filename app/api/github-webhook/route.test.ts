@@ -106,7 +106,7 @@ describe('POST /api/github-webhook', () => {
     expect(json).toEqual({ ok: true, skipped: 'no matching member' })
   })
 
-  it('auto-checks a problem whose title appears in a changed file path', async () => {
+  it('auto-checks a problem and stores the commit sha and file path that matched', async () => {
     fromMock.mockImplementation((table: string) => {
       if (table === 'profiles') {
         return {
@@ -131,7 +131,7 @@ describe('POST /api/github-webhook', () => {
     const body = JSON.stringify({
       repository: { full_name: REPO },
       sender: { login: 'kimminsu-dev' },
-      commits: [{ added: ['kimminsu/두 수의 합/두 수의 합.js'], modified: [] }],
+      commits: [{ id: 'sha-1', added: ['kimminsu/두 수의 합/두 수의 합.js'], modified: [] }],
     })
     const request = buildRequest(body)
 
@@ -139,8 +139,13 @@ describe('POST /api/github-webhook', () => {
     const json = await response.json()
 
     expect(upsertMock).toHaveBeenCalledWith(
-      { problem_id: 'problem-1', user_id: 'user-1' },
-      { onConflict: 'problem_id,user_id', ignoreDuplicates: true }
+      {
+        problem_id: 'problem-1',
+        user_id: 'user-1',
+        commit_sha: 'sha-1',
+        file_path: 'kimminsu/두 수의 합/두 수의 합.js',
+      },
+      { onConflict: 'problem_id,user_id' }
     )
     expect(json.checkedProblemIds).toEqual(['problem-1'])
   })
@@ -170,15 +175,66 @@ describe('POST /api/github-webhook', () => {
     const body = JSON.stringify({
       repository: { full_name: REPO },
       sender: { login: 'kimminsu-dev' },
-      commits: [{ added: ['kimminsu/two-sum/two-sum.py'], modified: [] }],
+      commits: [{ id: 'sha-1', added: ['kimminsu/two-sum/two-sum.py'], modified: [] }],
     })
     const request = buildRequest(body)
 
     await POST(request)
 
     expect(upsertMock).toHaveBeenCalledWith(
-      { problem_id: 'problem-1', user_id: 'user-1' },
-      { onConflict: 'problem_id,user_id', ignoreDuplicates: true }
+      {
+        problem_id: 'problem-1',
+        user_id: 'user-1',
+        commit_sha: 'sha-1',
+        file_path: 'kimminsu/two-sum/two-sum.py',
+      },
+      { onConflict: 'problem_id,user_id' }
     )
+  })
+
+  it('overwrites the stored commit with the most recent match when the same file changes twice in one push', async () => {
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: () => ({ ilike: () => ({ maybeSingle: async () => ({ data: { id: 'user-1' } }) }) }),
+        }
+      }
+      if (table === 'coding_problems') {
+        return {
+          select: () =>
+            Promise.resolve({
+              data: [{ id: 'problem-1', title: '두 수의 합', match_keyword: null }],
+            }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { upsert: upsertMock }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+    upsertMock.mockResolvedValue({ error: null })
+
+    const body = JSON.stringify({
+      repository: { full_name: REPO },
+      sender: { login: 'kimminsu-dev' },
+      commits: [
+        { id: 'sha-old', added: [], modified: ['kimminsu/두 수의 합/두 수의 합.js'] },
+        { id: 'sha-new', added: [], modified: ['kimminsu/두 수의 합/두 수의 합.js'] },
+      ],
+    })
+    const request = buildRequest(body)
+
+    await POST(request)
+
+    expect(upsertMock).toHaveBeenCalledWith(
+      {
+        problem_id: 'problem-1',
+        user_id: 'user-1',
+        commit_sha: 'sha-new',
+        file_path: 'kimminsu/두 수의 합/두 수의 합.js',
+      },
+      { onConflict: 'problem_id,user_id' }
+    )
+    expect(upsertMock).toHaveBeenCalledTimes(1)
   })
 })
