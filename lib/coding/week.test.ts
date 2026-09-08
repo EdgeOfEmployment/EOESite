@@ -75,4 +75,11 @@ describe('resolveCurrentWeek', () => {
     expect(result.prevId).toBeNull()
     expect(result.nextId).toBeNull()
   })
+
+  it('hides both neighbor links when there is only one week', () => {
+    const result = resolveCurrentWeek([{ id: 'only' }])
+    expect(result.current?.id).toBe('only')
+    expect(result.prevId).toBeNull()
+    expect(result.nextId).toBeNull()
+  })
 })
