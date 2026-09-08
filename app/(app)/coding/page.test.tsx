@@ -19,10 +19,11 @@ const problems = [
     week_of: '2026-08-11',
     created_by: 'admin-1',
     created_at: '2026-08-11T00:00:00.000Z',
+    assignee_ids: [],
   },
 ]
 
-const checks = [{ problem_id: 'problem-1', user_id: 'user-1' }]
+const checks = [{ problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, file_path: null }]
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -57,7 +58,7 @@ vi.mock('@/lib/auth/session', () => ({
 }))
 
 vi.mock('./actions', () => ({
-  createProblem: vi.fn(),
+  createProblems: vi.fn(),
   adminRemoveCheck: vi.fn(),
   deleteProblem: vi.fn(),
   updateGithubUsername: vi.fn(),
@@ -71,6 +72,7 @@ describe('CodingPage', () => {
     render(ui)
 
     expect(screen.getByText('8/11 주차')).toBeInTheDocument()
+    expect(screen.getByText('8/17 마감')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '두 수의 합' })).toBeInTheDocument()
     expect(screen.getByText('김민수')).toBeInTheDocument()
     expect(screen.getByText('관리자')).toBeInTheDocument()

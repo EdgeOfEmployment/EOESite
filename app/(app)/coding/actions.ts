@@ -5,14 +5,24 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getVerifiedUser } from '@/lib/auth/verify'
 
-export async function createProblem(formData: FormData) {
-  const title = formData.get('title') as string
-  const link = formData.get('link') as string
+export async function createProblems(formData: FormData) {
   const weekOf = formData.get('weekOf') as string
-  const matchKeyword = (formData.get('matchKeyword') as string) || null
+  const rowIds = ((formData.get('rowIds') as string) || '').split(',').filter(Boolean)
 
-  if (!title || !link || !weekOf) {
-    redirect('/coding?error=' + encodeURIComponent('문제명, 링크, 주차를 모두 입력해주세요'))
+  if (!weekOf || rowIds.length === 0) {
+    redirect('/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요'))
+    return
+  }
+
+  const rows = rowIds.map((rowId) => ({
+    title: (formData.get(`title-${rowId}`) as string) || '',
+    link: (formData.get(`link-${rowId}`) as string) || '',
+    matchKeyword: (formData.get(`matchKeyword-${rowId}`) as string) || null,
+    assigneeIds: formData.getAll(`assigneeIds-${rowId}`) as string[],
+  }))
+
+  if (rows.some((row) => !row.title || !row.link)) {
+    redirect('/coding?error=' + encodeURIComponent('모든 문제에 문제명과 링크를 입력해주세요'))
     return
   }
 
@@ -34,9 +44,16 @@ export async function createProblem(formData: FormData) {
   if (callerError) throw new Error(callerError.message)
   if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
 
-  const { error } = await supabase
-    .from('coding_problems')
-    .insert({ title, link, week_of: weekOf, created_by: user.id, match_keyword: matchKeyword })
+  const { error } = await supabase.from('coding_problems').insert(
+    rows.map((row) => ({
+      title: row.title,
+      link: row.link,
+      week_of: weekOf,
+      created_by: user.id,
+      match_keyword: row.matchKeyword,
+      assignee_ids: row.assigneeIds,
+    }))
+  )
 
   if (error) {
     redirect('/coding?error=' + encodeURIComponent(error.message))
@@ -44,7 +61,7 @@ export async function createProblem(formData: FormData) {
   }
 
   revalidatePath('/coding')
-  redirect('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
+  redirect('/coding?success=' + encodeURIComponent(`문제 ${rows.length}개를 등록했어요`))
 }
 
 export async function updateGithubUsername(formData: FormData) {

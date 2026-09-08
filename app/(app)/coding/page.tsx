@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getSessionProfile } from '@/lib/auth/session'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
-import { groupByWeek, formatWeekLabel } from '@/lib/coding/week'
+import { groupByWeek, formatWeekLabel, getWeekDueDate, formatDueDateLabel } from '@/lib/coding/week'
 import { ProblemForm } from './problem-form'
 import { ProblemCard } from './problem-card'
 import { GithubSettingsForm } from './github-settings-form'
@@ -25,7 +25,7 @@ export default async function CodingPage({
     supabase.from('profiles').select('id, name').eq('status', 'approved'),
     supabase
       .from('coding_problems')
-      .select('id, title, link, week_of, created_by, created_at')
+      .select('id, title, link, week_of, created_by, created_at, assignee_ids')
       .order('week_of', { ascending: false }),
   ])
 
@@ -35,7 +35,10 @@ export default async function CodingPage({
   const problemIds = (problems ?? []).map((p) => p.id)
 
   const { data: checks } = await queryIfAny(problemIds, () =>
-    supabase.from('coding_checks').select('problem_id, user_id').in('problem_id', problemIds)
+    supabase
+      .from('coding_checks')
+      .select('problem_id, user_id, commit_sha, file_path')
+      .in('problem_id', problemIds)
   )
 
   const codingProblems: CodingProblem[] = (problems ?? []).map((problem) => ({
@@ -45,9 +48,14 @@ export default async function CodingPage({
     weekOf: problem.week_of,
     createdBy: problem.created_by,
     createdAt: problem.created_at,
-    checkedUserIds: (checks ?? [])
+    assigneeIds: (problem.assignee_ids as string[] | null) ?? [],
+    checks: (checks ?? [])
       .filter((c) => c.problem_id === problem.id)
-      .map((c) => c.user_id),
+      .map((c) => ({
+        userId: c.user_id,
+        commitSha: c.commit_sha as string | null,
+        filePath: c.file_path as string | null,
+      })),
   }))
 
   const weekGroups = groupByWeek(codingProblems)
@@ -61,11 +69,16 @@ export default async function CodingPage({
         </Alert>
       )}
       <GithubSettingsForm currentUsername={callerProfile?.github_username ?? null} />
-      {isAdmin && <ProblemForm />}
+      {isAdmin && <ProblemForm members={members} />}
       <div className="mt-6 flex flex-col gap-6">
         {weekGroups.map((week) => (
           <section key={week.weekOf}>
-            <h2 className="mb-2 text-lg font-semibold">{formatWeekLabel(week.weekOf)}</h2>
+            <div className="mb-2 flex items-baseline gap-2">
+              <h2 className="text-lg font-semibold">{formatWeekLabel(week.weekOf)}</h2>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {formatDueDateLabel(getWeekDueDate(week.weekOf))}
+              </span>
+            </div>
             <div className="flex flex-col gap-3">
               {week.items.map((problem) => (
                 <ProblemCard

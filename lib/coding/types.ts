@@ -3,6 +3,12 @@ export interface Member {
   name: string
 }
 
+export interface CodingCheck {
+  userId: string
+  commitSha: string | null
+  filePath: string | null
+}
+
 export interface CodingProblem {
   id: string
   title: string
@@ -10,5 +16,6 @@ export interface CodingProblem {
   weekOf: string
   createdBy: string
   createdAt: string
-  checkedUserIds: string[]
+  assigneeIds: string[]
+  checks: CodingCheck[]
 }

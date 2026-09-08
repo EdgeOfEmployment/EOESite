@@ -25,12 +25,16 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblem, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
+import { createProblems, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
 
-function buildFormData(fields: Record<string, string>) {
+function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData()
   for (const [key, value] of Object.entries(fields)) {
-    formData.set(key, value)
+    if (Array.isArray(value)) {
+      for (const v of value) formData.append(key, v)
+    } else {
+      formData.set(key, value)
+    }
   }
   return formData
 }
@@ -58,13 +62,43 @@ beforeEach(() => {
   rpcMock.mockResolvedValue({ error: null })
 })
 
-describe('createProblem', () => {
-  it('redirects with an error when a required field is missing', async () => {
-    const formData = buildFormData({ title: '두 수의 합', link: '', weekOf: '2026-08-11' })
+describe('createProblems', () => {
+  it('redirects with an error when the week is missing', async () => {
+    const formData = buildFormData({
+      weekOf: '',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+    })
 
-    await expect(createProblem(formData)).rejects.toThrow()
+    await expect(createProblems(formData)).rejects.toThrow()
     expect(redirectMock).toHaveBeenCalledWith(
-      '/coding?error=' + encodeURIComponent('문제명, 링크, 주차를 모두 입력해주세요')
+      '/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요')
+    )
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects with an error when no problem rows are present', async () => {
+    const formData = buildFormData({ weekOf: '2026-08-11', rowIds: '' })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('대상 주차와 문제를 최소 1개 이상 입력해주세요')
+    )
+    expect(insertMock).not.toHaveBeenCalled()
+  })
+
+  it('redirects with an error when a row is missing its title or link', async () => {
+    const formData = buildFormData({
+      weekOf: '2026-08-11',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': '',
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('모든 문제에 문제명과 링크를 입력해주세요')
     )
     expect(insertMock).not.toHaveBeenCalled()
   })
@@ -72,53 +106,72 @@ describe('createProblem', () => {
   it('throws when the caller is not an admin', async () => {
     mockAdminCheck('member')
     const formData = buildFormData({
-      title: '두 수의 합',
-      link: 'https://example.com/problem/1',
       weekOf: '2026-08-11',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
     })
 
-    await expect(createProblem(formData)).rejects.toThrow('권한이 없습니다')
+    await expect(createProblems(formData)).rejects.toThrow('권한이 없습니다')
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  it('creates the problem with a null match keyword when none is provided', async () => {
+  it('creates a single problem with a null keyword and empty assignee list when none are given', async () => {
     const formData = buildFormData({
-      title: '두 수의 합',
-      link: 'https://example.com/problem/1',
       weekOf: '2026-08-11',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
     })
 
-    await expect(createProblem(formData)).rejects.toThrow()
+    await expect(createProblems(formData)).rejects.toThrow()
 
-    expect(insertMock).toHaveBeenCalledWith({
-      title: '두 수의 합',
-      link: 'https://example.com/problem/1',
-      week_of: '2026-08-11',
-      created_by: 'admin-1',
-      match_keyword: null,
-    })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
-    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
+    expect(insertMock).toHaveBeenCalledWith([
+      {
+        title: '두 수의 합',
+        link: 'https://example.com/problem/1',
+        week_of: '2026-08-11',
+        created_by: 'admin-1',
+        match_keyword: null,
+        assignee_ids: [],
+      },
+    ])
+    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제 1개를 등록했어요'))
   })
 
-  it('passes the optional match keyword when provided', async () => {
+  it('creates multiple problems in one submission, each with its own keyword and assignees', async () => {
     const formData = buildFormData({
-      title: '두 수의 합',
-      link: 'https://example.com/problem/1',
       weekOf: '2026-08-11',
-      matchKeyword: 'two-sum',
+      rowIds: 'row-1,row-2',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+      'matchKeyword-row-1': 'two-sum',
+      'assigneeIds-row-1': ['user-1', 'user-2'],
+      'title-row-2': '세 수의 합',
+      'link-row-2': 'https://example.com/problem/2',
     })
 
-    await expect(createProblem(formData)).rejects.toThrow()
+    await expect(createProblems(formData)).rejects.toThrow()
 
-    expect(insertMock).toHaveBeenCalledWith({
-      title: '두 수의 합',
-      link: 'https://example.com/problem/1',
-      week_of: '2026-08-11',
-      created_by: 'admin-1',
-      match_keyword: 'two-sum',
-    })
-    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제를 등록했어요'))
+    expect(insertMock).toHaveBeenCalledWith([
+      {
+        title: '두 수의 합',
+        link: 'https://example.com/problem/1',
+        week_of: '2026-08-11',
+        created_by: 'admin-1',
+        match_keyword: 'two-sum',
+        assignee_ids: ['user-1', 'user-2'],
+      },
+      {
+        title: '세 수의 합',
+        link: 'https://example.com/problem/2',
+        week_of: '2026-08-11',
+        created_by: 'admin-1',
+        match_keyword: null,
+        assignee_ids: [],
+      },
+    ])
+    expect(redirectMock).toHaveBeenCalledWith('/coding?success=' + encodeURIComponent('문제 2개를 등록했어요'))
   })
 })
 
