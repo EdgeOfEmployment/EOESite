@@ -1,40 +1,43 @@
-export interface WeekGroup<T> {
-  weekOf: string
-  items: T[]
+export interface WeekNav<T> {
+  current: T | null
+  prevId: string | null
+  nextId: string | null
 }
 
-export function getMostRecentTuesday(date: Date): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
-  const day = d.getUTCDay()
-  const diff = (day - 2 + 7) % 7
-  d.setUTCDate(d.getUTCDate() - diff)
+function formatMonthDay(date: string): string {
+  const [, month, day] = date.split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+
+export function formatWeekHeader(week: { label: string; startDate: string; endDate: string }): string {
+  return `${week.label} (${formatMonthDay(week.startDate)}~${formatMonthDay(week.endDate)})`
+}
+
+export function getTodayDate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00.000Z`)
+  d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
 
-export function formatWeekLabel(weekOf: string): string {
-  const [, month, day] = weekOf.split('-')
-  return `${Number(month)}/${Number(day)} 주차`
-}
-
-export function groupByWeek<T extends { weekOf: string }>(items: T[]): WeekGroup<T>[] {
-  const map = new Map<string, T[]>()
-  for (const item of items) {
-    const list = map.get(item.weekOf) ?? []
-    list.push(item)
-    map.set(item.weekOf, list)
+export function resolveCurrentWeek<T extends { id: string }>(
+  weeks: T[],
+  requestedId?: string
+): WeekNav<T> {
+  if (weeks.length === 0) {
+    return { current: null, prevId: null, nextId: null }
   }
-  return Array.from(map.entries())
-    .map(([weekOf, items]) => ({ weekOf, items }))
-    .sort((a, b) => b.weekOf.localeCompare(a.weekOf))
-}
 
-export function getWeekDueDate(weekOf: string): string {
-  const d = new Date(`${weekOf}T00:00:00.000Z`)
-  d.setUTCDate(d.getUTCDate() + 6)
-  return d.toISOString().slice(0, 10)
-}
+  const requestedIndex = requestedId ? weeks.findIndex((week) => week.id === requestedId) : -1
+  const currentIndex = requestedIndex === -1 ? 0 : requestedIndex
+  const current = weeks[currentIndex]
 
-export function formatDueDateLabel(dueDate: string): string {
-  const [, month, day] = dueDate.split('-')
-  return `${Number(month)}/${Number(day)} 마감`
+  return {
+    current,
+    prevId: currentIndex < weeks.length - 1 ? weeks[currentIndex + 1].id : null,
+    nextId: currentIndex > 0 ? weeks[currentIndex - 1].id : null,
+  }
 }

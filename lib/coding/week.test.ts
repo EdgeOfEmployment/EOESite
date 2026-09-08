@@ -1,65 +1,78 @@
-import { describe, it, expect } from 'vitest'
-import { getMostRecentTuesday, formatWeekLabel, groupByWeek, getWeekDueDate, formatDueDateLabel } from './week'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { formatWeekHeader, getTodayDate, addDays, resolveCurrentWeek } from './week'
 
-describe('getMostRecentTuesday', () => {
-  it('returns the same date when given a Tuesday', () => {
-    expect(getMostRecentTuesday(new Date('2026-08-11T12:00:00.000Z'))).toBe('2026-08-11')
-  })
-
-  it('returns the prior Tuesday when given a Wednesday', () => {
-    expect(getMostRecentTuesday(new Date('2026-08-12T12:00:00.000Z'))).toBe('2026-08-11')
-  })
-
-  it('returns the prior Tuesday when given a Monday', () => {
-    expect(getMostRecentTuesday(new Date('2026-08-10T12:00:00.000Z'))).toBe('2026-08-04')
-  })
-
-  it('returns the prior Tuesday when given a Sunday', () => {
-    expect(getMostRecentTuesday(new Date('2026-08-09T12:00:00.000Z'))).toBe('2026-08-04')
-  })
-})
-
-describe('formatWeekLabel', () => {
-  it('formats a week-of date as "M/D 주차"', () => {
-    expect(formatWeekLabel('2026-08-11')).toBe('8/11 주차')
+describe('formatWeekHeader', () => {
+  it('formats a week as "{label} ({M/D}~{M/D})"', () => {
+    expect(
+      formatWeekHeader({ label: '1주차', startDate: '2026-09-08', endDate: '2026-09-14' })
+    ).toBe('1주차 (9/8~9/14)')
   })
 
   it('does not zero-pad single-digit month or day', () => {
-    expect(formatWeekLabel('2026-01-06')).toBe('1/6 주차')
+    expect(
+      formatWeekHeader({ label: '2주차', startDate: '2026-01-06', endDate: '2026-01-09' })
+    ).toBe('2주차 (1/6~1/9)')
   })
 })
 
-describe('groupByWeek', () => {
-  it('groups items by weekOf and sorts newest week first', () => {
-    const items = [
-      { id: 'a', weekOf: '2026-08-04' },
-      { id: 'b', weekOf: '2026-08-11' },
-      { id: 'c', weekOf: '2026-08-04' },
-    ]
+describe('getTodayDate', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-11T15:30:00.000Z'))
+  })
 
-    const groups = groupByWeek(items)
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
-    expect(groups.map((g) => g.weekOf)).toEqual(['2026-08-11', '2026-08-04'])
-    expect(groups[1].items.map((i) => i.id)).toEqual(['a', 'c'])
+  it('returns the current date as YYYY-MM-DD', () => {
+    expect(getTodayDate()).toBe('2026-08-11')
   })
 })
 
-describe('getWeekDueDate', () => {
-  it('returns 6 days after the week-of date', () => {
-    expect(getWeekDueDate('2026-08-11')).toBe('2026-08-17')
+describe('addDays', () => {
+  it('adds the given number of days to a date', () => {
+    expect(addDays('2026-08-11', 6)).toBe('2026-08-17')
   })
 
   it('rolls over the month boundary correctly', () => {
-    expect(getWeekDueDate('2026-08-28')).toBe('2026-09-03')
+    expect(addDays('2026-08-28', 6)).toBe('2026-09-03')
   })
 })
 
-describe('formatDueDateLabel', () => {
-  it('formats a due date as "M/D 마감"', () => {
-    expect(formatDueDateLabel('2026-08-17')).toBe('8/17 마감')
+describe('resolveCurrentWeek', () => {
+  const weeks = [{ id: 'week-3' }, { id: 'week-2' }, { id: 'week-1' }]
+
+  it('defaults to the newest (first) week when no id is requested', () => {
+    const result = resolveCurrentWeek(weeks)
+    expect(result.current?.id).toBe('week-3')
+    expect(result.prevId).toBe('week-2')
+    expect(result.nextId).toBeNull()
   })
 
-  it('does not zero-pad single-digit month or day', () => {
-    expect(formatDueDateLabel('2026-09-03')).toBe('9/3 마감')
+  it('resolves to the requested week and computes older/newer neighbors', () => {
+    const result = resolveCurrentWeek(weeks, 'week-2')
+    expect(result.current?.id).toBe('week-2')
+    expect(result.prevId).toBe('week-1')
+    expect(result.nextId).toBe('week-3')
+  })
+
+  it('hides the older-week link on the oldest week', () => {
+    const result = resolveCurrentWeek(weeks, 'week-1')
+    expect(result.current?.id).toBe('week-1')
+    expect(result.prevId).toBeNull()
+    expect(result.nextId).toBe('week-2')
+  })
+
+  it('falls back to the newest week when the requested id does not exist', () => {
+    const result = resolveCurrentWeek(weeks, 'unknown-id')
+    expect(result.current?.id).toBe('week-3')
+  })
+
+  it('returns nulls when there are no weeks at all', () => {
+    const result = resolveCurrentWeek([])
+    expect(result.current).toBeNull()
+    expect(result.prevId).toBeNull()
+    expect(result.nextId).toBeNull()
   })
 })
