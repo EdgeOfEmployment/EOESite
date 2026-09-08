@@ -27,7 +27,8 @@ export default async function CodingPage({
     supabase
       .from('coding_weeks')
       .select('id, label, start_date, end_date')
-      .order('start_date', { ascending: false }),
+      .order('start_date', { ascending: false })
+      .order('created_at', { ascending: false }),
   ])
 
   const isAdmin = session?.role === 'admin'

@@ -30,6 +30,7 @@ const problems = [
 const checks = [{ problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, file_path: null }]
 
 const weeksOrderMock = vi.fn(async () => ({ data: weeks }))
+const weeksOrderStartMock = vi.fn(() => ({ order: weeksOrderMock }))
 const problemsEqMock = vi.fn(async () => ({ data: problems }))
 const codingChecksInMock = vi.fn(async () => ({ data: checks }))
 
@@ -51,7 +52,7 @@ vi.mock('@/lib/supabase/server', () => ({
         }
       }
       if (table === 'coding_weeks') {
-        return { select: () => ({ order: weeksOrderMock }) }
+        return { select: () => ({ order: weeksOrderStartMock }) }
       }
       if (table === 'coding_problems') {
         return { select: () => ({ eq: problemsEqMock }) }
@@ -80,6 +81,7 @@ import CodingPage from './page'
 
 beforeEach(() => {
   weeksOrderMock.mockClear()
+  weeksOrderStartMock.mockClear()
   problemsEqMock.mockClear()
   codingChecksInMock.mockClear()
 })
@@ -94,6 +96,13 @@ describe('CodingPage', () => {
     expect(screen.getByText('김민수')).toBeInTheDocument()
     expect(screen.getByText('관리자')).toBeInTheDocument()
     expect(problemsEqMock).toHaveBeenCalledWith('week_id', 'week-2')
+  })
+
+  it('orders weeks by start_date then created_at so ties resolve deterministically', async () => {
+    await CodingPage({ searchParams: Promise.resolve({}) })
+
+    expect(weeksOrderStartMock).toHaveBeenCalledWith('start_date', { ascending: false })
+    expect(weeksOrderMock).toHaveBeenCalledWith('created_at', { ascending: false })
   })
 
   it('renders the requested week when ?week= matches an existing week', async () => {
