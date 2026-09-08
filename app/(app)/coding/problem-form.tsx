@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createProblems } from './actions'
 import { getTodayDate, addDays, formatWeekHeader } from '@/lib/coding/week'
 import { Card } from '@/components/ui/card'
@@ -29,9 +29,11 @@ export function ProblemForm({
   const [rows, setRows] = useState<ProblemRow[]>([{ id: 'row-1' }])
   const [weekMode, setWeekMode] = useState<'existing' | 'new'>(currentWeek ? 'existing' : 'new')
 
-  useEffect(() => {
+  const [prevWeekId, setPrevWeekId] = useState(currentWeek?.id)
+  if (currentWeek?.id !== prevWeekId) {
+    setPrevWeekId(currentWeek?.id)
     setWeekMode(currentWeek ? 'existing' : 'new')
-  }, [currentWeek?.id])
+  }
 
   function addRow() {
     setRows((prev) => [...prev, makeRow()])

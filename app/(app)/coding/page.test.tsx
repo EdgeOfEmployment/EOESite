@@ -31,6 +31,7 @@ const checks = [{ problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, 
 
 const weeksOrderMock = vi.fn(async () => ({ data: weeks }))
 const problemsEqMock = vi.fn(async () => ({ data: problems }))
+const codingChecksInMock = vi.fn(async () => ({ data: checks }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -56,7 +57,7 @@ vi.mock('@/lib/supabase/server', () => ({
         return { select: () => ({ eq: problemsEqMock }) }
       }
       if (table === 'coding_checks') {
-        return { select: () => ({ in: async () => ({ data: checks }) }) }
+        return { select: () => ({ in: codingChecksInMock }) }
       }
       throw new Error(`unexpected table ${table}`)
     },
@@ -80,6 +81,7 @@ import CodingPage from './page'
 beforeEach(() => {
   weeksOrderMock.mockClear()
   problemsEqMock.mockClear()
+  codingChecksInMock.mockClear()
 })
 
 describe('CodingPage', () => {
@@ -132,6 +134,16 @@ describe('CodingPage', () => {
     render(ui)
 
     expect(screen.getByText('아직 등록된 문제가 없습니다.')).toBeInTheDocument()
+  })
+
+  it('skips the coding_checks query when the current week has no problems', async () => {
+    problemsEqMock.mockResolvedValueOnce({ data: [] })
+
+    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByText('이 주차에 등록된 문제가 없습니다.')).toBeInTheDocument()
+    expect(codingChecksInMock).not.toHaveBeenCalled()
   })
 
   it('does not show the problem registration form for non-admins', async () => {
