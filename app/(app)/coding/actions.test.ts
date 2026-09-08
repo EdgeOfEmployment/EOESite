@@ -233,6 +233,32 @@ describe('createProblems', () => {
     expect(redirectMock).toHaveBeenCalledWith('/coding?error=' + encodeURIComponent('db error'))
     expect(insertMock).not.toHaveBeenCalled()
   })
+
+  it('leaves the new week in place (no rollback) when the problem insert fails after it', async () => {
+    insertMock.mockResolvedValue({ error: { message: 'problem insert failed' } })
+    const formData = buildFormData({
+      weekMode: 'new',
+      weekLabel: '1주차',
+      weekStartDate: '2026-09-08',
+      weekEndDate: '2026-09-14',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+
+    expect(codingWeeksInsertMock).toHaveBeenCalledWith({
+      label: '1주차',
+      start_date: '2026-09-08',
+      end_date: '2026-09-14',
+      created_by: 'admin-1',
+    })
+    expect(insertMock).toHaveBeenCalled()
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('problem insert failed')
+    )
+  })
 })
 
 describe('deleteProblem', () => {
