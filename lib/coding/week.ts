@@ -27,3 +27,14 @@ export function groupByWeek<T extends { weekOf: string }>(items: T[]): WeekGroup
     .map(([weekOf, items]) => ({ weekOf, items }))
     .sort((a, b) => b.weekOf.localeCompare(a.weekOf))
 }
+
+export function getWeekDueDate(weekOf: string): string {
+  const d = new Date(`${weekOf}T00:00:00.000Z`)
+  d.setUTCDate(d.getUTCDate() + 6)
+  return d.toISOString().slice(0, 10)
+}
+
+export function formatDueDateLabel(dueDate: string): string {
+  const [, month, day] = dueDate.split('-')
+  return `${Number(month)}/${Number(day)} 마감`
+}

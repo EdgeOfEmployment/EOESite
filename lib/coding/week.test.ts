@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getMostRecentTuesday, formatWeekLabel, groupByWeek } from './week'
+import { getMostRecentTuesday, formatWeekLabel, groupByWeek, getWeekDueDate, formatDueDateLabel } from './week'
 
 describe('getMostRecentTuesday', () => {
   it('returns the same date when given a Tuesday', () => {
@@ -41,5 +41,25 @@ describe('groupByWeek', () => {
 
     expect(groups.map((g) => g.weekOf)).toEqual(['2026-08-11', '2026-08-04'])
     expect(groups[1].items.map((i) => i.id)).toEqual(['a', 'c'])
+  })
+})
+
+describe('getWeekDueDate', () => {
+  it('returns 6 days after the week-of date', () => {
+    expect(getWeekDueDate('2026-08-11')).toBe('2026-08-17')
+  })
+
+  it('rolls over the month boundary correctly', () => {
+    expect(getWeekDueDate('2026-08-28')).toBe('2026-09-03')
+  })
+})
+
+describe('formatDueDateLabel', () => {
+  it('formats a due date as "M/D 마감"', () => {
+    expect(formatDueDateLabel('2026-08-17')).toBe('8/17 마감')
+  })
+
+  it('does not zero-pad single-digit month or day', () => {
+    expect(formatDueDateLabel('2026-09-03')).toBe('9/3 마감')
   })
 })
