@@ -1,5 +1,6 @@
 import type { CodingProblem, Member } from '@/lib/coding/types'
 import { adminRemoveCheck, deleteProblem } from './actions'
+import { buildCommitFileUrl } from '@/lib/coding/github-link'
 import { Card } from '@/components/ui/card'
 
 export function ProblemCard({
@@ -11,6 +12,11 @@ export function ProblemCard({
   members: Member[]
   isAdmin: boolean
 }) {
+  const targetMembers =
+    problem.assigneeIds.length > 0
+      ? members.filter((member) => problem.assigneeIds.includes(member.id))
+      : members
+
   return (
     <Card>
       <div className="mb-2 flex items-center justify-between">
@@ -26,8 +32,12 @@ export function ProblemCard({
         )}
       </div>
       <ul className="flex flex-col gap-1">
-        {members.map((member) => {
-          const checked = problem.checkedUserIds.includes(member.id)
+        {targetMembers.map((member) => {
+          const check = problem.checks.find((c) => c.userId === member.id)
+          const checked = Boolean(check)
+          const commitUrl =
+            check?.commitSha && check?.filePath ? buildCommitFileUrl(check.commitSha, check.filePath) : null
+
           return (
             <li key={member.id} className="flex items-center gap-2 text-sm">
               <span
@@ -47,6 +57,12 @@ export function ProblemCard({
                 </form>
               )}
               <span>{member.name}</span>
+              {commitUrl && (
+                <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="text-xs underline">
+                  코드 보기
+                </a>
+              )}
+              {!checked && <span className="text-xs text-gray-400">아직 제출 안됨</span>}
             </li>
           )
         })}
