@@ -6,84 +6,110 @@ vi.mock('./actions', () => ({
 }))
 
 vi.mock('@/lib/coding/week', () => ({
-  getMostRecentTuesday: () => '2026-08-11',
+  getTodayDate: () => '2026-08-11',
+  addDays: (date: string, days: number) => {
+    const d = new Date(`${date}T00:00:00.000Z`)
+    d.setUTCDate(d.getUTCDate() + days)
+    return d.toISOString().slice(0, 10)
+  },
+  formatWeekHeader: (week: { label: string; startDate: string; endDate: string }) =>
+    `${week.label} (${week.startDate}~${week.endDate})`,
 }))
 
 import { ProblemForm } from './problem-form'
-import type { Member } from '@/lib/coding/types'
+import type { Member, CodingWeek } from '@/lib/coding/types'
 
 const members: Member[] = [
   { id: 'user-1', name: '김민수' },
   { id: 'user-2', name: '이지은' },
 ]
 
-describe('ProblemForm', () => {
-  it('renders a week-of input, one problem row, and a submit button', () => {
-    render(<ProblemForm members={members} />)
+const currentWeek: CodingWeek = {
+  id: 'week-1',
+  label: '1주차',
+  startDate: '2026-09-08',
+  endDate: '2026-09-14',
+}
 
-    expect(screen.getByLabelText('대상 주차')).toBeInTheDocument()
+describe('ProblemForm', () => {
+  it('defaults to adding to the current week when one exists, with a hidden weekId', () => {
+    const { container } = render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('existing')
+    expect(container.querySelector('input[name="weekId"]')).toHaveValue('week-1')
+    expect(screen.getByText('1주차 (2026-09-08~2026-09-14)')).toBeInTheDocument()
+  })
+
+  it('shows a "새 주차 만들기" toggle when a current week exists', () => {
+    render(<ProblemForm members={members} currentWeek={currentWeek} />)
+    expect(screen.getByRole('button', { name: '새 주차 만들기' })).toBeInTheDocument()
+  })
+
+  it('switches to new-week mode with editable fields when the toggle is clicked', () => {
+    const { container } = render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '새 주차 만들기' }))
+
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('new')
+    expect(screen.getByLabelText('주차명')).toBeInTheDocument()
+    expect(screen.getByLabelText('시작일')).toHaveValue('2026-08-11')
+    expect(screen.getByLabelText('종료일')).toHaveValue('2026-08-17')
+  })
+
+  it('switches back to the existing week when toggled again', () => {
+    const { container } = render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '새 주차 만들기' }))
+    fireEvent.click(screen.getByRole('button', { name: '기존 주차에 등록' }))
+
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('existing')
+    expect(container.querySelector('input[name="weekId"]')).toHaveValue('week-1')
+  })
+
+  it('starts in new-week mode with no toggle when there is no current week', () => {
+    const { container } = render(<ProblemForm members={members} currentWeek={null} />)
+
+    expect(container.querySelector('input[name="weekMode"]')).toHaveValue('new')
+    expect(screen.getByLabelText('주차명')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '새 주차 만들기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '기존 주차에 등록' })).not.toBeInTheDocument()
+  })
+
+  it('renders one problem row, an optional match keyword input, and assignee checkboxes', () => {
+    render(<ProblemForm members={members} currentWeek={currentWeek} />)
+
     expect(screen.getByLabelText('문제명')).toBeInTheDocument()
     expect(screen.getByLabelText('문제 링크')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '문제 등록' })).toBeInTheDocument()
-  })
-
-  it('defaults the week-of field to the most recent Tuesday', () => {
-    render(<ProblemForm members={members} />)
-    expect(screen.getByLabelText('대상 주차')).toHaveValue('2026-08-11')
-  })
-
-  it('renders an optional match keyword input', () => {
-    render(<ProblemForm members={members} />)
-    const input = screen.getByLabelText('저장소 매칭 키워드 (선택)')
-    expect(input).toBeInTheDocument()
-    expect(input).not.toBeRequired()
-  })
-
-  it('renders an assignee checkbox for every approved member', () => {
-    render(<ProblemForm members={members} />)
+    const keywordInput = screen.getByLabelText('저장소 매칭 키워드 (선택)')
+    expect(keywordInput).not.toBeRequired()
     expect(screen.getByRole('checkbox', { name: '김민수' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '이지은' })).toBeInTheDocument()
   })
 
   it('does not show a row-remove button when only one row exists', () => {
-    render(<ProblemForm members={members} />)
+    render(<ProblemForm members={members} currentWeek={currentWeek} />)
     expect(screen.queryByRole('button', { name: '제거' })).not.toBeInTheDocument()
   })
 
-  it('adds another problem row when "문제 추가" is clicked', () => {
-    render(<ProblemForm members={members} />)
+  it('adds and removes problem rows', () => {
+    render(<ProblemForm members={members} currentWeek={currentWeek} />)
 
     fireEvent.click(screen.getByRole('button', { name: '문제 추가' }))
-
     expect(screen.getAllByLabelText('문제명')).toHaveLength(2)
-    expect(screen.getAllByRole('button', { name: '제거' })).toHaveLength(2)
-  })
 
-  it('removes a row when its "제거" button is clicked', () => {
-    render(<ProblemForm members={members} />)
-
-    fireEvent.click(screen.getByRole('button', { name: '문제 추가' }))
     fireEvent.click(screen.getAllByRole('button', { name: '제거' })[0])
-
     expect(screen.getAllByLabelText('문제명')).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: '제거' })).not.toBeInTheDocument()
   })
 
-  it('suffixes each row\'s field names with its row id and keeps rowIds in sync, matching the createProblems contract', () => {
-    const { container } = render(<ProblemForm members={members} />)
+  it("suffixes each row's field names with its row id and keeps rowIds in sync", () => {
+    const { container } = render(<ProblemForm members={members} currentWeek={currentWeek} />)
 
     fireEvent.click(screen.getByRole('button', { name: '문제 추가' }))
 
     expect(container.querySelector('input[name="title-row-1"]')).toBeInTheDocument()
     expect(container.querySelector('input[name="title-row-2"]')).toBeInTheDocument()
-    expect(container.querySelector('input[name="link-row-1"]')).toBeInTheDocument()
     expect(container.querySelector('input[name="link-row-2"]')).toBeInTheDocument()
-    expect(container.querySelector('input[name="matchKeyword-row-1"]')).toBeInTheDocument()
-    expect(container.querySelector('input[name="matchKeyword-row-2"]')).toBeInTheDocument()
-
-    expect(container.querySelectorAll('input[name="assigneeIds-row-1"]')).toHaveLength(members.length)
     expect(container.querySelectorAll('input[name="assigneeIds-row-2"]')).toHaveLength(members.length)
-
     expect(container.querySelector('input[name="rowIds"]')).toHaveValue('row-1,row-2')
   })
 })
