@@ -71,6 +71,14 @@ describe('GoalsEditor', () => {
     expect(screen.getByDisplayValue('이력서 초안 작성')).toBeInTheDocument()
   })
 
+  it('renders a drag handle for each goal in edit mode', () => {
+    render(<GoalsEditor postId="post-1" goals={goals} isAuthor={true} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '수정' }))
+
+    expect(screen.getAllByRole('button', { name: '순서 변경' })).toHaveLength(2)
+  })
+
   it('discards changes and exits edit mode when "취소" is clicked', () => {
     render(<GoalsEditor postId="post-1" goals={goals} isAuthor={true} />)
 

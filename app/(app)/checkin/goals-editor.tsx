@@ -1,11 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { CheckinGoal } from '@/lib/checkin/types'
 import { formatKstTime } from '@/lib/checkin/time'
 import { toggleGoalCompleted, updateCheckinGoals } from './actions'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { DragHandleIcon, SortableItem } from '@/components/ui/sortable-item'
+import { reorderById } from '@/lib/ui/reorder'
+
+type DraftGoal = CheckinGoal & { _id: string }
 
 function buildGoalsFormData(goals: CheckinGoal[]) {
   const formData = new FormData()
@@ -28,11 +42,15 @@ export function GoalsEditor({
   isAuthor: boolean
 }) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState<CheckinGoal[]>(goals)
+  const [draft, setDraft] = useState<DraftGoal[]>([])
   const [saving, setSaving] = useState(false)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   function startEditing() {
-    setDraft(goals.map((goal) => ({ ...goal })))
+    setDraft(goals.map((goal) => ({ ...goal, _id: crypto.randomUUID() })))
     setEditing(true)
   }
 
@@ -40,16 +58,22 @@ export function GoalsEditor({
     setEditing(false)
   }
 
-  function updateGoalBody(index: number, value: string) {
-    setDraft((prev) => prev.map((goal, i) => (i === index ? { ...goal, body: value } : goal)))
+  function updateGoalBody(id: string, value: string) {
+    setDraft((prev) => prev.map((goal) => (goal._id === id ? { ...goal, body: value } : goal)))
   }
 
-  function removeGoal(index: number) {
-    setDraft((prev) => prev.filter((_, i) => i !== index))
+  function removeGoal(id: string) {
+    setDraft((prev) => prev.filter((goal) => goal._id !== id))
   }
 
   function addGoal() {
-    setDraft((prev) => [...prev, { body: '', completed: false, completedAt: null }])
+    setDraft((prev) => [...prev, { body: '', completed: false, completedAt: null, _id: crypto.randomUUID() }])
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const overId = event.over?.id
+    if (!overId) return
+    setDraft((prev) => reorderById(prev, String(event.active.id), String(overId), (goal) => goal._id))
   }
 
   async function saveGoals() {
@@ -65,23 +89,40 @@ export function GoalsEditor({
   if (editing) {
     return (
       <div className="mt-3 flex flex-col gap-2">
-        {draft.map((goal, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <Input
-              size="sm"
-              value={goal.body}
-              onChange={(e) => updateGoalBody(index, e.target.value)}
-              placeholder={`목표 ${index + 1}`}
-            />
-            <button
-              type="button"
-              onClick={() => removeGoal(index)}
-              className="text-xs text-red-600 dark:text-red-400"
-            >
-              삭제
-            </button>
-          </div>
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={draft.map((goal) => goal._id)} strategy={verticalListSortingStrategy}>
+            {draft.map((goal, index) => (
+              <SortableItem key={goal._id} id={goal._id} className="flex items-center gap-2">
+                {({ attributes, listeners }) => (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="순서 변경"
+                      className="cursor-grab touch-none text-gray-400 active:cursor-grabbing dark:text-gray-500"
+                      {...attributes}
+                      {...listeners}
+                    >
+                      <DragHandleIcon />
+                    </button>
+                    <Input
+                      size="sm"
+                      value={goal.body}
+                      onChange={(e) => updateGoalBody(goal._id, e.target.value)}
+                      placeholder={`목표 ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeGoal(goal._id)}
+                      className="text-xs text-red-600 dark:text-red-400"
+                    >
+                      삭제
+                    </button>
+                  </>
+                )}
+              </SortableItem>
+            ))}
+          </SortableContext>
+        </DndContext>
         <div className="flex gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={addGoal} disabled={saving}>
             + 항목 추가
