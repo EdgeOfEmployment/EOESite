@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react'
 vi.mock('./actions', () => ({
   addComment: vi.fn(),
   toggleReaction: vi.fn(),
-  toggleGoalCompleted: vi.fn(),
+  setGoalStatus: vi.fn(),
   updateCheckinGoals: vi.fn(),
   deleteCheckinPost: vi.fn(),
 }))
@@ -18,8 +18,8 @@ const post: CheckinPost = {
   authorName: '김민수',
   photoUrl: 'https://example.com/photo.jpg',
   goals: [
-    { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
-    { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+    { body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null },
+    { body: '이력서 초안 작성', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' },
   ],
   createdAt: '2026-08-10T01:05:00.000Z',
   isLate: true,
@@ -47,14 +47,14 @@ describe('PostCard', () => {
     expect(screen.getByText('지각 · 11,000원')).toBeInTheDocument()
   })
 
-  it('lets the author toggle their own goal completion', () => {
+  it('lets the author change their own goal status', () => {
     render(<PostCard post={post} currentUserId="user-1" isAdmin={false} />)
-    expect(screen.getByRole('button', { name: '알고리즘 3문제 풀기' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '완료로 표시' })).toHaveLength(2)
   })
 
-  it('does not render a toggle button for a non-author viewer', () => {
+  it('does not render status buttons for a non-author viewer', () => {
     render(<PostCard post={post} currentUserId="user-2" isAdmin={false} />)
-    expect(screen.queryByRole('button', { name: '알고리즘 3문제 풀기' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '완료로 표시' })).not.toBeInTheDocument()
   })
 
   it('shows the completion time for a completed goal', () => {

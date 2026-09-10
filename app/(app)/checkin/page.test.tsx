@@ -16,7 +16,7 @@ const posts = [
     id: 'post-1',
     author_id: 'user-1',
     photo_url: 'https://example.com/photo.jpg',
-    goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+    goals: [{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }],
     created_at: '2026-08-10T01:05:00.000Z',
     is_late: true,
     fine_amount: 11000,
@@ -63,7 +63,7 @@ vi.mock('./actions', () => ({
   createCheckinPost: vi.fn(),
   addComment: vi.fn(),
   toggleReaction: vi.fn(),
-  toggleGoalCompleted: vi.fn(),
+  setGoalStatus: vi.fn(),
   deleteCheckinPost: vi.fn(),
 }))
 
