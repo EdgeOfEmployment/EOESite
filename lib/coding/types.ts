@@ -14,6 +14,7 @@ export interface CodingCheck {
   userId: string
   commitSha: string | null
   filePath: string | null
+  source: 'auto' | 'manual'
 }
 
 export interface CodingProblem {
