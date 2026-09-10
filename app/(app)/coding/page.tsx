@@ -55,7 +55,7 @@ export default async function CodingPage({
   const { data: checks } = await queryIfAny(problemIds, () =>
     supabase
       .from('coding_checks')
-      .select('problem_id, user_id, commit_sha, file_path')
+      .select('problem_id, user_id, commit_sha, file_path, source')
       .in('problem_id', problemIds)
   )
 
@@ -72,6 +72,7 @@ export default async function CodingPage({
         userId: c.user_id,
         commitSha: c.commit_sha as string | null,
         filePath: c.file_path as string | null,
+        source: c.source as 'auto' | 'manual',
       })),
   }))
 
@@ -107,7 +108,13 @@ export default async function CodingPage({
             </div>
             <div className="flex flex-col gap-3">
               {codingProblems.map((problem) => (
-                <ProblemCard key={problem.id} problem={problem} members={members} isAdmin={isAdmin} />
+                <ProblemCard
+                  key={problem.id}
+                  problem={problem}
+                  members={members}
+                  isAdmin={isAdmin}
+                  currentUserId={session!.userId}
+                />
               ))}
               {codingProblems.length === 0 && <EmptyState message="이 주차에 등록된 문제가 없습니다." />}
             </div>

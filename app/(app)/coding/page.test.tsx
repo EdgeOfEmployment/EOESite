@@ -27,7 +27,9 @@ const problems = [
   },
 ]
 
-const checks = [{ problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, file_path: null }]
+const checks = [
+  { problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, file_path: null, source: 'auto' },
+]
 
 const weeksOrderMock = vi.fn(async () => ({ data: weeks }))
 const weeksOrderStartMock = vi.fn(() => ({ order: weeksOrderMock }))
@@ -74,6 +76,8 @@ vi.mock('./actions', () => ({
   adminRemoveCheck: vi.fn(),
   deleteProblem: vi.fn(),
   updateGithubUsername: vi.fn(),
+  markSelfComplete: vi.fn(),
+  unmarkSelfComplete: vi.fn(),
 }))
 
 import { getSessionProfile } from '@/lib/auth/session'
@@ -178,5 +182,18 @@ describe('CodingPage', () => {
     const ui = await CodingPage({ searchParams: Promise.resolve({}) })
     render(ui)
     expect(screen.getByLabelText('내 GitHub 아이디')).toHaveValue('kimminsu-dev')
+  })
+
+  it('shows a "완료 처리" button for the current session user on their own unchecked row', async () => {
+    vi.mocked(getSessionProfile).mockResolvedValueOnce({
+      userId: 'admin-1',
+      role: 'member',
+      status: 'approved',
+    })
+
+    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByRole('button', { name: '완료 처리' })).toBeInTheDocument()
   })
 })
