@@ -144,6 +144,7 @@ describe('POST /api/github-webhook', () => {
         user_id: 'user-1',
         commit_sha: 'sha-1',
         file_path: 'kimminsu/두 수의 합/두 수의 합.js',
+        source: 'auto',
       },
       { onConflict: 'problem_id,user_id' }
     )
@@ -187,6 +188,7 @@ describe('POST /api/github-webhook', () => {
         user_id: 'user-1',
         commit_sha: 'sha-1',
         file_path: 'kimminsu/two-sum/two-sum.py',
+        source: 'auto',
       },
       { onConflict: 'problem_id,user_id' }
     )
@@ -232,6 +234,7 @@ describe('POST /api/github-webhook', () => {
         user_id: 'user-1',
         commit_sha: 'sha-new',
         file_path: 'kimminsu/두 수의 합/두 수의 합.js',
+        source: 'auto',
       },
       { onConflict: 'problem_id,user_id' }
     )

@@ -83,7 +83,13 @@ export async function POST(request: NextRequest) {
     if (matchedPath) {
       const commitSha = changedFiles.get(matchedPath)!
       const { error } = await supabase.from('coding_checks').upsert(
-        { problem_id: problem.id, user_id: member.id, commit_sha: commitSha, file_path: matchedPath },
+        {
+          problem_id: problem.id,
+          user_id: member.id,
+          commit_sha: commitSha,
+          file_path: matchedPath,
+          source: 'auto',
+        },
         { onConflict: 'problem_id,user_id' }
       )
       if (!error) checkedProblemIds.push(problem.id)
