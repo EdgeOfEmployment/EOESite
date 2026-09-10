@@ -1,8 +1,10 @@
 export const REACTION_EMOJIS = ['👍', '🎉', '💪'] as const
 
+export type CheckinGoalStatus = 'todo' | 'partial' | 'done'
+
 export interface CheckinGoal {
   body: string
-  completed: boolean
+  status: CheckinGoalStatus
   completedAt: string | null
 }
 
