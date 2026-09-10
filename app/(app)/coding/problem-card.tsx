@@ -52,7 +52,7 @@ export function ProblemCard({
           return (
             <li key={member.id} className="flex items-center gap-2 text-sm">
               <span className={`rounded border px-2 py-0.5 text-xs ${badgeClass}`}>{badgeLabel}</span>
-              {isAdmin && checked && (
+              {isAdmin && checked && !(isSelf && isManual) && (
                 <form action={adminRemoveCheck.bind(null, problem.id, member.id)}>
                   <button type="submit" className="text-xs text-red-600 dark:text-red-400">
                     취소

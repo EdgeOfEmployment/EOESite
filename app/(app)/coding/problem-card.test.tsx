@@ -142,4 +142,24 @@ describe('ProblemCard', () => {
     expect(screen.getByText('완료 (자동 감지)')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument()
   })
+
+  it('shows only one cancel button (self, not admin) when an admin views their own manually-checked row', () => {
+    const problem = {
+      ...baseProblem,
+      checks: [{ userId: 'user-1', commitSha: null, filePath: null, source: 'manual' as const }],
+    }
+    render(<ProblemCard problem={problem} members={members} isAdmin={true} currentUserId="user-1" />)
+
+    expect(screen.getAllByRole('button', { name: '취소' })).toHaveLength(1)
+  })
+
+  it('still shows the admin cancel button when an admin views their own auto-checked row', () => {
+    const problem = {
+      ...baseProblem,
+      checks: [{ userId: 'user-1', commitSha: null, filePath: null, source: 'auto' as const }],
+    }
+    render(<ProblemCard problem={problem} members={members} isAdmin={true} currentUserId="user-1" />)
+
+    expect(screen.getAllByRole('button', { name: '취소' })).toHaveLength(1)
+  })
 })
