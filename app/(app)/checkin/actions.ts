@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { computeLateFine } from '@/lib/checkin/time'
-import type { CheckinGoal } from '@/lib/checkin/types'
+import type { CheckinGoal, CheckinGoalStatus } from '@/lib/checkin/types'
 import { getVerifiedUser } from '@/lib/auth/verify'
 
 // Supabase Storage rejects keys containing spaces or non-ASCII characters
@@ -15,6 +15,12 @@ function resolveExtension(fileName: string): string {
   return match ? `.${match[1]}` : ''
 }
 
+const GOAL_STATUSES: CheckinGoalStatus[] = ['todo', 'partial', 'done']
+
+function isGoalStatus(value: unknown): value is CheckinGoalStatus {
+  return typeof value === 'string' && (GOAL_STATUSES as string[]).includes(value)
+}
+
 export async function createCheckinPost(formData: FormData) {
   const photo = formData.get('photo') as File | null
   const goalCount = Number(formData.get('goalCount') ?? '0')
@@ -23,7 +29,7 @@ export async function createCheckinPost(formData: FormData) {
   for (let i = 0; i < goalCount; i++) {
     const body = ((formData.get(`goal-${i}`) as string) || '').trim()
     if (body) {
-      goals.push({ body, completed: false, completedAt: null })
+      goals.push({ body, status: 'todo', completedAt: null })
     }
   }
 
@@ -131,7 +137,9 @@ export async function toggleReaction(postId: string, emoji: string) {
   revalidatePath('/checkin')
 }
 
-export async function toggleGoalCompleted(postId: string, goalIndex: number) {
+export async function setGoalStatus(postId: string, goalIndex: number, status: CheckinGoalStatus) {
+  if (!isGoalStatus(status)) throw new Error('잘못된 상태입니다')
+
   const supabase = await createClient()
 
   const user = await getVerifiedUser(supabase)
@@ -151,10 +159,9 @@ export async function toggleGoalCompleted(postId: string, goalIndex: number) {
   const goal = goals[goalIndex]
   if (!goal) throw new Error('목표를 찾을 수 없습니다')
 
-  const nextCompleted = !goal.completed
   const updatedGoals = goals.map((g, i) =>
     i === goalIndex
-      ? { ...g, completed: nextCompleted, completedAt: nextCompleted ? new Date().toISOString() : null }
+      ? { ...g, status, completedAt: status === 'done' ? new Date().toISOString() : null }
       : g
   )
 
@@ -187,9 +194,10 @@ export async function updateCheckinGoals(postId: string, formData: FormData) {
     const body = ((formData.get(`goal-${i}`) as string) || '').trim()
     if (!body) continue
 
-    const completed = formData.get(`completed-${i}`) === 'true'
-    const completedAt = completed ? ((formData.get(`completedAt-${i}`) as string) || null) : null
-    goals.push({ body, completed, completedAt })
+    const statusRaw = formData.get(`status-${i}`)
+    const status: CheckinGoalStatus = isGoalStatus(statusRaw) ? statusRaw : 'todo'
+    const completedAt = status === 'done' ? ((formData.get(`completedAt-${i}`) as string) || null) : null
+    goals.push({ body, status, completedAt })
   }
 
   const { error } = await supabase.from('checkin_posts').update({ goals }).eq('id', postId)

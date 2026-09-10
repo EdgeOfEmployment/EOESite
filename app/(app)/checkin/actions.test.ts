@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { CheckinGoalStatus } from '@/lib/checkin/types'
 
 const getClaimsMock = vi.fn()
 const uploadMock = vi.fn()
@@ -30,7 +31,7 @@ import {
   createCheckinPost,
   addComment,
   toggleReaction,
-  toggleGoalCompleted,
+  setGoalStatus,
   updateCheckinGoals,
   deleteCheckinPost,
 } from './actions'
@@ -99,7 +100,7 @@ describe('createCheckinPost', () => {
     expect(uploadMock).toHaveBeenCalledWith('user-1/1786320000000.png', photo)
   })
 
-  it('inserts non-empty goals as unfinished and skips blank ones, and computes the late fine', async () => {
+  it('inserts non-empty goals with status "todo" and skips blank ones, and computes the late fine', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-10T01:05:00.000Z')) // 10:05 KST -> late, +1000
     const photo = new File(['fake-image-bytes'], 'photo.jpg', { type: 'image/jpeg' })
@@ -115,7 +116,7 @@ describe('createCheckinPost', () => {
     expect(insertMock).toHaveBeenCalledWith({
       author_id: 'user-1',
       photo_url: 'https://example.com/photo.jpg',
-      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }],
       is_late: true,
       fine_amount: 11000,
     })
@@ -186,11 +187,8 @@ describe('toggleReaction', () => {
   })
 })
 
-describe('toggleGoalCompleted', () => {
-  function mockPost(
-    goals: { body: string; completed: boolean; completedAt: string | null }[],
-    authorId = 'user-1'
-  ) {
+describe('setGoalStatus', () => {
+  function mockPost(goals: { body: string; status: CheckinGoalStatus; completedAt: string | null }[], authorId = 'user-1') {
     const updateEq = vi.fn().mockResolvedValue({ error: null })
     const update = vi.fn(() => ({ eq: updateEq }))
 
@@ -207,36 +205,52 @@ describe('toggleGoalCompleted', () => {
     return { update, updateEq }
   }
 
-  it('marks the goal completed and stamps completedAt', async () => {
+  it('sets status to done and stamps completedAt', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-10T02:00:00.000Z'))
-    const { update, updateEq } = mockPost([{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }])
+    const { update, updateEq } = mockPost([{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }])
 
-    await toggleGoalCompleted('post-1', 0)
+    await setGoalStatus('post-1', 0, 'done')
 
     expect(update).toHaveBeenCalledWith({
-      goals: [{ body: '알고리즘 3문제 풀기', completed: true, completedAt: '2026-08-10T02:00:00.000Z' }],
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' }],
     })
     expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
   })
 
-  it('unchecks a completed goal and clears completedAt', async () => {
-    const { update } = mockPost([
-      { body: '알고리즘 3문제 풀기', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
-    ])
+  it('sets status to partial without stamping completedAt', async () => {
+    const { update } = mockPost([{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }])
 
-    await toggleGoalCompleted('post-1', 0)
+    await setGoalStatus('post-1', 0, 'partial')
 
     expect(update).toHaveBeenCalledWith({
-      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'partial', completedAt: null }],
     })
   })
 
-  it('throws when the caller is not the post author', async () => {
-    mockPost([{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }], 'other-user')
+  it('clears completedAt when moving away from done', async () => {
+    const { update } = mockPost([
+      { body: '알고리즘 3문제 풀기', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' },
+    ])
 
-    await expect(toggleGoalCompleted('post-1', 0)).rejects.toThrow('권한이 없습니다')
+    await setGoalStatus('post-1', 0, 'todo')
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }],
+    })
+  })
+
+  it('throws for an unrecognized status value', async () => {
+    await expect(
+      setGoalStatus('post-1', 0, 'bogus' as unknown as CheckinGoalStatus)
+    ).rejects.toThrow('잘못된 상태입니다')
+  })
+
+  it('throws when the caller is not the post author', async () => {
+    mockPost([{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }], 'other-user')
+
+    await expect(setGoalStatus('post-1', 0, 'done')).rejects.toThrow('권한이 없습니다')
   })
 })
 
@@ -259,31 +273,33 @@ describe('updateCheckinGoals', () => {
   }
 
   function buildGoalsFormData(
-    goals: { body: string; completed?: boolean; completedAt?: string | null }[]
+    goals: { body: string; status?: CheckinGoalStatus; completedAt?: string | null }[]
   ) {
     const formData = new FormData()
     formData.set('goalCount', String(goals.length))
     goals.forEach((g, i) => {
       formData.set(`goal-${i}`, g.body)
-      formData.set(`completed-${i}`, g.completed ? 'true' : 'false')
+      formData.set(`status-${i}`, g.status ?? 'todo')
       formData.set(`completedAt-${i}`, g.completedAt ?? '')
     })
     return formData
   }
 
-  it('updates the goals for the post author', async () => {
+  it('updates the goals for the post author, preserving each status', async () => {
     const { update, updateEq } = mockPost()
     const formData = buildGoalsFormData([
-      { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
-      { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+      { body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null },
+      { body: '영어 단어 20개 외우기', status: 'partial', completedAt: null },
+      { body: '이력서 초안 작성', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' },
     ])
 
     await updateCheckinGoals('post-1', formData)
 
     expect(update).toHaveBeenCalledWith({
       goals: [
-        { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
-        { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+        { body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null },
+        { body: '영어 단어 20개 외우기', status: 'partial', completedAt: null },
+        { body: '이력서 초안 작성', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' },
       ],
     })
     expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
@@ -297,7 +313,22 @@ describe('updateCheckinGoals', () => {
     await updateCheckinGoals('post-1', formData)
 
     expect(update).toHaveBeenCalledWith({
-      goals: [{ body: '알고리즘 3문제 풀기', completed: false, completedAt: null }],
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }],
+    })
+  })
+
+  it('falls back to todo and drops completedAt for an unrecognized status value', async () => {
+    const { update } = mockPost()
+    const formData = new FormData()
+    formData.set('goalCount', '1')
+    formData.set('goal-0', '알고리즘 3문제 풀기')
+    formData.set('status-0', 'bogus')
+    formData.set('completedAt-0', '2026-08-10T02:00:00.000Z')
+
+    await updateCheckinGoals('post-1', formData)
+
+    expect(update).toHaveBeenCalledWith({
+      goals: [{ body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null }],
     })
   })
 
