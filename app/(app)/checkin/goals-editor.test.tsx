@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
-const toggleGoalCompletedMock = vi.fn()
+const setGoalStatusMock = vi.fn()
 const updateCheckinGoalsMock = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('./actions', () => ({
-  toggleGoalCompleted: (...args: unknown[]) => toggleGoalCompletedMock(...args),
+  setGoalStatus: (...args: unknown[]) => setGoalStatusMock(...args),
   updateCheckinGoals: (...args: unknown[]) => updateCheckinGoalsMock(...args),
 }))
 
@@ -13,8 +13,8 @@ import { GoalsEditor } from './goals-editor'
 import type { CheckinGoal } from '@/lib/checkin/types'
 
 const goals: CheckinGoal[] = [
-  { body: '알고리즘 3문제 풀기', completed: false, completedAt: null },
-  { body: '이력서 초안 작성', completed: true, completedAt: '2026-08-10T02:00:00.000Z' },
+  { body: '알고리즘 3문제 풀기', status: 'todo', completedAt: null },
+  { body: '이력서 초안 작성', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' },
 ]
 
 describe('GoalsEditor', () => {
@@ -25,10 +25,38 @@ describe('GoalsEditor', () => {
     expect(screen.getByText('완료 오전 11:00')).toBeInTheDocument()
   })
 
-  it('lets the author toggle a goal via the existing action', () => {
+  it('renders three status buttons per goal for the author', () => {
     render(<GoalsEditor postId="post-1" goals={goals} isAuthor={true} />)
 
-    fireEvent.click(screen.getByRole('button', { name: '알고리즘 3문제 풀기' }))
+    expect(screen.getAllByRole('button', { name: '미완료로 표시' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: '반완료로 표시' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: '완료로 표시' })).toHaveLength(2)
+  })
+
+  it('does not render status buttons for a non-author viewer', () => {
+    render(<GoalsEditor postId="post-1" goals={goals} isAuthor={false} />)
+
+    expect(screen.queryByRole('button', { name: '완료로 표시' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '반완료로 표시' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '미완료로 표시' })).not.toBeInTheDocument()
+  })
+
+  it('calls setGoalStatus with the target status when a status button is clicked', () => {
+    render(<GoalsEditor postId="post-1" goals={goals} isAuthor={true} />)
+
+    fireEvent.click(screen.getAllByRole('button', { name: '반완료로 표시' })[0])
+
+    expect(setGoalStatusMock).toHaveBeenCalledWith('post-1', 0, 'partial', expect.any(FormData))
+  })
+
+  it('shows partial goals in muted text without a strikethrough or time label', () => {
+    const partialGoals: CheckinGoal[] = [{ body: '영어 단어 20개 외우기', status: 'partial', completedAt: null }]
+    render(<GoalsEditor postId="post-1" goals={partialGoals} isAuthor={true} />)
+
+    const text = screen.getByText('영어 단어 20개 외우기')
+    expect(text).toHaveClass('text-gray-400')
+    expect(text).not.toHaveClass('line-through')
+    expect(screen.queryByText(/완료 /)).not.toBeInTheDocument()
   })
 
   it('shows an edit button for the author', () => {
@@ -92,7 +120,7 @@ describe('GoalsEditor', () => {
     expect(screen.queryByText('바뀐 텍스트')).not.toBeInTheDocument()
   })
 
-  it('saves edited goals with completion state preserved', async () => {
+  it('saves edited goals with status and completedAt preserved', async () => {
     render(<GoalsEditor postId="post-1" goals={goals} isAuthor={true} />)
 
     fireEvent.click(screen.getByRole('button', { name: '수정' }))
@@ -107,9 +135,9 @@ describe('GoalsEditor', () => {
     expect(postId).toBe('post-1')
     expect(formData.get('goalCount')).toBe('2')
     expect(formData.get('goal-0')).toBe('알고리즘 5문제 풀기')
-    expect(formData.get('completed-0')).toBe('false')
+    expect(formData.get('status-0')).toBe('todo')
     expect(formData.get('goal-1')).toBe('이력서 초안 작성')
-    expect(formData.get('completed-1')).toBe('true')
+    expect(formData.get('status-1')).toBe('done')
     expect(formData.get('completedAt-1')).toBe('2026-08-10T02:00:00.000Z')
 
     await waitFor(() => expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument())
