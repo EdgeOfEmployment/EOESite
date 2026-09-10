@@ -460,6 +460,7 @@ describe('markSelfComplete', () => {
       user_id: 'user-1',
       source: 'manual',
     })
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
   })
 
   it('ignores a unique-constraint violation (already checked) without throwing', async () => {
