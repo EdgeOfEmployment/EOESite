@@ -4,8 +4,13 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { buildTodayStatus, hasPostedToday } from '@/lib/checkin/status'
 import { buildMonthlyFineTotals } from '@/lib/checkin/fines'
 import { getKstDateString, kstDayRangeUtc, kstMonthRangeUtc } from '@/lib/checkin/time'
+import { buildCodingDashboardWidget, findWeekForDate } from '@/lib/coding/dashboard-widget'
+import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
+import { Card } from '@/components/ui/card'
+
+const CODING_WIDGET_LIMIT = 2
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -55,6 +60,54 @@ export default async function DashboardPage() {
   const totalFineRows = buildMonthlyFineTotals(memberSummaries, allMonthFinePosts)
   const posted = session ? hasPostedToday(session.userId, todaysAuthorIds) : false
 
+  const isApprovedMember = session?.status === 'approved'
+  let codingWidget: ReturnType<typeof buildCodingDashboardWidget> | null = null
+
+  if (isApprovedMember) {
+    const { data: weeksData } = await supabase.from('coding_weeks').select('id, label, start_date, end_date')
+
+    const weeks = (weeksData ?? []).map((w) => ({
+      id: w.id as string,
+      label: w.label as string,
+      startDate: w.start_date as string,
+      endDate: w.end_date as string,
+    }))
+
+    const targetWeek = findWeekForDate(weeks, todayKst)
+
+    const { data: problemsData } = await queryIfAny(targetWeek ? [targetWeek.id] : [], () =>
+      supabase
+        .from('coding_problems')
+        .select('id, title, link, created_at, assignee_ids')
+        .eq('week_id', targetWeek!.id)
+    )
+
+    const problems = (problemsData ?? []).map((p) => ({
+      id: p.id as string,
+      title: p.title as string,
+      link: p.link as string,
+      createdAt: p.created_at as string,
+      assigneeIds: (p.assignee_ids as string[] | null) ?? [],
+    }))
+
+    const problemIds = problems.map((p) => p.id)
+
+    const { data: checksData } = await queryIfAny(problemIds, () =>
+      supabase.from('coding_checks').select('problem_id').eq('user_id', session!.userId).in('problem_id', problemIds)
+    )
+
+    const completedProblemIds = (checksData ?? []).map((c) => c.problem_id as string)
+
+    codingWidget = buildCodingDashboardWidget(
+      weeks,
+      problems,
+      completedProblemIds,
+      session!.userId,
+      todayKst,
+      CODING_WIDGET_LIMIT
+    )
+  }
+
   const unpaidMonthTotal = unpaidMonthFinePosts.reduce((sum, p) => sum + p.fineAmount, 0)
   const allMonthTotal = allMonthFinePosts.reduce((sum, p) => sum + p.fineAmount, 0)
 
@@ -69,6 +122,51 @@ export default async function DashboardPage() {
       <Link href="/checkin" className="mt-4 inline-block text-sm text-gray-500 underline dark:text-gray-400">
         인증 보러가기
       </Link>
+
+      {isApprovedMember && codingWidget && (
+        <Card className="mt-4">
+          <h2 className="text-sm font-semibold">이번 주 코딩 문제</h2>
+
+          {codingWidget.status === 'no-week' && (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              이번 주 주차가 아직 생성되지 않았습니다.
+            </p>
+          )}
+          {codingWidget.status === 'no-problems' && (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">이번 주 문제가 아직 등록되지 않았습니다.</p>
+          )}
+          {codingWidget.status === 'no-assignment' && (
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">이번 주 나에게 할당된 문제가 없습니다.</p>
+          )}
+          {codingWidget.status === 'assigned' && (
+            <ul className="mt-2 flex flex-col gap-1">
+              {codingWidget.items.map((item) => (
+                <li key={item.id} className="flex items-center gap-2 text-sm">
+                  <span
+                    className={`rounded border px-2 py-0.5 text-xs ${
+                      item.completed
+                        ? 'border-gray-300 bg-gray-200 dark:border-gray-700 dark:bg-gray-700'
+                        : 'border-gray-300 dark:border-gray-700'
+                    }`}
+                  >
+                    {item.completed ? '완료' : '미완료'}
+                  </span>
+                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="underline">
+                    {item.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Link
+            href={codingWidget.week ? `/coding?week=${codingWidget.week.id}` : '/coding'}
+            className="mt-3 inline-block text-sm text-gray-500 underline dark:text-gray-400"
+          >
+            코딩 보드 바로가기
+          </Link>
+        </Card>
+      )}
 
       <table className="mt-6 w-full border-collapse text-sm">
         <thead>
