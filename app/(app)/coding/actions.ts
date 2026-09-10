@@ -180,3 +180,51 @@ export async function adminRemoveCheck(problemId: string, userId: string) {
 
   revalidatePath('/coding')
 }
+
+export async function markSelfComplete(problemId: string) {
+  const supabase = await createClient()
+
+  const user = await getVerifiedUser(supabase)
+
+  if (!user) throw new Error('권한이 없습니다')
+
+  const { data: problem, error: problemError } = await supabase
+    .from('coding_problems')
+    .select('assignee_ids')
+    .eq('id', problemId)
+    .single()
+
+  if (problemError) throw new Error(problemError.message)
+
+  const assigneeIds = (problem?.assignee_ids as string[] | null) ?? []
+  if (assigneeIds.length > 0 && !assigneeIds.includes(user.id)) {
+    throw new Error('본인에게 배정된 문제가 아닙니다')
+  }
+
+  const { error } = await supabase
+    .from('coding_checks')
+    .insert({ problem_id: problemId, user_id: user.id, source: 'manual' })
+
+  if (error && error.code !== '23505') throw new Error(error.message)
+
+  revalidatePath('/coding')
+}
+
+export async function unmarkSelfComplete(problemId: string) {
+  const supabase = await createClient()
+
+  const user = await getVerifiedUser(supabase)
+
+  if (!user) throw new Error('권한이 없습니다')
+
+  const { error } = await supabase
+    .from('coding_checks')
+    .delete()
+    .eq('problem_id', problemId)
+    .eq('user_id', user.id)
+    .eq('source', 'manual')
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/coding')
+}

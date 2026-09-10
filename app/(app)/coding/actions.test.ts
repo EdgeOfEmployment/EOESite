@@ -26,7 +26,14 @@ vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
 }))
 
-import { createProblems, deleteProblem, updateGithubUsername, adminRemoveCheck } from './actions'
+import {
+  createProblems,
+  deleteProblem,
+  updateGithubUsername,
+  adminRemoveCheck,
+  markSelfComplete,
+  unmarkSelfComplete,
+} from './actions'
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData()
@@ -371,5 +378,167 @@ describe('adminRemoveCheck', () => {
     expect(firstEq).toHaveBeenCalledWith('problem_id', 'problem-1')
     expect(secondEq).toHaveBeenCalledWith('user_id', 'user-2')
     expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+})
+
+describe('markSelfComplete', () => {
+  it('throws when the caller is not authenticated', async () => {
+    getClaimsMock.mockResolvedValue({ data: null })
+
+    await expect(markSelfComplete('problem-1')).rejects.toThrow('권한이 없습니다')
+  })
+
+  it('throws when the problem is assigned to other members and the caller is not one of them', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const checksInsert = vi.fn()
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_problems') {
+        return {
+          select: () => ({
+            eq: () => ({ single: async () => ({ data: { assignee_ids: ['user-2'] }, error: null }) }),
+          }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { insert: checksInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(markSelfComplete('problem-1')).rejects.toThrow('본인에게 배정된 문제가 아닙니다')
+    expect(checksInsert).not.toHaveBeenCalled()
+  })
+
+  it('inserts a manual check for the caller when the problem has no assignees', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const checksInsert = vi.fn().mockResolvedValue({ error: null })
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_problems') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { assignee_ids: [] }, error: null }) }) }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { insert: checksInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await markSelfComplete('problem-1')
+
+    expect(checksInsert).toHaveBeenCalledWith({
+      problem_id: 'problem-1',
+      user_id: 'user-1',
+      source: 'manual',
+    })
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('inserts a manual check when the caller is one of the assigned members', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const checksInsert = vi.fn().mockResolvedValue({ error: null })
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_problems') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { assignee_ids: ['user-1', 'user-2'] }, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { insert: checksInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await markSelfComplete('problem-1')
+
+    expect(checksInsert).toHaveBeenCalledWith({
+      problem_id: 'problem-1',
+      user_id: 'user-1',
+      source: 'manual',
+    })
+  })
+
+  it('ignores a unique-constraint violation (already checked) without throwing', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const checksInsert = vi.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate key' } })
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_problems') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { assignee_ids: [] }, error: null }) }) }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { insert: checksInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(markSelfComplete('problem-1')).resolves.toBeUndefined()
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('throws the Supabase error message for a non-conflict insert failure', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const checksInsert = vi.fn().mockResolvedValue({ error: { code: '42501', message: 'permission denied' } })
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_problems') {
+        return {
+          select: () => ({ eq: () => ({ single: async () => ({ data: { assignee_ids: [] }, error: null }) }) }),
+        }
+      }
+      if (table === 'coding_checks') {
+        return { insert: checksInsert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(markSelfComplete('problem-1')).rejects.toThrow('permission denied')
+  })
+})
+
+describe('unmarkSelfComplete', () => {
+  it('throws when the caller is not authenticated', async () => {
+    getClaimsMock.mockResolvedValue({ data: null })
+
+    await expect(unmarkSelfComplete('problem-1')).rejects.toThrow('권한이 없습니다')
+  })
+
+  it("deletes the caller's own manual check and revalidates /coding", async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const thirdEq = vi.fn().mockResolvedValue({ error: null })
+    const secondEq = vi.fn(() => ({ eq: thirdEq }))
+    const firstEq = vi.fn(() => ({ eq: secondEq }))
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_checks') {
+        return { delete: () => ({ eq: firstEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await unmarkSelfComplete('problem-1')
+
+    expect(firstEq).toHaveBeenCalledWith('problem_id', 'problem-1')
+    expect(secondEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(thirdEq).toHaveBeenCalledWith('source', 'manual')
+    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+  })
+
+  it('throws the Supabase error message on delete failure', async () => {
+    getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
+    const thirdEq = vi.fn().mockResolvedValue({ error: { message: 'db error' } })
+    const secondEq = vi.fn(() => ({ eq: thirdEq }))
+    const firstEq = vi.fn(() => ({ eq: secondEq }))
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'coding_checks') {
+        return { delete: () => ({ eq: firstEq }) }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(unmarkSelfComplete('problem-1')).rejects.toThrow('db error')
   })
 })
