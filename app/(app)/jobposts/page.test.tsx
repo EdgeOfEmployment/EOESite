@@ -27,8 +27,13 @@ const posts = [
 const reactions = [{ id: 'r1', post_id: 'post-1', author_id: 'admin-1', emoji: '👍' }]
 const feedbackDocs = [{ id: 'doc-1', job_post_id: 'post-1' }]
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
+vi.mock('next/cache', () => ({
+  cacheTag: vi.fn(),
+  cacheLife: vi.fn(),
+}))
+
+vi.mock('@/lib/supabase/cache-client', () => ({
+  createCacheClient: vi.fn(() => ({
     from: (table: string) => {
       if (table === 'profiles') {
         return { select: () => Promise.resolve({ data: profiles }) }
@@ -57,16 +62,29 @@ vi.mock('@/lib/auth/session', () => ({
   getSessionProfile: vi.fn(async () => ({ userId: 'user-1', role: 'member', status: 'approved' })),
 }))
 
-import JobPostsPage from './page'
+import JobPostsPage, { FeedContent } from './page'
 
 describe('JobPostsPage', () => {
-  it('renders the post form and the feed with the question, answer, and feedback link', async () => {
-    const ui = await JobPostsPage({ searchParams: Promise.resolve({}) })
+  it('renders the static shell: title, calendar link, and the post form', () => {
+    const ui = JobPostsPage({ searchParams: Promise.resolve({}) })
     render(ui)
 
+    expect(screen.getByRole('heading', { name: '자소서 / 공고' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '달력 보기' })).toHaveAttribute('href', '/jobposts/calendar')
     expect(screen.getByRole('button', { name: '등록' })).toBeInTheDocument()
+  })
+})
+
+describe('FeedContent', () => {
+  it('renders the feed with the question, answer, and feedback link, and tags the cache correctly', async () => {
+    const { cacheTag, cacheLife } = await import('next/cache')
+    const ui = await FeedContent()
+    render(ui)
+
     expect(screen.getByText('지원동기를 작성해주세요')).toBeInTheDocument()
     expect(screen.getByText('문제 해결에 흥미를 느꼈습니다.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '피드백 보기' })).toHaveAttribute('href', '/feedback/doc-1')
+    expect(cacheTag).toHaveBeenCalledWith('jobposts-feed')
+    expect(cacheLife).toHaveBeenCalledWith('minutes')
   })
 })

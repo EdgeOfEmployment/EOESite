@@ -1,6 +1,8 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { cacheLife, cacheTag } from 'next/cache'
 import { getSessionProfile } from '@/lib/auth/session'
+import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
@@ -8,17 +10,20 @@ import type { JobPost } from '@/lib/jobposts/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
+import { Skeleton } from '@/components/skeleton'
 
-export default async function JobPostsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; success?: string }>
-}) {
-  const { error: queryError, success } = await searchParams
-  const supabase = await createClient()
+export const unstable_instant = false
 
-  const [session, { data: profiles }, { data: posts }] = await Promise.all([
-    getSessionProfile(),
+type JobPostsSearchParams = { error?: string; success?: string }
+
+async function getJobPosts(): Promise<JobPost[]> {
+  'use cache'
+  cacheTag('jobposts-feed')
+  cacheLife('minutes')
+
+  const supabase = createCacheClient()
+
+  const [{ data: profiles }, { data: posts }] = await Promise.all([
     supabase.from('profiles').select('id, name'),
     supabase
       .from('job_posts')
@@ -26,9 +31,7 @@ export default async function JobPostsPage({
       .order('created_at', { ascending: false }),
   ])
 
-  const isAdmin = session?.role === 'admin'
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
-
   const postIds = (posts ?? []).map((p) => p.id)
 
   const [{ data: reactions }, { data: feedbackDocs }] = await Promise.all([
@@ -42,7 +45,7 @@ export default async function JobPostsPage({
 
   const feedbackDocIdByPost = new Map((feedbackDocs ?? []).map((d) => [d.job_post_id, d.id as string]))
 
-  const jobPosts: JobPost[] = (posts ?? []).map((post) => ({
+  return (posts ?? []).map((post) => ({
     id: post.id,
     authorId: post.author_id,
     authorName: nameById.get(post.author_id) ?? '알 수 없음',
@@ -57,7 +60,13 @@ export default async function JobPostsPage({
       .filter((r) => r.post_id === post.id)
       .map((r) => ({ id: r.id, authorId: r.author_id, emoji: r.emoji })),
   }))
+}
 
+export default function JobPostsPage({
+  searchParams,
+}: {
+  searchParams: Promise<JobPostsSearchParams>
+}) {
   return (
     <PageShell
       title="자소서 / 공고"
@@ -67,20 +76,59 @@ export default async function JobPostsPage({
         </Link>
       }
     >
+      <Suspense fallback={null}>
+        <TopNotice searchParamsPromise={searchParams} />
+      </Suspense>
+      <PostForm />
+      <Suspense fallback={<FeedSkeleton />}>
+        <FeedContent />
+      </Suspense>
+    </PageShell>
+  )
+}
+
+async function TopNotice({
+  searchParamsPromise,
+}: {
+  searchParamsPromise: Promise<JobPostsSearchParams>
+}) {
+  const { error: queryError, success } = await searchParamsPromise
+
+  return (
+    <>
       <Toast message={success} />
       {queryError && (
         <Alert variant="danger" className="mb-4">
           {queryError}
         </Alert>
       )}
-      <PostForm />
-      <ul className="mt-6 flex flex-col gap-4">
-        {jobPosts.map((post) => (
-          <li key={post.id}>
-            <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
-          </li>
-        ))}
-      </ul>
-    </PageShell>
+    </>
+  )
+}
+
+function FeedSkeleton() {
+  return (
+    <ul className="mt-6 flex flex-col gap-4">
+      {[0, 1, 2].map((i) => (
+        <li key={i}>
+          <Skeleton className="h-28 w-full" />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export async function FeedContent() {
+  const [session, jobPosts] = await Promise.all([getSessionProfile(), getJobPosts()])
+  const isAdmin = session?.role === 'admin'
+
+  return (
+    <ul className="mt-6 flex flex-col gap-4">
+      {jobPosts.map((post) => (
+        <li key={post.id}>
+          <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
+        </li>
+      ))}
+    </ul>
   )
 }

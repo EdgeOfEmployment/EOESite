@@ -67,6 +67,7 @@ export async function createJobPost(formData: FormData) {
 
   revalidatePath('/jobposts')
   revalidateTag('jobposts-calendar', 'max')
+  revalidateTag('jobposts-feed', 'max')
   redirect('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
 }
 
@@ -98,6 +99,7 @@ export async function toggleReaction(postId: string, emoji: string) {
   }
 
   revalidatePath('/jobposts')
+  revalidateTag('jobposts-feed', 'max')
 }
 
 export async function deleteJobPost(postId: string) {
@@ -122,4 +124,5 @@ export async function deleteJobPost(postId: string) {
 
   revalidatePath('/jobposts')
   revalidateTag('jobposts-calendar', 'max')
+  revalidateTag('jobposts-feed', 'max')
 }
