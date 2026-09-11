@@ -6,7 +6,7 @@ import { buildMonthCalendar, groupPostsByMember, type CalendarPost } from '@/lib
 import { PageShell } from '@/components/ui/page-shell'
 import { Skeleton } from '@/components/skeleton'
 
-export const unstable_instant = { prefetch: 'static' }
+export const unstable_instant = false
 
 type CheckinCalendarSearchParams = { year?: string; month?: string; view?: string }
 
