@@ -1,7 +1,14 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { cacheLife, cacheTag } from 'next/cache'
+import { createCacheClient } from '@/lib/supabase/cache-client'
 import { buildMonthCalendar, groupPostsByMember, type CalendarJobPost } from '@/lib/jobposts/calendar'
 import { PageShell } from '@/components/ui/page-shell'
+import { Skeleton } from '@/components/skeleton'
+
+export const unstable_instant = false
+
+type JobPostsCalendarSearchParams = { year?: string; month?: string; view?: string }
 
 function monthRange(year: number, month: number) {
   const start = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10)
@@ -9,19 +16,13 @@ function monthRange(year: number, month: number) {
   return { start, end }
 }
 
-export default async function JobPostsCalendarPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ year?: string; month?: string; view?: string }>
-}) {
-  const params = await searchParams
-  const now = new Date()
-  const year = params.year ? Number(params.year) : now.getUTCFullYear()
-  const month = params.month ? Number(params.month) : now.getUTCMonth() + 1
-  const view = params.view === 'member' ? 'member' : 'date'
+async function getCalendarPosts(year: number, month: number): Promise<CalendarJobPost[]> {
+  'use cache'
+  cacheTag('jobposts-calendar')
+  cacheLife('minutes')
 
   const { start, end } = monthRange(year, month)
-  const supabase = await createClient()
+  const supabase = createCacheClient()
 
   const [{ data: profiles }, { data: posts }] = await Promise.all([
     supabase.from('profiles').select('id, name'),
@@ -34,16 +35,60 @@ export default async function JobPostsCalendarPage({
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.name as string]))
 
-  const calendarPosts: CalendarJobPost[] = (posts ?? []).map((post) => ({
+  return (posts ?? []).map((post) => ({
     id: post.id,
     authorId: post.author_id,
     authorName: nameById.get(post.author_id) ?? '알 수 없음',
     companyName: post.company_name,
     postDate: post.post_date,
   }))
+}
+
+export default function JobPostsCalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<JobPostsCalendarSearchParams>
+}) {
+  return (
+    <PageShell title="자소서 달력" width="3xl">
+      <Suspense fallback={<CalendarSkeleton />}>
+        <CalendarContent searchParamsPromise={searchParams} />
+      </Suspense>
+    </PageShell>
+  )
+}
+
+function CalendarSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-4 h-5 w-24" />
+      <div className="mb-4 flex gap-3">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-4 w-12" />
+      </div>
+      <Skeleton className="h-96 w-full" />
+    </div>
+  )
+}
+
+export async function CalendarContent({
+  searchParamsPromise,
+}: {
+  searchParamsPromise: Promise<JobPostsCalendarSearchParams>
+}) {
+  const params = await searchParamsPromise
+  const now = new Date()
+  const year = params.year ? Number(params.year) : now.getUTCFullYear()
+  const month = params.month ? Number(params.month) : now.getUTCMonth() + 1
+  const view = params.view === 'member' ? 'member' : 'date'
+
+  const calendarPosts = await getCalendarPosts(year, month)
 
   return (
-    <PageShell title={`자소서 달력 (${year}년 ${month}월)`} width="3xl">
+    <>
+      <h2 className="mb-4 text-lg font-semibold">
+        {year}년 {month}월
+      </h2>
       <div className="mb-4 flex gap-3 text-sm">
         <Link
           href={`/jobposts/calendar?year=${year}&month=${month}&view=date`}
@@ -101,6 +146,6 @@ export default async function JobPostsCalendarPage({
           ))}
         </ul>
       )}
-    </PageShell>
+    </>
   )
 }

@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/jobposts/snapshot'
 import { getVerifiedUser } from '@/lib/auth/verify'
@@ -66,6 +66,7 @@ export async function createJobPost(formData: FormData) {
   }
 
   revalidatePath('/jobposts')
+  revalidateTag('jobposts-calendar', 'max')
   redirect('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
 }
 
@@ -120,4 +121,5 @@ export async function deleteJobPost(postId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/jobposts')
+  revalidateTag('jobposts-calendar', 'max')
 }
