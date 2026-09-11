@@ -1,10 +1,15 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/jobposts/snapshot'
 import { getVerifiedUser } from '@/lib/auth/verify'
+
+function revalidateJobPosts() {
+  revalidateTag('jobposts-calendar', 'max')
+  updateTag('jobposts-feed')
+}
 
 export async function createJobPost(formData: FormData) {
   const companyName = formData.get('companyName') as string
@@ -66,8 +71,7 @@ export async function createJobPost(formData: FormData) {
   }
 
   revalidatePath('/jobposts')
-  revalidateTag('jobposts-calendar', 'max')
-  revalidateTag('jobposts-feed', 'max')
+  revalidateJobPosts()
   redirect('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
 }
 
@@ -99,7 +103,7 @@ export async function toggleReaction(postId: string, emoji: string) {
   }
 
   revalidatePath('/jobposts')
-  revalidateTag('jobposts-feed', 'max')
+  updateTag('jobposts-feed')
 }
 
 export async function deleteJobPost(postId: string) {
@@ -123,6 +127,5 @@ export async function deleteJobPost(postId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/jobposts')
-  revalidateTag('jobposts-calendar', 'max')
-  revalidateTag('jobposts-feed', 'max')
+  revalidateJobPosts()
 }

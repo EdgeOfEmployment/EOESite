@@ -7,6 +7,7 @@ const redirectMock = vi.fn((url: string) => {
 })
 const revalidatePathMock = vi.fn()
 const revalidateTagMock = vi.fn()
+const updateTagMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -22,6 +23,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
   revalidateTag: (...args: unknown[]) => revalidateTagMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import { createJobPost, toggleReaction, deleteJobPost } from './actions'
@@ -113,7 +115,7 @@ describe('createJobPost', () => {
     })
     expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
     expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-calendar', 'max')
-    expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-feed', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
   it('creates a job post with multiple question/answer pairs', async () => {
@@ -144,7 +146,7 @@ describe('createJobPost', () => {
     expect(feedbackDocsInsert).not.toHaveBeenCalled()
     expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
     expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-calendar', 'max')
-    expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-feed', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
   it('creates a feedback snapshot split into per-question lines when feedback is requested', async () => {
@@ -169,7 +171,7 @@ describe('createJobPost', () => {
     })
     expect(redirectMock).toHaveBeenCalledWith('/jobposts?success=' + encodeURIComponent('자소서를 등록했어요'))
     expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-calendar', 'max')
-    expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-feed', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
   it('redirects with an error when the job post insert fails', async () => {
@@ -217,7 +219,7 @@ describe('toggleReaction', () => {
     expect(insert).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', emoji: '👍' })
     expect(deleteEq).not.toHaveBeenCalled()
     expect(revalidatePathMock).toHaveBeenCalledWith('/jobposts')
-    expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-feed', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
   it('deletes the existing reaction when the user already reacted', async () => {
@@ -255,7 +257,7 @@ describe('deleteJobPost', () => {
     expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
     expect(revalidatePathMock).toHaveBeenCalledWith('/jobposts')
     expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-calendar', 'max')
-    expect(revalidateTagMock).toHaveBeenCalledWith('jobposts-feed', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
   it('throws when the caller is not an admin', async () => {

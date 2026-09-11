@@ -12,7 +12,7 @@ import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
 import { Skeleton } from '@/components/skeleton'
 
-export const unstable_instant = false
+export const unstable_instant = { prefetch: 'static' }
 
 type JobPostsSearchParams = { error?: string; success?: string }
 
