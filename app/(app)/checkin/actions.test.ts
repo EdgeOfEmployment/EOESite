@@ -88,7 +88,7 @@ describe('createCheckinPost', () => {
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
-    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar')
+    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
     expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
@@ -367,7 +367,7 @@ describe('deleteCheckinPost', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
-    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar')
+    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
   })
 
   it('throws when the caller is not an admin', async () => {

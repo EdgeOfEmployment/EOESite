@@ -75,7 +75,7 @@ export async function createCheckinPost(formData: FormData) {
 
   revalidatePath('/checkin')
   revalidatePath('/')
-  revalidateTag('checkin-calendar')
+  revalidateTag('checkin-calendar', 'max')
   redirect('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
 }
 
@@ -229,5 +229,5 @@ export async function deleteCheckinPost(postId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/checkin')
-  revalidateTag('checkin-calendar')
+  revalidateTag('checkin-calendar', 'max')
 }

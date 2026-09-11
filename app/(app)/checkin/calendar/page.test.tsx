@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/cache-client', () => ({
   })),
 }))
 
+import { cacheLife, cacheTag } from 'next/cache'
 import CheckinCalendarPage, { CalendarContent } from './page'
 
 describe('CheckinCalendarPage', () => {
@@ -47,6 +48,16 @@ describe('CalendarContent', () => {
     expect(screen.getByText('2026년 8월')).toBeInTheDocument()
     expect(screen.getByText('날짜별')).toBeInTheDocument()
     expect(screen.getByText('멤버별')).toBeInTheDocument()
+  })
+
+  it('tags the cached calendar data with the tag actions.ts revalidates', async () => {
+    const ui = await CalendarContent({
+      searchParamsPromise: Promise.resolve({ year: '2026', month: '8' }),
+    })
+    render(ui)
+
+    expect(cacheTag).toHaveBeenCalledWith('checkin-calendar')
+    expect(cacheLife).toHaveBeenCalledWith('minutes')
   })
 
   it('shows the member view grouped by author when view=member', async () => {
