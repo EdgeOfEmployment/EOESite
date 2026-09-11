@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { computeLateFine } from '@/lib/checkin/time'
 import type { CheckinGoal, CheckinGoalStatus } from '@/lib/checkin/types'
@@ -75,6 +75,7 @@ export async function createCheckinPost(formData: FormData) {
 
   revalidatePath('/checkin')
   revalidatePath('/')
+  revalidateTag('checkin-calendar')
   redirect('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
 }
 
@@ -228,4 +229,5 @@ export async function deleteCheckinPost(postId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/checkin')
+  revalidateTag('checkin-calendar')
 }

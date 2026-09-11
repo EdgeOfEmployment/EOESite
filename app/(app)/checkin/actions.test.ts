@@ -10,6 +10,7 @@ const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 const revalidatePathMock = vi.fn()
+const revalidateTagMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -25,6 +26,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  revalidateTag: (...args: unknown[]) => revalidateTagMock(...args),
 }))
 
 import {
@@ -86,6 +88,7 @@ describe('createCheckinPost', () => {
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar')
     expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
@@ -364,6 +367,7 @@ describe('deleteCheckinPost', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
     expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar')
   })
 
   it('throws when the caller is not an admin', async () => {
