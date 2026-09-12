@@ -145,6 +145,26 @@ describe('createCheckinPost', () => {
       fine_amount: 11000,
     })
   })
+
+  it('redirects with an error when the insert-and-read-back returns no row', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-10T00:00:00.000Z'))
+    insertMock.mockReturnValue({
+      select: () => ({
+        single: async () => ({ data: null, error: null }),
+      }),
+    })
+    const photo = new File(['fake-image-bytes'], 'photo.jpg', { type: 'image/jpeg' })
+    const formData = buildFormData({ photo, goalCount: '0' })
+
+    await expect(createCheckinPost(formData)).rejects.toThrow()
+
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?error=' + encodeURIComponent('인증을 등록하지 못했어요'))
+    // Nothing past the `!inserted` guard should run: no cache invalidation without a row.
+    expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(revalidateTagMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
+  })
 })
 
 describe('addComment', () => {
@@ -186,6 +206,35 @@ describe('addComment', () => {
     // The post is from 2026-08-05; this test runs on the real clock, so tagging by "today"
     // could never produce this value.
     expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
+  })
+
+  it('redirects with an error when the post lookup returns no row', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: null, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'checkin_comments') {
+        return { insert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    const formData = new FormData()
+    formData.set('body', '축하해요')
+
+    await expect(addComment('post-1', formData)).rejects.toThrow()
+
+    expect(redirectMock).toHaveBeenCalledWith('/checkin?error=' + encodeURIComponent('인증을 찾을 수 없습니다'))
+    expect(insert).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 })
 
@@ -239,6 +288,40 @@ describe('toggleReaction', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'reaction-1')
     expect(insert).not.toHaveBeenCalled()
+  })
+
+  it('throws when the post lookup returns no row', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null })
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: null, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table !== 'checkin_reactions') throw new Error(`unexpected table ${table}`)
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }),
+            }),
+          }),
+        }),
+        insert,
+        delete: () => ({ eq: deleteEq }),
+      }
+    })
+
+    await expect(toggleReaction('post-1', '👍')).rejects.toThrow('인증을 찾을 수 없습니다')
+    expect(insert).not.toHaveBeenCalled()
+    expect(deleteEq).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 })
 
@@ -450,5 +533,68 @@ describe('deleteCheckinPost', () => {
 
     await expect(deleteCheckinPost('post-1')).rejects.toThrow('권한이 없습니다')
     expect(deleteEq).not.toHaveBeenCalled()
+  })
+
+  it('throws when the post lookup returns no row', async () => {
+    const deleteEq = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) }
+      }
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: null, error: null }),
+            }),
+          }),
+          delete: () => ({ eq: deleteEq }),
+        }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await expect(deleteCheckinPost('post-1')).rejects.toThrow('인증을 찾을 수 없습니다')
+    expect(deleteEq).not.toHaveBeenCalled()
+    expect(revalidateTagMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
+  })
+
+  it('reads created_at before deleting the row, not after', async () => {
+    // The `checkin_posts` select().eq().single() stub only returns the row while `deleted`
+    // is false; the delete().eq() mock flips `deleted` to true when called. If the
+    // implementation deleted the row before reading `created_at`, the read would come back
+    // `{ data: null }`, the `!post` guard would throw, and this test would fail.
+    let deleted = false
+    const deleteEq = vi.fn(async () => {
+      deleted = true
+      return { error: null }
+    })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) }
+      }
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () =>
+                deleted
+                  ? { data: null, error: null }
+                  : { data: { created_at: '2026-08-05T01:05:00.000Z' }, error: null },
+            }),
+          }),
+          delete: () => ({ eq: deleteEq }),
+        }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    await deleteCheckinPost('post-1')
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 })
