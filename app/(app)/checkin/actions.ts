@@ -1,11 +1,26 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { computeLateFine } from '@/lib/checkin/time'
+import { computeLateFine, getKstDateString } from '@/lib/checkin/time'
 import type { CheckinGoal, CheckinGoalStatus } from '@/lib/checkin/types'
 import { getVerifiedUser } from '@/lib/auth/verify'
+
+// `updateTag`, not `revalidateTag`: a member who posts, comments, reacts or edits a goal
+// must see their own write on the very next read. The tag is per KST day so a write to
+// today never evicts the long-lived `max` entries cached for earlier days.
+//
+// This replaces `revalidatePath('/checkin')` rather than joining it. A path call expires the
+// route's implicit soft tag `_N_T_/checkin`, and the `use cache` reader discards *every*
+// entry older than that tag's expiry when rendering this route (shouldDiscardCacheEntry in
+// next/dist/server/use-cache/use-cache-wrapper.js) — so keeping it would throw away all the
+// past days on every write and make this helper pointless. `updateTag` still clears the
+// client router cache on its own: it routes through the same `revalidate()` helper with an
+// undefined profile, which sets `pathWasRevalidated`.
+function revalidateCheckinDay(kstDate: string) {
+  updateTag(`checkin-feed-${kstDate}`)
+}
 
 // Supabase Storage rejects keys containing spaces or non-ASCII characters
 // (e.g. Korean screenshot filenames like "스크린샷 2026-08-14 143253.png"),
@@ -58,24 +73,40 @@ export async function createCheckinPost(formData: FormData) {
   const { data: publicUrlData } = supabase.storage.from('checkin-photos').getPublicUrl(path)
   const photoUrl = publicUrlData.publicUrl
 
-  const { isLate, fineAmount } = computeLateFine(new Date().toISOString())
+  // The moment of submission, used for the late-fine calculation only. It is deliberately
+  // NOT used to pick the cache tag — see below.
+  const nowIso = new Date().toISOString()
+  const { isLate, fineAmount } = computeLateFine(nowIso)
 
-  const { error } = await supabase.from('checkin_posts').insert({
-    author_id: user.id,
-    photo_url: photoUrl,
-    goals,
-    is_late: isLate,
-    fine_amount: fineAmount,
-  })
+  const { data: inserted, error } = await supabase
+    .from('checkin_posts')
+    .insert({
+      author_id: user.id,
+      photo_url: photoUrl,
+      goals,
+      is_late: isLate,
+      fine_amount: fineAmount,
+    })
+    .select('created_at')
+    .single()
 
   if (error) {
     redirect('/checkin?error=' + encodeURIComponent(error.message))
     return
   }
 
-  revalidatePath('/checkin')
+  if (!inserted) {
+    redirect('/checkin?error=' + encodeURIComponent('인증을 등록하지 못했어요'))
+    return
+  }
+
+  // `revalidatePath('/')` stays — the dashboard is still fully dynamic and reads today's
+  // checkin_posts. It emits only the `_N_T_/` and `_N_T_/index` soft tags, which belong to
+  // the `/` route alone, so it does not touch any checkin, jobposts or interviews cache.
   revalidatePath('/')
   revalidateTag('checkin-calendar', 'max')
+  // Tag by the row the database actually wrote, not by `nowIso`.
+  revalidateCheckinDay(getKstDateString(inserted.created_at))
   redirect('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
 }
 
@@ -96,6 +127,22 @@ export async function addComment(postId: string, formData: FormData) {
     return
   }
 
+  const { data: post, error: postError } = await supabase
+    .from('checkin_posts')
+    .select('created_at')
+    .eq('id', postId)
+    .single()
+
+  if (postError) {
+    redirect('/checkin?error=' + encodeURIComponent(postError.message))
+    return
+  }
+
+  if (!post) {
+    redirect('/checkin?error=' + encodeURIComponent('인증을 찾을 수 없습니다'))
+    return
+  }
+
   const { error } = await supabase
     .from('checkin_comments')
     .insert({ post_id: postId, author_id: user.id, body })
@@ -105,7 +152,7 @@ export async function addComment(postId: string, formData: FormData) {
     return
   }
 
-  revalidatePath('/checkin')
+  revalidateCheckinDay(getKstDateString(post.created_at))
 }
 
 export async function toggleReaction(postId: string, emoji: string) {
@@ -114,6 +161,15 @@ export async function toggleReaction(postId: string, emoji: string) {
   const user = await getVerifiedUser(supabase)
 
   if (!user) throw new Error('로그인이 필요합니다')
+
+  const { data: post, error: postError } = await supabase
+    .from('checkin_posts')
+    .select('created_at')
+    .eq('id', postId)
+    .single()
+
+  if (postError) throw new Error(postError.message)
+  if (!post) throw new Error('인증을 찾을 수 없습니다')
 
   const { data: existing, error: fetchError } = await supabase
     .from('checkin_reactions')
@@ -135,7 +191,7 @@ export async function toggleReaction(postId: string, emoji: string) {
     if (error) throw new Error(error.message)
   }
 
-  revalidatePath('/checkin')
+  revalidateCheckinDay(getKstDateString(post.created_at))
 }
 
 export async function setGoalStatus(postId: string, goalIndex: number, status: CheckinGoalStatus) {
@@ -149,7 +205,7 @@ export async function setGoalStatus(postId: string, goalIndex: number, status: C
 
   const { data: post, error: fetchError } = await supabase
     .from('checkin_posts')
-    .select('author_id, goals')
+    .select('author_id, goals, created_at')
     .eq('id', postId)
     .single()
 
@@ -170,7 +226,7 @@ export async function setGoalStatus(postId: string, goalIndex: number, status: C
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/checkin')
+  revalidateCheckinDay(getKstDateString(post.created_at))
 }
 
 export async function updateCheckinGoals(postId: string, formData: FormData) {
@@ -182,7 +238,7 @@ export async function updateCheckinGoals(postId: string, formData: FormData) {
 
   const { data: post, error: fetchError } = await supabase
     .from('checkin_posts')
-    .select('author_id')
+    .select('author_id, created_at')
     .eq('id', postId)
     .single()
 
@@ -205,7 +261,7 @@ export async function updateCheckinGoals(postId: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/checkin')
+  revalidateCheckinDay(getKstDateString(post.created_at))
 }
 
 export async function deleteCheckinPost(postId: string) {
@@ -224,10 +280,19 @@ export async function deleteCheckinPost(postId: string) {
   if (callerError) throw new Error(callerError.message)
   if (!callerProfile || callerProfile.role !== 'admin') throw new Error('권한이 없습니다')
 
+  const { data: post, error: postError } = await supabase
+    .from('checkin_posts')
+    .select('created_at')
+    .eq('id', postId)
+    .single()
+
+  if (postError) throw new Error(postError.message)
+  if (!post) throw new Error('인증을 찾을 수 없습니다')
+
   const { error } = await supabase.from('checkin_posts').delete().eq('id', postId)
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/checkin')
   revalidateTag('checkin-calendar', 'max')
+  revalidateCheckinDay(getKstDateString(post.created_at))
 }

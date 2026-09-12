@@ -11,6 +11,7 @@ const redirectMock = vi.fn((url: string) => {
 })
 const revalidatePathMock = vi.fn()
 const revalidateTagMock = vi.fn()
+const updateTagMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -27,6 +28,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
   revalidateTag: (...args: unknown[]) => revalidateTagMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import {
@@ -54,7 +56,18 @@ beforeEach(() => {
   getClaimsMock.mockResolvedValue({ data: { claims: { sub: 'user-1' } } })
   uploadMock.mockResolvedValue({ error: null })
   getPublicUrlMock.mockReturnValue({ data: { publicUrl: 'https://example.com/photo.jpg' } })
-  insertMock.mockResolvedValue({ error: null })
+  // `.insert(...).select('created_at').single()` — the row's timestamp comes from the DB's
+  // `now()` default (supabase/migrations/0009_checkin_desk_goal.sql:17), not from Node.
+  // This value is deliberately on the KST day *before* the fake clock used in the
+  // createCheckinPost tests: 2026-08-09T14:59:59Z is 23:59:59 KST on 2026-08-09, while the
+  // fake `now` of 2026-08-10T00:00:00Z is 09:00 KST on 2026-08-10. It is the KST-midnight
+  // straddle the fix exists for, so an implementation that tagged from `nowIso` would
+  // produce `checkin-feed-2026-08-10` and fail 6d.
+  insertMock.mockReturnValue({
+    select: () => ({
+      single: async () => ({ data: { created_at: '2026-08-09T14:59:59.000Z' }, error: null }),
+    }),
+  })
   fromMock.mockReturnValue({ insert: insertMock })
 })
 
@@ -86,9 +99,17 @@ describe('createCheckinPost', () => {
       is_late: false,
       fine_amount: 0,
     })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    // revalidatePath('/checkin') would expire the route's `_N_T_/checkin` implicit tag and
+    // discard every cached day, not just this one — see the Architecture section.
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
+    // revalidatePath('/') stays: it emits only `_N_T_/` + `_N_T_/index`, which belong to the
+    // still-dynamic dashboard route and to nothing else.
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
     expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
+    // Tagged from the row the DB returned (2026-08-09 KST), NOT from `nowIso` (2026-08-10 KST).
+    // `is_late: false / fine_amount: 0` above still comes from `nowIso`, which is correct:
+    // the fine is computed before the insert and must reflect the moment of submission.
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-09')
     expect(redirectMock).toHaveBeenCalledWith('/checkin?success=' + encodeURIComponent('인증을 등록했어요'))
   })
 
@@ -136,14 +157,35 @@ describe('addComment', () => {
     expect(insertMock).not.toHaveBeenCalled()
   })
 
-  it('inserts the comment and revalidates the checkin feed', async () => {
+  it('inserts the comment and revalidates that posts day, not today', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null })
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { created_at: '2026-08-05T01:05:00.000Z' }, error: null }),
+            }),
+          }),
+        }
+      }
+      if (table === 'checkin_comments') {
+        return { insert }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
     const formData = new FormData()
     formData.set('body', '축하해요')
 
     await addComment('post-1', formData)
 
-    expect(insertMock).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', body: '축하해요' })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(insert).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', body: '축하해요' })
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
+    // The post is from 2026-08-05; this test runs on the real clock, so tagging by "today"
+    // could never produce this value.
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 })
 
@@ -153,6 +195,15 @@ describe('toggleReaction', () => {
     const insert = vi.fn().mockResolvedValue({ error: null })
 
     fromMock.mockImplementation((table: string) => {
+      if (table === 'checkin_posts') {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { created_at: '2026-08-05T01:05:00.000Z' }, error: null }),
+            }),
+          }),
+        }
+      }
       if (table !== 'checkin_reactions') throw new Error(`unexpected table ${table}`)
       return {
         select: () => ({
@@ -177,7 +228,8 @@ describe('toggleReaction', () => {
 
     expect(insert).toHaveBeenCalledWith({ post_id: 'post-1', author_id: 'user-1', emoji: '👍' })
     expect(deleteEq).not.toHaveBeenCalled()
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 
   it('deletes the existing reaction when the user already reacted', async () => {
@@ -199,7 +251,12 @@ describe('setGoalStatus', () => {
       if (table !== 'checkin_posts') throw new Error(`unexpected table ${table}`)
       return {
         select: () => ({
-          eq: () => ({ single: async () => ({ data: { author_id: authorId, goals }, error: null }) }),
+          eq: () => ({
+            single: async () => ({
+              data: { author_id: authorId, goals, created_at: '2026-08-05T01:05:00.000Z' },
+              error: null,
+            }),
+          }),
         }),
         update,
       }
@@ -219,7 +276,11 @@ describe('setGoalStatus', () => {
       goals: [{ body: '알고리즘 3문제 풀기', status: 'done', completedAt: '2026-08-10T02:00:00.000Z' }],
     })
     expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
+    // This test *does* pin the clock (2026-08-10T02:00:00Z), which is what makes the
+    // 2026-08-05 stub discriminating here: an implementation tagging by "today" would
+    // produce checkin-feed-2026-08-10.
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 
   it('sets status to partial without stamping completedAt', async () => {
@@ -266,7 +327,12 @@ describe('updateCheckinGoals', () => {
       if (table !== 'checkin_posts') throw new Error(`unexpected table ${table}`)
       return {
         select: () => ({
-          eq: () => ({ single: async () => ({ data: { author_id: authorId }, error: null }) }),
+          eq: () => ({
+            single: async () => ({
+              data: { author_id: authorId, created_at: '2026-08-05T01:05:00.000Z' },
+              error: null,
+            }),
+          }),
         }),
         update,
       }
@@ -306,7 +372,8 @@ describe('updateCheckinGoals', () => {
       ],
     })
     expect(updateEq).toHaveBeenCalledWith('id', 'post-1')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 
   it('skips blank goal text', async () => {
@@ -352,7 +419,14 @@ describe('deleteCheckinPost', () => {
         return { select: () => ({ eq: () => ({ single: async () => ({ data: { role }, error: null }) }) }) }
       }
       if (table === 'checkin_posts') {
-        return { delete: () => ({ eq: deleteEq }) }
+        return {
+          select: () => ({
+            eq: () => ({
+              single: async () => ({ data: { created_at: '2026-08-05T01:05:00.000Z' }, error: null }),
+            }),
+          }),
+          delete: () => ({ eq: deleteEq }),
+        }
       }
       throw new Error(`unexpected table ${table}`)
     })
@@ -366,8 +440,9 @@ describe('deleteCheckinPost', () => {
     await deleteCheckinPost('post-1')
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'post-1')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/checkin')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
     expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
+    expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
   })
 
   it('throws when the caller is not an admin', async () => {
