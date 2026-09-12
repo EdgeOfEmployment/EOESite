@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/feedback/snapshot'
 import { getVerifiedUser } from '@/lib/auth/verify'
@@ -38,6 +38,7 @@ export async function createSession(formData: FormData) {
   }
 
   revalidatePath('/interviews')
+  updateTag('interviews-feed')
   redirect('/interviews?success=' + encodeURIComponent('세션을 만들었어요'))
 }
 
@@ -68,6 +69,7 @@ export async function toggleParticipation(sessionId: string) {
   }
 
   revalidatePath('/interviews')
+  updateTag('interviews-feed')
 }
 
 export async function deleteSession(sessionId: string) {
@@ -103,6 +105,7 @@ export async function deleteSession(sessionId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/interviews')
+  updateTag('interviews-feed')
 }
 
 export async function createInterviewQa(sessionId: string, formData: FormData) {

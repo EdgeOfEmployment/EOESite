@@ -6,6 +6,7 @@ const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
 const revalidatePathMock = vi.fn()
+const updateTagMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -20,6 +21,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import { createSession, toggleParticipation, deleteSession, createInterviewQa, deleteInterviewQa } from './actions'
@@ -81,6 +83,7 @@ describe('createSession', () => {
       description: 'Zoom 링크',
     })
     expect(redirectMock).toHaveBeenCalledWith('/interviews?success=' + encodeURIComponent('세션을 만들었어요'))
+    expect(updateTagMock).toHaveBeenCalledWith('interviews-feed')
   })
 
   it('redirects with an error when the insert fails', async () => {
@@ -121,6 +124,7 @@ describe('toggleParticipation', () => {
     expect(insert).toHaveBeenCalledWith({ session_id: 'session-1', user_id: 'user-1' })
     expect(deleteEq).not.toHaveBeenCalled()
     expect(revalidatePathMock).toHaveBeenCalledWith('/interviews')
+    expect(updateTagMock).toHaveBeenCalledWith('interviews-feed')
   })
 
   it('deletes existing participation when the user already joined', async () => {
@@ -160,6 +164,7 @@ describe('deleteSession', () => {
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'session-1')
     expect(revalidatePathMock).toHaveBeenCalledWith('/interviews')
+    expect(updateTagMock).toHaveBeenCalledWith('interviews-feed')
   })
 
   it('deletes the session when the caller is an admin but not the creator', async () => {
