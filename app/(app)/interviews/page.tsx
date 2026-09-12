@@ -11,7 +11,12 @@ import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
 import { Skeleton } from '@/components/skeleton'
 
-export const unstable_instant = { prefetch: 'static' }
+// `prefetch: 'static'` fails build-time instant validation on this route, for the same
+// reason as /jobposts: the validator requires declared `samples` for the `x-user-id`
+// header (read by getSessionProfile() in FeedContent) and the `error` search param (read
+// by TopNotice), and `samples` is only accepted alongside `prefetch: 'runtime'`. The
+// existing <Suspense> boundaries do not satisfy it. Revisit with `prefetch: 'runtime'`.
+export const unstable_instant = false
 
 type InterviewsSearchParams = { error?: string; success?: string }
 

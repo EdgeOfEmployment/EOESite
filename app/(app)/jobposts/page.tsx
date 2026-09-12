@@ -12,7 +12,14 @@ import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
 import { Skeleton } from '@/components/skeleton'
 
-export const unstable_instant = { prefetch: 'static' }
+// `prefetch: 'static'` fails build-time instant validation on this route: the validator
+// requires declared `samples` for the `x-user-id` header (read by getSessionProfile() in
+// FeedContent) and the `error` search param (read by TopNotice), and `samples` is only
+// accepted alongside `prefetch: 'runtime'`. Wrapping both reads in <Suspense>, which this
+// page already does, does not satisfy the validator. Opting out matches what Phase 1 did
+// on /jobposts/calendar and /checkin/calendar. Revisit with `prefetch: 'runtime'` +
+// samples if instant prefetching becomes worth the extra configuration.
+export const unstable_instant = false
 
 type JobPostsSearchParams = { error?: string; success?: string }
 
