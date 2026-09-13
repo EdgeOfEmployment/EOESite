@@ -58,17 +58,19 @@ So `/admin` gets a static `PageShell` and a single streamed `AdminContent`. One 
 
 **The `/` design.** `/` turned out to be *less* complex than `/checkin`, so it stays in this phase rather than being split into its own. It has no date navigation, no per-day key space and no immutable-history half; it reads exactly three groups of data for exactly one day and one month:
 
-- **Today's check-in status** — approved members plus today's `checkin_posts.author_id` list, feeding `buildTodayStatus` and `hasPostedToday`. This is the same data `/checkin` shows, for the same KST day, so it is cached under **the same tag `/checkin` already uses**: `` cacheTag(checkinFeedTag(todayKst), 'member-names') ``. `checkinFeedTag(date)` is a small helper in `lib/checkin/time.ts` — the plan originally had both this scope and `revalidateCheckinDay()` in `app/(app)/checkin/actions.ts` building the string `` `checkin-feed-${date}` `` independently, which is exactly the kind of duplication a single typo could silently break; both sides now call the same function. That is the whole point of the choice — `revalidateCheckinDay()` already fires that tag on every post, comment, reaction and goal edit, so the dashboard's status table becomes correctly invalidated with **zero new plumbing**, and `revalidatePath('/')` in `createCheckinPost` can be deleted rather than replaced. It takes `cacheLife('seconds')` for the same reason `/checkin` does: today's board is a live accountability signal. It is split across two boundaries, `TodayAlert` and `StatusTable`, rather than one — see Minor-issue note in Task 4 on why, and why that costs nothing extra.
+- **Today's check-in status** — approved members plus today's `checkin_posts.author_id` list, feeding `buildTodayStatus` and `hasPostedToday`. This is the same data `/checkin` shows, for the same KST day, so it is cached under **the same tag `/checkin` already uses**: `` cacheTag(checkinFeedTag(todayKst), MEMBER_NAMES_TAG) ``. `checkinFeedTag(date)` is a small helper in `lib/checkin/time.ts` — before this plan, `app/(app)/checkin/page.tsx`'s own reader and `revalidateCheckinDay()` in `app/(app)/checkin/actions.ts` each built the string `` `checkin-feed-${date}` `` independently, and this task's new dashboard scope was about to become a third independent copy. Task 4 converts `/checkin`'s reader to call `checkinFeedTag` alongside adding the dashboard's own call, and Task 5 converts `revalidateCheckinDay()` — after both land, all three call sites go through the same function, which is the whole point of introducing it. That is also what makes the invalidation free — `revalidateCheckinDay()` already fires that tag on every post, comment, reaction and goal edit, so the dashboard's status table becomes correctly invalidated with **zero new plumbing**, and `revalidatePath('/')` in `createCheckinPost` can be deleted rather than replaced. It takes `cacheLife('seconds')` for the same reason `/checkin` does: today's board is a live accountability signal. It is split across two boundaries, `TodayAlert` and `StatusTable`, rather than one — see Minor-issue note in Task 4 on why, and why that costs nothing extra.
 - **This month's fines** — `checkin_posts` and `manual_fines` for the month range, feeding `buildMonthlyFineTotals`. Tagged with the `FINES_TAG` constant (exported from `lib/checkin/fines.ts`, value `'fines'`), `cacheLife('minutes')`. Keyed by **month**, not by day (`kstMonthKey`, also in `lib/checkin/time.ts`): the query already reads the whole month, so keying by the exact day would mint — and miss — a fresh cache entry at every KST midnight for data that is otherwise identical all month.
 - **The per-member coding widget** — shared week/problem data from `lib/coding/queries.ts`, plus a `coding_checks` read filtered by `session.userId`. That last read is per-caller and stays uncached, exactly as `getSessionProfile()` does on every converted feed.
 
 `todayKst` is computed from `new Date()` **outside** every cache scope and passed in, the rule Phase 4 established: a `'use cache'` function that computed "today" itself would freeze that value at cache-fill time and serve it forever. Passing it also folds it into the key, so KST midnight rolls over correctly on its own. Each of the dashboard's four streamed boundaries computes it independently (through a shared one-line `todayKst()` helper local to the page, to avoid retyping it, not to unify it into one value) — unlike `/checkin`'s `resolveDayContext`, which two boundaries showing the *same* date-navigated feed must agree on exactly or the visible date heading and the shown posts would mismatch, nothing on the dashboard compares two boundaries' notion of "today" against each other, so a few milliseconds of possible disagreement at the exact instant of KST midnight is not user-visible. Task 4 states this reasoning inline rather than leaving the inconsistency with `/checkin`'s pattern unexamined.
 
-**Tag hygiene.** Three tag families recur across files in this plan, and each is a named export rather than a repeated string literal, for the same reason `CODING_BOARD_TAG` is (see the `/coding` design above): `FINES_TAG` (`lib/checkin/fines.ts`), `checkinFeedTag(date)` (`lib/checkin/time.ts`), and `CODING_BOARD_TAG` (`lib/coding/queries.ts`). Every task below that touches one of these tags imports the constant or helper instead of typing the string.
+**Tag hygiene.** Four tag families recur across files in this plan, and each is a named export rather than a repeated string literal, for the same reason `CODING_BOARD_TAG` is (see the `/coding` design above): `FINES_TAG` (`lib/checkin/fines.ts`), `checkinFeedTag(date)` (`lib/checkin/time.ts`), `CODING_BOARD_TAG` (`lib/coding/queries.ts`), and `MEMBER_NAMES_TAG` (`lib/cache-tags.ts`). Every task below that touches one of these tags imports the constant or helper instead of typing the string.
+
+`MEMBER_NAMES_TAG` is the odd one out and is called out here rather than silently folded in: `'member-names'` was established back in Phase 4 as the escape-hatch tag for cached `profiles.name` lookups, and it already existed as a bare string literal at one call site before this plan (`app/(app)/checkin/page.tsx`'s `cacheTag` call in `getCheckinPosts`) — the exact same drift hazard this section exists to prevent. This plan itself was on track to add three more bare-literal call sites on top of that one: `lib/coding/queries.ts`'s `getCodingMembers` (Task 2), `app/(app)/page.tsx`'s `getTodayCheckinStatus` and `getMonthlyFines` (Task 4), and the new `updateTag('member-names')` this plan adds to `setUserStatus` in `app/(app)/admin/actions.ts` (Task 5). Since there was only one pre-existing call site to retrofit, rather than draw a scope line and leave four bare literals standing, this plan promotes `'member-names'` to `MEMBER_NAMES_TAG`, a new named export in a new `lib/cache-tags.ts` — a shared location rather than under `lib/checkin` or `lib/coding` because no single domain owns it; checkin, coding, admin and the dashboard all read or invalidate it. Task 2 creates the module and is also its first consumer (`getCodingMembers`, since that is the first task that needs it); Task 4 imports it both in the dashboard's two new scopes and — retrofitting the one pre-existing Phase-4 site — in `app/(app)/checkin/page.tsx`; Task 5 imports it in `setUserStatus`. Every site this plan touches ends up importing the constant, so the plan does not ship new code that repeats the very mistake its own tag-hygiene section warns about.
 
 **The Phase-5 tag migration (Task 5) — broader than just `revalidatePath('/')`.** Phase 4 deliberately kept `revalidatePath('/')` in `createCheckinPost` and recorded why: it is correct *precisely because* `/` is still fully dynamic. Once Task 4 moves the dashboard's queries into `'use cache'` scopes, that is no longer true, and the same `_N_T_` mechanism documented above applies to `_N_T_/`: a path call would expire the root route's implicit tag and discard every dashboard entry created before that instant — including the `` checkin-feed-${todayKst} `` entry that `/checkin` is also reading. It stops being a targeted refresh and becomes a second, blunter invalidation channel fighting the tags. Replacing the `revalidatePath('/')` sites is *one instance* of Task 5's actual job, which is broader: **every mutation that writes to a table a Phase-5 cache scope reads must fire that scope's tag.** Framing the task around "find the `revalidatePath('/')` calls" is how two such mutations were nearly missed in review, because neither of them calls `revalidatePath('/')` today:
 
-- `setUserStatus` in `app/(app)/admin/actions.ts` (backing `approveUser`/`rejectUser`) writes `profiles.status`. That was safe to leave alone under Phase 4, because `/checkin`'s reader selects all profiles with no status filter. It stops being safe once Task 2's `getCodingMembers()` and Task 4's `getTodayCheckinStatus()`/`getMonthlyFines()` all filter on `status = 'approved'` — status becomes a cache-relevant input with nothing invalidating on it. `setUserStatus` gets an added `updateTag('member-names')` beside its existing `revalidatePath('/admin')`.
+- `setUserStatus` in `app/(app)/admin/actions.ts` (backing `approveUser`/`rejectUser`) writes `profiles.status`. That was safe to leave alone under Phase 4, because `/checkin`'s reader selects all profiles with no status filter. It stops being safe once Task 2's `getCodingMembers()` and Task 4's `getTodayCheckinStatus()`/`getMonthlyFines()` all filter on `status = 'approved'` — status becomes a cache-relevant input with nothing invalidating on it. `setUserStatus` gets an added `updateTag(MEMBER_NAMES_TAG)` beside its existing `revalidatePath('/admin')`.
 - `deleteCheckinPost` in `app/(app)/checkin/actions.ts` deletes a `checkin_posts` row that may carry a nonzero `fine_amount`. It has no `revalidatePath('/')` call today to migrate — it only fires the per-day checkin tag and the calendar tag — but once Task 4's `getMonthlyFines` exists, a deleted fine keeps counting toward the dashboard's totals until that scope's `minutes` window turns over. `deleteCheckinPost` gets an added `updateTag(FINES_TAG)`.
 
 Eight call sites move or gain a tag in total:
@@ -78,7 +80,7 @@ Eight call sites move or gain a tag in total:
 | `app/(app)/checkin/actions.ts` | `createCheckinPost` (line 106) | `revalidatePath('/')` | *deleted* — the existing `revalidateCheckinDay(...)` below it already fires the tag the dashboard scope now shares — plus a new `updateTag(FINES_TAG)`, because this action writes `fine_amount` |
 | `app/(app)/checkin/actions.ts` | `deleteCheckinPost` | *nothing* — no `revalidatePath('/')` exists here today, which is why this was nearly missed | add `updateTag(FINES_TAG)`, because this action deletes a row that may carry `fine_amount` |
 | `app/(app)/admin/fine-actions.ts` | `setCheckinPostPaid`, `cancelCheckinFine`, `addManualFine`, `deleteManualFine`, `setManualFinePaid` (lines 35, 59, 107, 131, 162) | `revalidatePath('/')` | `updateTag(FINES_TAG)` |
-| `app/(app)/admin/actions.ts` | `setUserStatus` (backing `approveUser`/`rejectUser`) | *nothing* — only `revalidatePath('/admin')`, which is why this was nearly missed | add `updateTag('member-names')` alongside the existing `revalidatePath('/admin')` |
+| `app/(app)/admin/actions.ts` | `setUserStatus` (backing `approveUser`/`rejectUser`) | *nothing* — only `revalidatePath('/admin')`, which is why this was nearly missed | add `updateTag(MEMBER_NAMES_TAG)` alongside the existing `revalidatePath('/admin')` |
 
 The `revalidatePath('/admin')` calls stay untouched everywhere they appear: `/admin` has no `'use cache'` scope for a path call to over-invalidate, and it is still what clears the admin's client router cache after each mutation.
 
@@ -158,15 +160,17 @@ grep -c "^SUPABASE_SERVICE_ROLE_KEY=" .env.local
 
 - `lib/coding/queries.ts` — the three cached Supabase accessors for coding-board data (`getCodingMembers`, `getCodingWeeks`, `getCodingWeekBoard`), shared by `/coding` and `/`. Created in Task 2, consumed by Task 4.
 - `lib/coding/queries.test.ts` — tests for those accessors and their cache tags.
+- `lib/cache-tags.ts` — the shared `MEMBER_NAMES_TAG` constant, since no single domain (checkin/coding/admin) owns that tag. Created in Task 2 (the first task that needs it), consumed by Tasks 2, 4 and 5.
+- `lib/cache-tags.test.ts` — pins `MEMBER_NAMES_TAG`'s literal value.
 
 **Modified:**
 
 - `app/login/page.tsx`, `app/signup/page.tsx`, `app/forgot-password/page.tsx`, `app/reset-password/page.tsx` + their `page.test.tsx` — Task 1.
 - `app/(app)/coding/page.tsx`, `app/(app)/coding/page.test.tsx`, `app/(app)/coding/actions.ts`, `app/api/github-webhook/route.ts`, `app/api/github-webhook/route.test.ts` — Task 2.
 - `app/(app)/admin/page.tsx`, `app/(app)/admin/page.test.tsx` — Task 3.
-- `app/(app)/page.tsx`, `app/(app)/page.test.tsx`, `lib/checkin/time.ts`, `lib/checkin/time.test.ts`, `lib/checkin/fines.ts`, `lib/checkin/fines.test.ts` — Task 4.
+- `app/(app)/page.tsx`, `app/(app)/page.test.tsx`, `lib/checkin/time.ts`, `lib/checkin/time.test.ts`, `lib/checkin/fines.ts`, `lib/checkin/fines.test.ts`, `app/(app)/checkin/page.tsx` — Task 4. (`checkin/page.tsx` gets a small, targeted edit here — see Task 4 Step 1 — adopting `checkinFeedTag` and `MEMBER_NAMES_TAG` at its pre-existing `cacheTag` call site; it is not otherwise rewritten by this task.)
 - `app/(app)/checkin/actions.ts`, `app/(app)/admin/fine-actions.ts`, `app/(app)/admin/actions.ts` — Task 5.
-- `app/(app)/jobposts/page.tsx`, `app/(app)/interviews/page.tsx`, `app/(app)/checkin/page.tsx` — Task 6 (the `unstable_instant` export and its comment only).
+- `app/(app)/jobposts/page.tsx`, `app/(app)/interviews/page.tsx`, `app/(app)/checkin/page.tsx` — Task 6 (the `unstable_instant` export and its comment only; this is `checkin/page.tsx`'s second, unrelated edit in this plan, after Task 4's tag-hygiene edit above).
 
 **Deleted:**
 
@@ -681,12 +685,55 @@ git commit -m "fix: stream auth page notices so every route prerenders"
 **Files:**
 - Create: `lib/coding/queries.ts`
 - Create: `lib/coding/queries.test.ts`
+- Create: `lib/cache-tags.ts`
+- Create: `lib/cache-tags.test.ts`
 - Modify: `app/(app)/coding/page.tsx`
 - Modify: `app/(app)/coding/page.test.tsx`
 - Modify: `app/(app)/coding/actions.ts`
 - Modify: `app/api/github-webhook/route.ts`
 - Modify: `app/api/github-webhook/route.test.ts`
 - Delete: `app/(app)/coding/loading.tsx`
+
+- [ ] **Step 0: Create the shared `MEMBER_NAMES_TAG` constant**
+
+`getCodingMembers` (Step 3, below) needs to tag its cache scope with the same `'member-names'` tag `/checkin` already uses for its profile-name lookup — this is the first task in the plan that needs it, so it is created here rather than in `lib/checkin/` or `lib/coding/`: no single domain owns it, since checkin, coding, admin and the dashboard all read or invalidate it (see the Architecture section's "Tag hygiene" note on why this exists as a named export instead of a fourth bare string literal).
+
+Create `lib/cache-tags.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { MEMBER_NAMES_TAG } from './cache-tags'
+
+describe('MEMBER_NAMES_TAG', () => {
+  it('is the string every profile-name cache scope must tag and invalidate with', () => {
+    expect(MEMBER_NAMES_TAG).toBe('member-names')
+  })
+})
+```
+
+Create `lib/cache-tags.ts`:
+
+```ts
+/**
+ * The escape-hatch tag for cached `profiles.name` lookups. Established in Phase 4 as the bare
+ * string literal `'member-names'` at a single call site (`app/(app)/checkin/page.tsx`); this
+ * plan adds three more call sites (`lib/coding/queries.ts`, `app/(app)/page.tsx` twice,
+ * `app/(app)/admin/actions.ts`) and promotes all four — including the pre-existing one — to
+ * import this constant instead, for the same reason `CODING_BOARD_TAG` and `FINES_TAG` are
+ * named exports: a typo in any one bare literal would silently disable invalidation with no
+ * build error and no test failure. It lives in its own module rather than under `lib/checkin`
+ * or `lib/coding` because no single domain owns it.
+ */
+export const MEMBER_NAMES_TAG = 'member-names'
+```
+
+Run it:
+
+```bash
+npx vitest run lib/cache-tags.test.ts
+```
+
+Expected: PASS, 1 test.
 
 - [ ] **Step 1: Write the failing test for the shared cached accessors**
 
@@ -755,6 +802,7 @@ vi.mock('@/lib/supabase/cache-client', () => ({
 }))
 
 import { getCodingMembers, getCodingWeeks, getCodingWeekBoard, CODING_BOARD_TAG } from './queries'
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 
 beforeEach(() => {
   eqSpy.mockClear()
@@ -769,8 +817,17 @@ describe('getCodingMembers', () => {
       { id: 'admin-1', name: '관리자' },
       { id: 'user-1', name: '김민수' },
     ])
-    expect(cacheTag).toHaveBeenCalledWith(CODING_BOARD_TAG, 'member-names')
+    expect(cacheTag).toHaveBeenCalledWith(CODING_BOARD_TAG, MEMBER_NAMES_TAG)
     expect(cacheLife).toHaveBeenCalledWith('minutes')
+  })
+})
+
+describe('CODING_BOARD_TAG', () => {
+  it('is the string every coding-board mutation must invalidate with', () => {
+    // Sibling to the assertion above, which only proves getCodingMembers tags with whatever
+    // CODING_BOARD_TAG happens to equal — this pins the literal value itself, matching how
+    // FINES_TAG is pinned in lib/checkin/fines.test.ts (Task 4, Step 1).
+    expect(CODING_BOARD_TAG).toBe('coding-board')
   })
 })
 
@@ -821,6 +878,7 @@ Expected: FAIL — `Failed to resolve import "./queries"`.
 import { cacheLife, cacheTag } from 'next/cache'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import type { CodingProblem, CodingWeek, Member } from './types'
 
 /**
@@ -851,7 +909,7 @@ export const CODING_BOARD_TAG = 'coding-board'
  */
 export async function getCodingMembers(): Promise<Member[]> {
   'use cache'
-  cacheTag(CODING_BOARD_TAG, 'member-names')
+  cacheTag(CODING_BOARD_TAG, MEMBER_NAMES_TAG)
   cacheLife('minutes')
 
   const supabase = createCacheClient()
@@ -932,7 +990,7 @@ export async function getCodingWeekBoard(weekId: string): Promise<CodingProblem[
 npx vitest run lib/coding/queries.test.ts
 ```
 
-Expected: PASS, 3 tests.
+Expected: PASS, 4 tests.
 
 - [ ] **Step 5: Rewrite `app/(app)/coding/page.tsx`**
 
@@ -1704,6 +1762,7 @@ git commit -m "feat: stream the admin page behind a static shell"
 - Modify: `app/(app)/page.test.tsx`
 - Modify: `lib/checkin/time.ts` (adds `checkinFeedTag` and `kstMonthKey`)
 - Modify: `lib/checkin/fines.ts` (adds `FINES_TAG`)
+- Modify: `app/(app)/checkin/page.tsx` (adopts `checkinFeedTag` and `MEMBER_NAMES_TAG` at its existing `cacheTag` call site — see Step 1)
 - Delete: `app/(app)/loading.tsx`
 
 - [ ] **Step 1: Add the shared tag/key helpers this task needs**
@@ -1772,6 +1831,44 @@ npx vitest run lib/checkin/time.test.ts lib/checkin/fines.test.ts
 
 Expected: PASS.
 
+**Adopt `checkinFeedTag` and `MEMBER_NAMES_TAG` in `app/(app)/checkin/page.tsx`.** This is the route that originally established the `` `checkin-feed-${date}` `` and `'member-names'` bare-literal pattern back in Phase 4, and it is not otherwise touched by this task (it is not rewritten — Step 2 below rewrites `app/(app)/page.tsx`, the dashboard, a different file). Leaving its `cacheTag` call as raw literals after this step introduces both helpers would create a second, independent producer of each string — the dashboard's new scopes below calling `checkinFeedTag(...)` and `MEMBER_NAMES_TAG`, and `/checkin`'s own reader still typing them by hand — which is exactly the drift hazard both helpers exist to remove. It lands here, in the same step that creates `checkinFeedTag`, rather than in Task 5, because Task 5's edits to `app/(app)/checkin/actions.ts` are about the mutation/invalidation side (`revalidateCheckinDay`), not this file's read side.
+
+In `app/(app)/checkin/page.tsx`, add `checkinFeedTag` to the existing import from `@/lib/checkin/time` (currently line 10), keeping it a single line so the rest of the file's line numbers only shift by the one new import line added below:
+
+```ts
+import { getKstDateString, kstDayRangeUtc, shiftKstDateString, formatKstDateHeading, checkinFeedTag } from '@/lib/checkin/time'
+```
+
+and add one new import line for the shared tag constant, directly below it:
+
+```ts
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
+```
+
+This inserts exactly one new line into the file (line 10 stays line 10, just longer; the new import becomes line 11). Everything from the old line 11 onward — including the `unstable_instant` comment block and `export const unstable_instant = false` that Task 6 cites as "lines 16–21" — shifts down by one line, to lines 17–22. **Task 6's file/line reference for this file must read `app/(app)/checkin/page.tsx:17-22` by the time Task 6 runs**, not `:16-21`; this has been corrected at Task 6's file list below.
+
+Then change the `cacheTag` call inside `getCheckinPosts` (the only `cacheTag` call in the file, originally at line 79 and now at line 80 after the new import line above) from:
+
+```ts
+  cacheTag(`checkin-feed-${date}`, 'member-names')
+```
+
+to:
+
+```ts
+  cacheTag(checkinFeedTag(date), MEMBER_NAMES_TAG)
+```
+
+`app/(app)/checkin/page.test.tsx` asserts on the tag's literal value directly (`expect(cacheTag).toHaveBeenCalledWith('checkin-feed-2026-08-10', 'member-names')` and the `2026-08-09` equivalent) — `checkinFeedTag('2026-08-10')` returns exactly `'checkin-feed-2026-08-10'` and `MEMBER_NAMES_TAG` equals exactly `'member-names'`, so both assertions keep passing unchanged; no test edit is needed here.
+
+Run the existing checkin page tests to confirm nothing broke:
+
+```bash
+npx vitest run "app/(app)/checkin/page.test.tsx"
+```
+
+Expected: PASS, unchanged test count.
+
 - [ ] **Step 2: Rewrite `app/(app)/page.tsx`**
 
 Replace the entire file with:
@@ -1786,6 +1883,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { buildTodayStatus, hasPostedToday, type MemberSummary } from '@/lib/checkin/status'
 import { buildMonthlyFineTotals, FINES_TAG } from '@/lib/checkin/fines'
 import { getKstDateString, kstDayRangeUtc, kstMonthRangeUtc, kstMonthKey, checkinFeedTag } from '@/lib/checkin/time'
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import { buildCodingDashboardWidget, findWeekForDate } from '@/lib/coding/dashboard-widget'
 import { getCodingWeeks, getCodingWeekBoard } from '@/lib/coding/queries'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
@@ -1841,7 +1939,7 @@ async function getTodayCheckinStatus(
   todayKstDate: string
 ): Promise<{ members: MemberSummary[]; todaysAuthorIds: string[] }> {
   'use cache'
-  cacheTag(checkinFeedTag(todayKstDate), 'member-names')
+  cacheTag(checkinFeedTag(todayKstDate), MEMBER_NAMES_TAG)
   cacheLife('seconds')
 
   const supabase = createCacheClient()
@@ -1874,7 +1972,7 @@ async function getMonthlyFines(
   monthKey: string
 ): Promise<{ members: MemberSummary[]; fines: MonthFine[] }> {
   'use cache'
-  cacheTag(FINES_TAG, 'member-names')
+  cacheTag(FINES_TAG, MEMBER_NAMES_TAG)
   cacheLife('minutes')
 
   const supabase = createCacheClient()
@@ -2334,16 +2432,40 @@ This task's job is broader than replacing `revalidatePath('/')` calls — that f
 - `createCheckinPost` (`app/(app)/checkin/actions.ts`) — the known case. Phase 4 kept `revalidatePath('/')` here and recorded exactly why: it was correct *because* `/` was still fully dynamic. Task 4 ended that. A path call now would expire `_N_T_/` and make the `'use cache'` reader discard every dashboard entry created before that instant — including the `` checkin-feed-${todayKst} `` entry `/checkin` is also reading — turning a targeted refresh into a blunter second invalidation channel fighting the tags. It is deleted and replaced with `updateTag(FINES_TAG)`, because this action also writes `fine_amount`.
 - `deleteCheckinPost` (same file) — deletes a `checkin_posts` row that may itself carry a nonzero `fine_amount`. It has no `revalidatePath('/')` call today, so it was not on the "replace the path calls" list, but it needs `updateTag(FINES_TAG)` for exactly the same reason `createCheckinPost` does: a deleted fine must not keep counting toward the dashboard's monthly total for up to `getMonthlyFines`'s `minutes` window.
 - `setCheckinPostPaid`, `cancelCheckinFine`, `addManualFine`, `deleteManualFine`, `setManualFinePaid` (`app/(app)/admin/fine-actions.ts`) — the other five known `revalidatePath('/')` sites, all replaced with `updateTag(FINES_TAG)`.
-- `setUserStatus` (`app/(app)/admin/actions.ts`, backing `approveUser`/`rejectUser`) — writes `profiles.status`. Safe to leave alone under Phase 4, because `/checkin`'s reader selects all profiles with no status filter. Unsafe now: Task 2's `getCodingMembers()` and Task 4's `getTodayCheckinStatus()`/`getMonthlyFines()` all filter on `status = 'approved'`, so status became a cache-relevant input with nothing invalidating on it. It has no `revalidatePath('/')` call today either — only `revalidatePath('/admin')` — so it was equally easy to miss. It gets an added `updateTag('member-names')`.
+- `setUserStatus` (`app/(app)/admin/actions.ts`, backing `approveUser`/`rejectUser`) — writes `profiles.status`. Safe to leave alone under Phase 4, because `/checkin`'s reader selects all profiles with no status filter. Unsafe now: Task 2's `getCodingMembers()` and Task 4's `getTodayCheckinStatus()`/`getMonthlyFines()` all filter on `status = 'approved'`, so status became a cache-relevant input with nothing invalidating on it. It has no `revalidatePath('/')` call today either — only `revalidatePath('/admin')` — so it was equally easy to miss. It gets an added `updateTag(MEMBER_NAMES_TAG)`.
 
 **Files:**
-- Modify: `app/(app)/checkin/actions.ts` (`createCheckinPost` line 106, and `deleteCheckinPost`)
+- Modify: `app/(app)/checkin/actions.ts` (`createCheckinPost` line 106, `deleteCheckinPost`, and `revalidateCheckinDay`'s body)
 - Modify: `app/(app)/admin/fine-actions.ts` (lines 35, 59, 107, 131, 162)
 - Modify: `app/(app)/admin/actions.ts` (`setUserStatus`)
 
 - [ ] **Step 1: Update `app/(app)/checkin/actions.ts`**
 
-Replace this block (currently at lines 103–107, inside `createCheckinPost`):
+**First, adopt `checkinFeedTag` in `revalidateCheckinDay` itself.** Task 4 added `checkinFeedTag(date)` to `lib/checkin/time.ts` specifically to replace the raw template literal this function builds — that replacement belongs here, in the task that is already editing this file's `@/lib/checkin/time` import and the two call sites below, rather than in Task 4 (which only *adds* the helper, for the dashboard's use). Until this lands, `revalidateCheckinDay` remains an independent, untagged producer of the same string `checkinFeedTag` builds, which is exactly the drift hazard the helper exists to remove.
+
+`revalidateCheckinDay` currently reads:
+
+```ts
+function revalidateCheckinDay(kstDate: string) {
+  updateTag(`checkin-feed-${kstDate}`)
+}
+```
+
+Change its body to call the shared helper:
+
+```ts
+function revalidateCheckinDay(kstDate: string) {
+  updateTag(checkinFeedTag(kstDate))
+}
+```
+
+and add `checkinFeedTag` to this file's existing import from `@/lib/checkin/time` (currently `import { computeLateFine, getKstDateString } from '@/lib/checkin/time'`):
+
+```ts
+import { computeLateFine, getKstDateString, checkinFeedTag } from '@/lib/checkin/time'
+```
+
+**Then, replace `createCheckinPost`'s and `deleteCheckinPost`'s `revalidatePath('/')`/missing-tag sites, as before.** Replace this block (currently at lines 103–107, inside `createCheckinPost`):
 
 ```ts
   // `revalidatePath('/')` stays — the dashboard is still fully dynamic and reads today's
@@ -2396,15 +2518,16 @@ import { revalidateTag, updateTag } from 'next/cache'
 import { FINES_TAG } from '@/lib/checkin/fines'
 ```
 
-Verify nothing else in the file used the removed import:
+Verify nothing else in the file used the removed import, and that no raw `checkin-feed-` template literal survives now that `revalidateCheckinDay` calls the helper:
 
 ```bash
 grep -n "revalidatePath" "app/(app)/checkin/actions.ts"
+grep -n "checkin-feed-" "app/(app)/checkin/actions.ts"
 ```
 
-Expected: no output.
+Expected: no output from either.
 
-`app/(app)/checkin/actions.test.ts` already mocks `updateTag` (`updateTagMock`, added in Phase 4), so no new mock plumbing is needed — only assertion updates. In the `createCheckinPost` success test, replace:
+`app/(app)/checkin/actions.test.ts` already mocks `updateTag` (`updateTagMock`, added in Phase 4), so no new mock plumbing is needed — only assertion updates. Add `FINES_TAG` to this test file's imports (`import { FINES_TAG } from '@/lib/checkin/fines'`) so the assertions below pin invalidation to the same constant the production code imports, rather than to a bare string that could drift from it — matching how `route.test.ts` already asserts against `CODING_BOARD_TAG` rather than the string `'coding-board'` (Task 2, Step 11). In the `createCheckinPost` success test, replace:
 
 ```ts
     expect(revalidatePathMock).toHaveBeenCalledWith('/')
@@ -2414,13 +2537,13 @@ with:
 
 ```ts
     expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
-    expect(updateTagMock).toHaveBeenCalledWith('fines')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
 ```
 
 In the `deleteCheckinPost` `'deletes the post when the caller is an admin'` test, add a new assertion alongside the existing `expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')`:
 
 ```ts
-    expect(updateTagMock).toHaveBeenCalledWith('fines')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
 ```
 
 `updateTagMock` records every call it receives, so this is additive — the existing per-day assertion stays valid unchanged.
@@ -2465,7 +2588,7 @@ grep -n "revalidatePath\|updateTag" "app/(app)/admin/fine-actions.ts"
 
 Expected: one `revalidatePath, updateTag` import line, one `FINES_TAG` import line, five `revalidatePath('/admin')` lines and five `updateTag(FINES_TAG)` lines. No `revalidatePath('/')`.
 
-`app/(app)/admin/fine-actions.test.ts`'s existing `next/cache` mock only exposes `revalidatePath`, the same gap as `admin/actions.test.ts`. Add an `updateTagMock`:
+`app/(app)/admin/fine-actions.test.ts`'s existing `next/cache` mock only exposes `revalidatePath`, the same gap as `admin/actions.test.ts`. Add an `updateTagMock`, and add `FINES_TAG` to this file's imports (`import { FINES_TAG } from '@/lib/checkin/fines'`) so these assertions pin invalidation to the same constant the production code imports rather than to a bare string — matching how `route.test.ts` already asserts against `CODING_BOARD_TAG` (Task 2, Step 11):
 
 ```ts
 const revalidatePathMock = vi.fn()
@@ -2483,7 +2606,7 @@ Then, in each of the five success tests, replace the line `expect(revalidatePath
 
 ```ts
     expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
-    expect(updateTagMock).toHaveBeenCalledWith('fines')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
 ```
 
 leaving the `toHaveBeenCalledWith('/admin')` line directly above each untouched.
@@ -2511,26 +2634,33 @@ Change it to:
   revalidatePath('/admin')
   // Task 2's getCodingMembers() and Task 4's getTodayCheckinStatus()/getMonthlyFines() all
   // filter on `status = 'approved'`, so a status change must invalidate every cache scope
-  // tagged `member-names` or an approved/rejected member sits (in)correctly filtered until
+  // tagged `MEMBER_NAMES_TAG` or an approved/rejected member sits (in)correctly filtered until
   // those scopes' cache windows turn over. `revalidatePath('/admin')` above is unaffected by
   // this and stays for the same reason it always has: /admin itself has no `'use cache'` scope.
-  updateTag('member-names')
+  updateTag(MEMBER_NAMES_TAG)
 }
 ```
 
-and update the import on line 1 (currently `import { revalidatePath } from 'next/cache'`) to:
+and update the import on **line 4** (currently `import { revalidatePath } from 'next/cache'` — line 1 is `'use server'`, not this import) to:
 
 ```ts
 import { revalidatePath, updateTag } from 'next/cache'
+```
+
+and add a new import for the shared tag constant, alongside it:
+
+```ts
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 ```
 
 Verify:
 
 ```bash
 grep -n "revalidatePath\|updateTag" "app/(app)/admin/actions.ts"
+grep -n "'member-names'" "app/(app)/admin/actions.ts"
 ```
 
-Expected: one import line, one `revalidatePath('/admin')` line, one `updateTag('member-names')` line.
+Expected: the first shows one import line, one `revalidatePath('/admin')` line, one `updateTag(MEMBER_NAMES_TAG)` line. The second shows no output — the production code now goes through the constant, not the bare string.
 
 `app/(app)/admin/actions.test.ts`'s existing `next/cache` mock only exposes `revalidatePath`:
 
@@ -2603,7 +2733,7 @@ Phase 4 opted all three feeds out of instant validation with `= false` and a not
 **Files:**
 - Modify: `app/(app)/jobposts/page.tsx:14-22`
 - Modify: `app/(app)/interviews/page.tsx:14-19`
-- Modify: `app/(app)/checkin/page.tsx:16-21`
+- Modify: `app/(app)/checkin/page.tsx:17-22` (Task 4 already inserted one import line above this block for `MEMBER_NAMES_TAG` — see Task 4, Step 1 — shifting it from the file's original `:16-21` by one line)
 
 - [ ] **Step 1: Replace the `unstable_instant` block in `app/(app)/jobposts/page.tsx`**
 
@@ -2663,7 +2793,7 @@ export const unstable_instant = {
 
 - [ ] **Step 3: Record the `/checkin` non-adoption in `app/(app)/checkin/page.tsx`**
 
-`/checkin` keeps `= false`. Replace its comment block (lines 16–20), leaving `export const unstable_instant = false` on line 21 unchanged:
+`/checkin` keeps `= false`. Replace its comment block (lines 17–21 by this point — Task 4, Step 1 inserted one import line above it), leaving `export const unstable_instant = false` on line 22 unchanged:
 
 ```tsx
 // Stays `false` — `prefetch: 'runtime'` was tried on this route and rejected on evidence, so
@@ -2727,21 +2857,25 @@ grep -rn "TODO\|FIXME\|temporarily" --include=*.tsx app/login app/signup app/for
 
 Expected: all three produce no output. Earlier phases neutralized `/forgot-password` as a research stub; nothing of that kind may remain. `git status --short` also catches a leftover `app/(app)/page.tsx.bak` or `app/(app)/loading.tsx.bak` if Task 2's or Task 3's isolated build-verification step was interrupted before its restore commands ran.
 
-Also confirm the three Phase-5 tag constants are used everywhere rather than duplicated as bare literals — the exact hazard Important Issue 4 in this task's originating review was about:
+Also confirm the four Phase-5 tag constants/helpers are used everywhere rather than duplicated as bare literals — the exact hazard Important Issue 4 in this task's originating review was about:
 
 ```bash
 grep -rn "'coding-board'" --include=*.ts --include=*.tsx app lib
 grep -rn "'fines'" --include=*.ts --include=*.tsx app lib
+grep -rn "'member-names'" --include=*.ts --include=*.tsx app lib
+grep -rn "checkin-feed-" --include=*.ts --include=*.tsx app lib
 ```
 
-Expected: each matches only the constant's own definition (`export const CODING_BOARD_TAG = 'coding-board'` in `lib/coding/queries.ts`, `export const FINES_TAG = 'fines'` in `lib/checkin/fines.ts`) and any test files that assert against the literal value — never a second call site that could drift from the constant by a typo. Every production call site should show up under `CODING_BOARD_TAG` / `FINES_TAG` instead:
+Expected: each of the first three matches only the constant's own definition (`export const CODING_BOARD_TAG = 'coding-board'` in `lib/coding/queries.ts`, `export const FINES_TAG = 'fines'` in `lib/checkin/fines.ts`, `export const MEMBER_NAMES_TAG = 'member-names'` in `lib/cache-tags.ts`) and any test files that assert against the literal value — never a second production call site that could drift from the constant by a typo. The fourth (`checkin-feed-`) is a template literal rather than a constant, so it should match only its one definition inside `checkinFeedTag` in `lib/checkin/time.ts` plus test files pinning the literal string it produces — never a second place that builds the same string independently (this was Issue A of this task's originating review: `checkinFeedTag` existed but neither `app/(app)/checkin/actions.ts`'s `revalidateCheckinDay` nor `app/(app)/checkin/page.tsx`'s `cacheTag` call had been converted to use it). Every production call site should show up under the constant/helper name instead:
 
 ```bash
 grep -rln "CODING_BOARD_TAG" --include=*.ts --include=*.tsx app lib
 grep -rln "FINES_TAG" --include=*.ts --include=*.tsx app lib
+grep -rln "MEMBER_NAMES_TAG" --include=*.ts --include=*.tsx app lib
+grep -rln "checkinFeedTag" --include=*.ts --include=*.tsx app lib
 ```
 
-Expected: `lib/coding/queries.ts`, `app/(app)/coding/actions.ts`, `app/api/github-webhook/route.ts` (and `route.test.ts`) for the first; `lib/checkin/fines.ts`, `app/(app)/page.tsx`, `app/(app)/checkin/actions.ts` (and its test file) and `app/(app)/admin/fine-actions.ts` (and its test file) for the second.
+Expected: `lib/coding/queries.ts`, `app/(app)/coding/actions.ts`, `app/api/github-webhook/route.ts` (and `route.test.ts`) for the first; `lib/checkin/fines.ts`, `app/(app)/page.tsx`, `app/(app)/checkin/actions.ts` (and its test file) and `app/(app)/admin/fine-actions.ts` (and its test file) for the second; `lib/cache-tags.ts` (and its test file), `lib/coding/queries.ts` (and its test file), `app/(app)/page.tsx`, `app/(app)/checkin/page.tsx` and `app/(app)/admin/actions.ts` for the third; `lib/checkin/time.ts` (and its test file), `app/(app)/checkin/actions.ts`, `app/(app)/checkin/page.tsx` and `app/(app)/page.tsx` for the fourth.
 
 - [ ] **Step 2: Confirm the deleted `loading.tsx` files are gone and the two intentionally-kept ones remain**
 
