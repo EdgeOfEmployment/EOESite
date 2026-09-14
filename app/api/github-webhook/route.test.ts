@@ -9,7 +9,13 @@ vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn(() => ({ from: fromMock })),
 }))
 
+vi.mock('next/cache', () => ({
+  revalidateTag: vi.fn(),
+}))
+
 import { POST } from './route'
+import { revalidateTag } from 'next/cache'
+import { CODING_BOARD_TAG } from '@/lib/coding/queries'
 
 const SECRET = 'test-secret'
 const REPO = 'EdgeOfEmployment/Coding-Test'
@@ -53,6 +59,7 @@ describe('POST /api/github-webhook', () => {
 
     expect(response.status).toBe(401)
     expect(fromMock).not.toHaveBeenCalled()
+    expect(revalidateTag).not.toHaveBeenCalled()
   })
 
   it('skips non-push events', async () => {
@@ -68,6 +75,7 @@ describe('POST /api/github-webhook', () => {
 
     expect(json).toEqual({ ok: true, skipped: 'not a push event' })
     expect(fromMock).not.toHaveBeenCalled()
+    expect(revalidateTag).not.toHaveBeenCalled()
   })
 
   it('skips a push from an unexpected repository', async () => {
@@ -149,6 +157,39 @@ describe('POST /api/github-webhook', () => {
       { onConflict: 'problem_id,user_id' }
     )
     expect(json.checkedProblemIds).toEqual(['problem-1'])
+    expect(revalidateTag).toHaveBeenCalledWith(CODING_BOARD_TAG, 'max')
+  })
+
+  it('does not revalidate when no problem in the push matches a tracked problem', async () => {
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'profiles') {
+        return {
+          select: () => ({ ilike: () => ({ maybeSingle: async () => ({ data: { id: 'user-1' } }) }) }),
+        }
+      }
+      if (table === 'coding_problems') {
+        return {
+          select: () =>
+            Promise.resolve({
+              data: [{ id: 'problem-1', title: '두 수의 합', match_keyword: null }],
+            }),
+        }
+      }
+      throw new Error(`unexpected table ${table}`)
+    })
+
+    const body = JSON.stringify({
+      repository: { full_name: REPO },
+      sender: { login: 'kimminsu-dev' },
+      commits: [{ id: 'sha-1', added: ['kimminsu/unrelated-file.txt'], modified: [] }],
+    })
+    const request = buildRequest(body)
+
+    const response = await POST(request)
+    const json = await response.json()
+
+    expect(json.checkedProblemIds).toEqual([])
+    expect(revalidateTag).not.toHaveBeenCalled()
   })
 
   it('uses match_keyword instead of the title when the admin set one', async () => {

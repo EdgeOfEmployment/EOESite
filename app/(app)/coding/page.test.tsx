@@ -6,126 +6,136 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }))
 
-const profiles = [
+const members = [
   { id: 'admin-1', name: '관리자' },
   { id: 'user-1', name: '김민수' },
 ]
 
 const weeks = [
-  { id: 'week-2', label: '2주차', start_date: '2026-09-15', end_date: '2026-09-21' },
-  { id: 'week-1', label: '1주차', start_date: '2026-09-08', end_date: '2026-09-14' },
+  { id: 'week-2', label: '2주차', startDate: '2026-09-08', endDate: '2026-09-14' },
+  { id: 'week-1', label: '1주차', startDate: '2026-09-01', endDate: '2026-09-07' },
 ]
 
-const problems = [
+const week2Problems = [
   {
-    id: 'problem-1',
-    title: '두 수의 합',
-    link: 'https://example.com/problem/1',
-    created_by: 'admin-1',
-    created_at: '2026-09-08T00:00:00.000Z',
-    assignee_ids: [],
+    id: 'problem-2',
+    title: '이분 탐색',
+    link: 'https://example.com/2',
+    createdBy: 'admin-1',
+    createdAt: '2026-09-09T00:00:00.000Z',
+    assigneeIds: [],
+    checks: [],
   },
 ]
 
-const checks = [
-  { problem_id: 'problem-1', user_id: 'user-1', commit_sha: null, file_path: null, source: 'auto' },
+const week1Problems = [
+  {
+    id: 'problem-1',
+    title: '투 포인터',
+    link: 'https://example.com/1',
+    createdBy: 'admin-1',
+    createdAt: '2026-09-02T00:00:00.000Z',
+    assigneeIds: [],
+    checks: [],
+  },
 ]
 
-const weeksOrderMock = vi.fn(async () => ({ data: weeks }))
-const weeksOrderStartMock = vi.fn(() => ({ order: weeksOrderMock }))
-const problemsEqMock = vi.fn(async () => ({ data: problems }))
-const codingChecksInMock = vi.fn(async () => ({ data: checks }))
+const getCodingWeekBoard = vi.fn(async (weekId: string) =>
+  weekId === 'week-2' ? week2Problems : week1Problems
+)
+
+vi.mock('@/lib/coding/queries', () => ({
+  getCodingMembers: vi.fn(async () => members),
+  getCodingWeeks: vi.fn(async () => weeks),
+  getCodingWeekBoard: (weekId: string) => getCodingWeekBoard(weekId),
+}))
+
+const sessionProfile = { userId: 'user-1', role: 'member', status: 'approved' }
+
+vi.mock('@/lib/auth/session', () => ({
+  getSessionProfile: vi.fn(async () => sessionProfile),
+}))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
-    from: (table: string) => {
-      if (table === 'profiles') {
-        return {
-          select: (columns: string) => {
-            if (columns === 'github_username') {
-              return {
-                eq: () => ({
-                  single: async () => ({ data: { github_username: 'kimminsu-dev' } }),
-                }),
-              }
-            }
-            return { eq: () => Promise.resolve({ data: profiles }) }
-          },
-        }
-      }
-      if (table === 'coding_weeks') {
-        return { select: () => ({ order: weeksOrderStartMock }) }
-      }
-      if (table === 'coding_problems') {
-        return { select: () => ({ eq: problemsEqMock }) }
-      }
-      if (table === 'coding_checks') {
-        return { select: () => ({ in: codingChecksInMock }) }
-      }
-      throw new Error(`unexpected table ${table}`)
-    },
+    from: () => ({
+      select: () => ({
+        eq: () => ({ single: async () => ({ data: { github_username: 'mkim' } }) }),
+      }),
+    }),
   })),
-}))
-
-vi.mock('@/lib/auth/session', () => ({
-  getSessionProfile: vi.fn(async () => ({ userId: 'user-1', role: 'member', status: 'approved' })),
 }))
 
 vi.mock('./actions', () => ({
   createProblems: vi.fn(),
-  adminRemoveCheck: vi.fn(),
-  deleteProblem: vi.fn(),
   updateGithubUsername: vi.fn(),
+  deleteProblem: vi.fn(),
+  adminRemoveCheck: vi.fn(),
   markSelfComplete: vi.fn(),
   unmarkSelfComplete: vi.fn(),
 }))
 
-import { getSessionProfile } from '@/lib/auth/session'
-import CodingPage from './page'
+import CodingPage, { TopNotice, GithubSettings, BoardContent } from './page'
 
 beforeEach(() => {
-  weeksOrderMock.mockClear()
-  weeksOrderStartMock.mockClear()
-  problemsEqMock.mockClear()
-  codingChecksInMock.mockClear()
+  getCodingWeekBoard.mockClear()
+  sessionProfile.role = 'member'
 })
 
 describe('CodingPage', () => {
-  it('renders the newest week by default, queries its problems, and shows the member checklist', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+  it('renders the static shell title without awaiting any data', () => {
+    const ui = CodingPage({ searchParams: Promise.resolve({}) })
     render(ui)
 
-    expect(screen.getByText('2주차 (9/15~9/21)')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '두 수의 합' })).toBeInTheDocument()
-    expect(screen.getByText('김민수')).toBeInTheDocument()
-    expect(screen.getByText('관리자')).toBeInTheDocument()
-    expect(problemsEqMock).toHaveBeenCalledWith('week_id', 'week-2')
+    expect(screen.getByRole('heading', { name: '코테 스터디' })).toBeInTheDocument()
   })
+})
 
-  it('orders weeks by start_date then created_at so ties resolve deterministically', async () => {
-    await CodingPage({ searchParams: Promise.resolve({}) })
+describe('CodingPage TopNotice', () => {
+  it('shows an error message when present in search params', async () => {
+    const ui = await TopNotice({ searchParamsPromise: Promise.resolve({ error: '문제를 등록하지 못했어요' }) })
+    render(ui)
 
-    expect(weeksOrderStartMock).toHaveBeenCalledWith('start_date', { ascending: false })
-    expect(weeksOrderMock).toHaveBeenCalledWith('created_at', { ascending: false })
+    expect(screen.getByText('문제를 등록하지 못했어요')).toBeInTheDocument()
+  })
+})
+
+describe('CodingPage GithubSettings', () => {
+  it("pre-fills the form with the caller's registered username", async () => {
+    const ui = await GithubSettings()
+    render(ui)
+
+    expect(screen.getByPlaceholderText('GitHub 아이디')).toHaveValue('mkim')
+  })
+})
+
+describe('CodingPage BoardContent', () => {
+  it('renders the newest week by default and queries its problems', async () => {
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({}) })
+    render(ui)
+
+    expect(getCodingWeekBoard).toHaveBeenCalledWith('week-2')
+    expect(screen.getByText('이분 탐색')).toBeInTheDocument()
   })
 
   it('renders the requested week when ?week= matches an existing week', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({ week: 'week-1' }) })
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({ week: 'week-1' }) })
     render(ui)
 
-    expect(screen.getByText('1주차 (9/8~9/14)')).toBeInTheDocument()
-    expect(problemsEqMock).toHaveBeenCalledWith('week_id', 'week-1')
+    expect(getCodingWeekBoard).toHaveBeenCalledWith('week-1')
+    expect(screen.getByText('투 포인터')).toBeInTheDocument()
   })
 
-  it('falls back to the newest week when ?week= does not match any week', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({ week: 'unknown-id' }) })
+  it('falls back to the newest week when ?week= does not match any week, so no unknown id reaches the cache key', async () => {
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({ week: 'unknown-id' }) })
     render(ui)
 
-    expect(screen.getByText('2주차 (9/15~9/21)')).toBeInTheDocument()
+    expect(getCodingWeekBoard).toHaveBeenCalledWith('week-2')
+    expect(getCodingWeekBoard).not.toHaveBeenCalledWith('unknown-id')
   })
 
   it('shows only a previous-week link on the newest week', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({}) })
     render(ui)
 
     expect(screen.getByRole('link', { name: '← 이전 주차' })).toHaveAttribute('href', '/coding?week=week-1')
@@ -133,67 +143,25 @@ describe('CodingPage', () => {
   })
 
   it('shows only a next-week link on the oldest week', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({ week: 'week-1' }) })
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({ week: 'week-1' }) })
     render(ui)
 
     expect(screen.getByRole('link', { name: '다음 주차 →' })).toHaveAttribute('href', '/coding?week=week-2')
     expect(screen.queryByRole('link', { name: '← 이전 주차' })).not.toBeInTheDocument()
   })
 
-  it('shows an empty state when there are no weeks at all', async () => {
-    weeksOrderMock.mockResolvedValueOnce({ data: [] })
-
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
-    render(ui)
-
-    expect(screen.getByText('아직 등록된 문제가 없습니다.')).toBeInTheDocument()
-  })
-
-  it('skips the coding_checks query when the current week has no problems', async () => {
-    problemsEqMock.mockResolvedValueOnce({ data: [] })
-
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
-    render(ui)
-
-    expect(screen.getByText('이 주차에 등록된 문제가 없습니다.')).toBeInTheDocument()
-    expect(codingChecksInMock).not.toHaveBeenCalled()
-  })
-
   it('does not show the problem registration form for non-admins', async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({}) })
     render(ui)
+
     expect(screen.queryByRole('button', { name: '문제 등록' })).not.toBeInTheDocument()
   })
 
   it('shows the problem registration form for admins', async () => {
-    vi.mocked(getSessionProfile).mockResolvedValueOnce({
-      userId: 'admin-1',
-      role: 'admin',
-      status: 'approved',
-    })
-
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
+    sessionProfile.role = 'admin'
+    const ui = await BoardContent({ searchParamsPromise: Promise.resolve({}) })
     render(ui)
 
     expect(screen.getByRole('button', { name: '문제 등록' })).toBeInTheDocument()
-  })
-
-  it("renders the GitHub settings form pre-filled with the caller's registered username", async () => {
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
-    render(ui)
-    expect(screen.getByLabelText('내 GitHub 아이디')).toHaveValue('kimminsu-dev')
-  })
-
-  it('shows a "완료 처리" button for the current session user on their own unchecked row', async () => {
-    vi.mocked(getSessionProfile).mockResolvedValueOnce({
-      userId: 'admin-1',
-      role: 'member',
-      status: 'approved',
-    })
-
-    const ui = await CodingPage({ searchParams: Promise.resolve({}) })
-    render(ui)
-
-    expect(screen.getByRole('button', { name: '완료 처리' })).toBeInTheDocument()
   })
 })

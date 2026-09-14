@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
+import { revalidateTag } from 'next/cache'
+import { CODING_BOARD_TAG } from '@/lib/coding/queries'
 
 function verifySignature(body: string, signature: string | null): boolean {
   if (!signature) return false
@@ -94,6 +96,22 @@ export async function POST(request: NextRequest) {
       )
       if (!error) checkedProblemIds.push(problem.id)
     }
+  }
+
+  // Required, not cosmetic: this handler upserts coding_checks, and /coding plus the
+  // dashboard widget now read those rows from `'use cache'` scopes tagged `CODING_BOARD_TAG`.
+  // Without this, an auto-detected completion would stay invisible until that scope's
+  // `minutes` profile's `revalidate` window turns over — up to about a minute server-side plus
+  // up to five more minutes for a client sitting on a warm router cache (`stale`), not the full
+  // hour of `expire`, which only bounds a completely idle entry. `revalidateTag`, not
+  // `updateTag`: there is no acting user session to give read-your-own-writes to — GitHub is
+  // the caller — so stale-while-revalidate is right. `'max'` is the second-argument profile
+  // this installed Next.js requires (this build's `revalidateTag` signature is
+  // `(tag, profile: string | { expire?: number })` with no single-argument overload — see
+  // node_modules/next/dist/server/web/spec-extension/revalidate.d.ts) — it is the documented
+  // recommendation for exactly this stale-while-revalidate case.
+  if (checkedProblemIds.length > 0) {
+    revalidateTag(CODING_BOARD_TAG, 'max')
   }
 
   return NextResponse.json({ ok: true, memberId: member.id, checkedProblemIds })

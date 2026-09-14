@@ -1,9 +1,10 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getVerifiedUser } from '@/lib/auth/verify'
+import { CODING_BOARD_TAG } from '@/lib/coding/queries'
 
 export async function createProblems(formData: FormData) {
   const rowIds = ((formData.get('rowIds') as string) || '').split(',').filter(Boolean)
@@ -97,7 +98,16 @@ export async function createProblems(formData: FormData) {
     return
   }
 
-  revalidatePath('/coding')
+  // `updateTag`, not `revalidateTag`, and not `revalidatePath('/coding')`. The board's rows
+  // now live in `'use cache'` scopes in lib/coding/queries.ts tagged `CODING_BOARD_TAG`, and an
+  // admin or member who just mutated the board must see their own write on the very next
+  // read. A path call would expire the route's implicit soft tag `_N_T_/coding`, which makes
+  // the `use cache` reader discard every entry older than that instant while rendering this
+  // route (shouldDiscardCacheEntry, next/dist/server/use-cache/use-cache-wrapper.js) — so
+  // keeping it beside the tag would make the tag decorative. `updateTag` still clears the
+  // client router cache on its own: it routes through the same `revalidate()` helper with an
+  // undefined profile, which sets `pathWasRevalidated`.
+  updateTag(CODING_BOARD_TAG)
   redirect(`/coding?week=${targetWeekId}&success=` + encodeURIComponent(`문제 ${rows.length}개를 등록했어요`))
 }
 
@@ -127,7 +137,7 @@ export async function updateGithubUsername(formData: FormData) {
     return
   }
 
-  revalidatePath('/coding')
+  updateTag(CODING_BOARD_TAG)
   redirect('/coding?success=' + encodeURIComponent('GitHub 아이디를 저장했어요'))
 }
 
@@ -151,7 +161,7 @@ export async function deleteProblem(problemId: string) {
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/coding')
+  updateTag(CODING_BOARD_TAG)
 }
 
 export async function adminRemoveCheck(problemId: string, userId: string) {
@@ -178,7 +188,7 @@ export async function adminRemoveCheck(problemId: string, userId: string) {
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/coding')
+  updateTag(CODING_BOARD_TAG)
 }
 
 export async function markSelfComplete(problemId: string) {
@@ -207,7 +217,7 @@ export async function markSelfComplete(problemId: string) {
 
   if (error && error.code !== '23505') throw new Error(error.message)
 
-  revalidatePath('/coding')
+  updateTag(CODING_BOARD_TAG)
 }
 
 export async function unmarkSelfComplete(problemId: string) {
@@ -226,5 +236,5 @@ export async function unmarkSelfComplete(problemId: string) {
 
   if (error) throw new Error(error.message)
 
-  revalidatePath('/coding')
+  updateTag(CODING_BOARD_TAG)
 }

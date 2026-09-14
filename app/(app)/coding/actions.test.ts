@@ -8,7 +8,7 @@ const rpcMock = vi.fn()
 const redirectMock = vi.fn((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
-const revalidatePathMock = vi.fn()
+const updateTagMock = vi.fn()
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
@@ -23,7 +23,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next/cache', () => ({
-  revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import {
@@ -34,6 +34,7 @@ import {
   markSelfComplete,
   unmarkSelfComplete,
 } from './actions'
+import { CODING_BOARD_TAG } from '@/lib/coding/queries'
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData()
@@ -285,7 +286,7 @@ describe('deleteProblem', () => {
     await deleteProblem('problem-1')
 
     expect(deleteEq).toHaveBeenCalledWith('id', 'problem-1')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 
   it('throws when the caller is not an admin', async () => {
@@ -324,7 +325,7 @@ describe('updateGithubUsername', () => {
     expect(rpcMock).toHaveBeenCalledWith('update_own_github_username', {
       new_username: 'kimminsu-dev',
     })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
     expect(redirectMock).toHaveBeenCalledWith(
       '/coding?success=' + encodeURIComponent('GitHub 아이디를 저장했어요')
     )
@@ -377,7 +378,7 @@ describe('adminRemoveCheck', () => {
 
     expect(firstEq).toHaveBeenCalledWith('problem_id', 'problem-1')
     expect(secondEq).toHaveBeenCalledWith('user_id', 'user-2')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 })
 
@@ -431,7 +432,7 @@ describe('markSelfComplete', () => {
       user_id: 'user-1',
       source: 'manual',
     })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 
   it('inserts a manual check when the caller is one of the assigned members', async () => {
@@ -460,7 +461,7 @@ describe('markSelfComplete', () => {
       user_id: 'user-1',
       source: 'manual',
     })
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 
   it('ignores a unique-constraint violation (already checked) without throwing', async () => {
@@ -479,7 +480,7 @@ describe('markSelfComplete', () => {
     })
 
     await expect(markSelfComplete('problem-1')).resolves.toBeUndefined()
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 
   it('throws the Supabase error message for a non-conflict insert failure', async () => {
@@ -525,7 +526,7 @@ describe('unmarkSelfComplete', () => {
     expect(firstEq).toHaveBeenCalledWith('problem_id', 'problem-1')
     expect(secondEq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(thirdEq).toHaveBeenCalledWith('source', 'manual')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/coding')
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 
   it('throws the Supabase error message on delete failure', async () => {
