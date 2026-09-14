@@ -15,7 +15,7 @@ vi.mock('next/cache', () => ({
 
 import { POST } from './route'
 import { revalidateTag } from 'next/cache'
-import { CODING_BOARD_TAG } from '@/lib/coding/queries'
+import { CODING_BOARD_TAG } from '@/lib/cache-tags'
 
 const SECRET = 'test-secret'
 const REPO = 'EdgeOfEmployment/Coding-Test'

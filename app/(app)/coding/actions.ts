@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getVerifiedUser } from '@/lib/auth/verify'
-import { CODING_BOARD_TAG } from '@/lib/coding/queries'
+import { CODING_BOARD_TAG } from '@/lib/cache-tags'
 
 export async function createProblems(formData: FormData) {
   const rowIds = ((formData.get('rowIds') as string) || '').split(',').filter(Boolean)
@@ -80,6 +80,14 @@ export async function createProblems(formData: FormData) {
     }
 
     targetWeekId = newWeek.id
+
+    // The new week row is already committed, so `getCodingWeeks()`'s cached entry must be
+    // invalidated here regardless of what happens next — if the problems insert below fails and
+    // redirects, the only other `updateTag` call in this function (on the success path) never
+    // runs, and the admin who just created this week would land back on a board still showing
+    // the stale, pre-creation week list. Firing it again on the happy path is harmless: `updateTag`
+    // is idempotent.
+    updateTag(CODING_BOARD_TAG)
   }
 
   const { error } = await supabase.from('coding_problems').insert(

@@ -1,16 +1,8 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
-import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
+import { CODING_BOARD_TAG, MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import type { CodingProblem, CodingWeek, Member } from './types'
-
-/**
- * The single source of truth for the coding-board cache tag. Exported rather than left as a
- * bare string because it recurs in this file, in app/(app)/coding/actions.ts (six times) and in
- * app/api/github-webhook/route.ts — a typo in any one of those would silently disable
- * invalidation with no build error and no test failure. Every call site imports this constant.
- */
-export const CODING_BOARD_TAG = 'coding-board'
 
 /**
  * Cached coding-board reads, shared by /coding and the dashboard widget on /.

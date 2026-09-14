@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
-import { CODING_BOARD_TAG } from '@/lib/coding/queries'
+import { CODING_BOARD_TAG } from '@/lib/cache-tags'
 
 function verifySignature(body: string, signature: string | null): boolean {
   if (!signature) return false

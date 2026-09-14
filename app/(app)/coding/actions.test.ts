@@ -34,7 +34,7 @@ import {
   markSelfComplete,
   unmarkSelfComplete,
 } from './actions'
-import { CODING_BOARD_TAG } from '@/lib/coding/queries'
+import { CODING_BOARD_TAG } from '@/lib/cache-tags'
 
 function buildFormData(fields: Record<string, string | string[]>) {
   const formData = new FormData()
@@ -266,6 +266,29 @@ describe('createProblems', () => {
     expect(redirectMock).toHaveBeenCalledWith(
       '/coding?error=' + encodeURIComponent('problem insert failed')
     )
+  })
+
+  it('invalidates the coding-board cache for the newly created week even when the subsequent problem insert fails', async () => {
+    // The new week row is already committed to coding_weeks by this point. If updateTag only
+    // fired on the success path, a failed problems insert here would redirect the admin back to
+    // a board whose cached week list doesn't yet include the week they just created.
+    insertMock.mockResolvedValue({ error: { message: 'problem insert failed' } })
+    const formData = buildFormData({
+      weekMode: 'new',
+      weekLabel: '1주차',
+      weekStartDate: '2026-09-08',
+      weekEndDate: '2026-09-14',
+      rowIds: 'row-1',
+      'title-row-1': '두 수의 합',
+      'link-row-1': 'https://example.com/problem/1',
+    })
+
+    await expect(createProblems(formData)).rejects.toThrow()
+
+    expect(redirectMock).toHaveBeenCalledWith(
+      '/coding?error=' + encodeURIComponent('problem insert failed')
+    )
+    expect(updateTagMock).toHaveBeenCalledWith(CODING_BOARD_TAG)
   })
 })
 

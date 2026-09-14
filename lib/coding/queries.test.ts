@@ -59,8 +59,8 @@ vi.mock('@/lib/supabase/cache-client', () => ({
   })),
 }))
 
-import { getCodingMembers, getCodingWeeks, getCodingWeekBoard, CODING_BOARD_TAG } from './queries'
-import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
+import { getCodingMembers, getCodingWeeks, getCodingWeekBoard } from './queries'
+import { CODING_BOARD_TAG, MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 
 beforeEach(() => {
   eqSpy.mockClear()
