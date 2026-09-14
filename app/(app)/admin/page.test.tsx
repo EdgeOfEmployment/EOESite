@@ -92,11 +92,18 @@ vi.mock('./fine-actions', () => ({
   setManualFinePaid: vi.fn(),
 }))
 
-import AdminPage from './page'
+import AdminPage, { AdminContent } from './page'
 
 describe('AdminPage', () => {
+  it('renders the static shell title without awaiting any data', () => {
+    const ui = AdminPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByRole('heading', { name: '관리자 페이지' })).toBeInTheDocument()
+  })
+
   it('lists pending signups and approved members', async () => {
-    const ui = await AdminPage({ searchParams: Promise.resolve({}) })
+    const ui = await AdminContent({ searchParamsPromise: Promise.resolve({}) })
     render(ui)
 
     expect(screen.getByText('김민수')).toBeInTheDocument()
@@ -111,7 +118,7 @@ describe('AdminPage', () => {
 
   describe('벌금 관리', () => {
     it('renders the manual fine form with a member dropdown, amount and reason fields', async () => {
-      const ui = await AdminPage({ searchParams: Promise.resolve({}) })
+      const ui = await AdminContent({ searchParamsPromise: Promise.resolve({}) })
       render(ui)
 
       expect(screen.getByRole('heading', { name: '벌금 관리' })).toBeInTheDocument()
@@ -124,7 +131,7 @@ describe('AdminPage', () => {
     })
 
     it('shows only unpaid fines by default, grouped by month, merging late and manual fines', async () => {
-      const ui = await AdminPage({ searchParams: Promise.resolve({}) })
+      const ui = await AdminContent({ searchParamsPromise: Promise.resolve({}) })
       render(ui)
 
       expect(screen.getByText('2026년 9월')).toBeInTheDocument()
@@ -135,7 +142,7 @@ describe('AdminPage', () => {
     })
 
     it('gives late fines a 취소 button and manual fines a 삭제 button', async () => {
-      const ui = await AdminPage({ searchParams: Promise.resolve({}) })
+      const ui = await AdminContent({ searchParamsPromise: Promise.resolve({}) })
       render(ui)
 
       expect(screen.getAllByRole('button', { name: '취소' })).toHaveLength(2)
@@ -143,7 +150,7 @@ describe('AdminPage', () => {
     })
 
     it('resolves a fine owner name even if they are no longer pending or approved', async () => {
-      const ui = await AdminPage({ searchParams: Promise.resolve({}) })
+      const ui = await AdminContent({ searchParamsPromise: Promise.resolve({}) })
       render(ui)
 
       expect(screen.getByText(/박서준/)).toBeInTheDocument()
@@ -151,7 +158,7 @@ describe('AdminPage', () => {
     })
 
     it('reveals paid fines with a reverse toggle when showPaid=1', async () => {
-      const ui = await AdminPage({ searchParams: Promise.resolve({ showPaid: '1' }) })
+      const ui = await AdminContent({ searchParamsPromise: Promise.resolve({ showPaid: '1' }) })
       render(ui)
 
       expect(screen.getByText('2026년 9월')).toBeInTheDocument()
@@ -166,9 +173,9 @@ describe('AdminPage', () => {
         createClient: vi.fn(async () => makeSupabaseMock({ late: [], manual: [] })),
       }))
       vi.resetModules()
-      const { default: FreshAdminPage } = await import('./page')
+      const { AdminContent: FreshAdminContent } = await import('./page')
 
-      const ui = await FreshAdminPage({ searchParams: Promise.resolve({}) })
+      const ui = await FreshAdminContent({ searchParamsPromise: Promise.resolve({}) })
       render(ui)
 
       expect(screen.getByText('미납된 벌금이 없습니다.')).toBeInTheDocument()

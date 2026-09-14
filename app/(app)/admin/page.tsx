@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { approveUser, rejectUser } from './actions'
@@ -15,18 +16,65 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input, Select, Label } from '@/components/ui/input'
+import { Skeleton } from '@/components/skeleton'
 
 function formatFineDate(iso: string): string {
   const date = new Date(iso)
   return `${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일`
 }
 
-export default async function AdminPage({
+type AdminSearchParams = { showPaid?: string }
+
+export default function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ showPaid?: string }>
+  searchParams: Promise<AdminSearchParams>
 }) {
-  const { showPaid: showPaidParam } = await searchParams
+  return (
+    <PageShell title="관리자 페이지">
+      <Suspense fallback={<AdminSkeleton />}>
+        <AdminContent searchParamsPromise={searchParams} />
+      </Suspense>
+    </PageShell>
+  )
+}
+
+function AdminSkeleton() {
+  return (
+    <>
+      <section className="mb-10">
+        <Skeleton className="mb-4 h-6 w-28" />
+        <div className="flex flex-col gap-3">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      </section>
+      <section>
+        <Skeleton className="mb-4 h-6 w-20" />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+/**
+ * Deliberately uncached. /admin has exactly one reader, and every row on it is moderation
+ * state that same reader is actively mutating through ten server actions — a `'use cache'`
+ * scope here would add ten invalidation sites in exchange for a cache whose hit rate is one
+ * admin's click cadence. One boundary rather than three because all three section headings
+ * carry live counts, so there is nothing static to hoist above them.
+ */
+export async function AdminContent({
+  searchParamsPromise,
+}: {
+  searchParamsPromise: Promise<AdminSearchParams>
+}) {
+  const { showPaid: showPaidParam } = await searchParamsPromise
   const showPaid = showPaidParam === '1'
 
   const supabase = await createClient()
@@ -131,7 +179,7 @@ export default async function AdminPage({
   const thisMonthUnpaidTotal = thisMonthFineAmounts.filter((f) => !f.paid).reduce((sum, f) => sum + f.amount, 0)
 
   return (
-    <PageShell title="관리자 페이지">
+    <>
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold">가입 대기 ({pendingList.length})</h2>
         {pendingList.length === 0 ? (
@@ -277,6 +325,6 @@ export default async function AdminPage({
           </div>
         )}
       </section>
-    </PageShell>
+    </>
   )
 }
