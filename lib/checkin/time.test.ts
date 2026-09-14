@@ -7,6 +7,8 @@ import {
   kstMonthRangeUtc,
   shiftKstDateString,
   formatKstDateHeading,
+  checkinFeedTag,
+  kstMonthKey,
 } from './time'
 
 describe('computeLateFine', () => {
@@ -116,5 +118,21 @@ describe('formatKstDateHeading', () => {
 
   it('does not zero-pad the month or day', () => {
     expect(formatKstDateHeading('2026-01-05')).toBe('2026년 1월 5일')
+  })
+})
+
+describe('checkinFeedTag', () => {
+  it('builds the per-day checkin-feed tag from a KST date string', () => {
+    expect(checkinFeedTag('2026-09-13')).toBe('checkin-feed-2026-09-13')
+  })
+})
+
+describe('kstMonthKey', () => {
+  it('collapses a full date to its year-month', () => {
+    expect(kstMonthKey('2026-09-13')).toBe('2026-09')
+  })
+
+  it('is idempotent on a value that is already a month key', () => {
+    expect(kstMonthKey('2026-09')).toBe('2026-09')
   })
 })

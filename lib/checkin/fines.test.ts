@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { buildMonthlyFineTotals, groupFinesByMonth, type FineRow } from './fines'
+import { buildMonthlyFineTotals, groupFinesByMonth, FINES_TAG, type FineRow } from './fines'
+
+describe('FINES_TAG', () => {
+  it('is the string every fines-scope mutation must tag and invalidate with', () => {
+    expect(FINES_TAG).toBe('fines')
+  })
+})
 
 describe('buildMonthlyFineTotals', () => {
   it('sums fine amounts per member for the given posts', () => {

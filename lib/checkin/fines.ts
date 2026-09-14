@@ -10,6 +10,8 @@ export interface FineTotalRow {
   totalFine: number
 }
 
+export const FINES_TAG = 'fines'
+
 export function buildMonthlyFineTotals(members: MemberSummary[], monthPosts: MonthlyFinePost[]): FineTotalRow[] {
   return members.map((member) => ({
     member,

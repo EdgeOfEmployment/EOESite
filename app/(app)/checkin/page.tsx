@@ -7,7 +7,8 @@ import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
 import { PostCard } from './post-card'
 import type { CheckinPost, CheckinGoal } from '@/lib/checkin/types'
-import { getKstDateString, kstDayRangeUtc, shiftKstDateString, formatKstDateHeading } from '@/lib/checkin/time'
+import { getKstDateString, kstDayRangeUtc, shiftKstDateString, formatKstDateHeading, checkinFeedTag } from '@/lib/checkin/time'
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
@@ -76,7 +77,7 @@ async function resolveDayContext(
  */
 async function getCheckinPosts(date: string, isToday: boolean): Promise<CheckinPost[]> {
   'use cache'
-  cacheTag(`checkin-feed-${date}`, 'member-names')
+  cacheTag(checkinFeedTag(date), MEMBER_NAMES_TAG)
 
   if (isToday) {
     cacheLife('seconds')

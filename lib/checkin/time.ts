@@ -61,3 +61,11 @@ export function formatKstDateHeading(dateStr: string): string {
   const [year, month, day] = dateStr.split('-').map(Number)
   return `${year}년 ${month}월 ${day}일`
 }
+
+export function checkinFeedTag(kstDate: string): string {
+  return `checkin-feed-${kstDate}`
+}
+
+export function kstMonthKey(dateStr: string): string {
+  return dateStr.slice(0, 7)
+}
