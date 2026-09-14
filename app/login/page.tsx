@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { logIn } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
@@ -6,20 +7,18 @@ import { Card } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
-export default async function LoginPage({
+type LoginSearchParams = { error?: string }
+
+export default function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<LoginSearchParams>
 }) {
-  const { error } = await searchParams
-
   return (
     <PageShell title="로그인" width="sm" top="auth">
-      {error && (
-        <Alert variant="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
+      <Suspense fallback={null}>
+        <TopNotice searchParamsPromise={searchParams} />
+      </Suspense>
       <Card as="form" action={logIn} className="flex flex-col gap-4">
         <Label htmlFor="email" className="sr-only">
           이메일
@@ -43,5 +42,21 @@ export default async function LoginPage({
         </Link>
       </p>
     </PageShell>
+  )
+}
+
+export async function TopNotice({
+  searchParamsPromise,
+}: {
+  searchParamsPromise: Promise<LoginSearchParams>
+}) {
+  const { error } = await searchParamsPromise
+
+  if (!error) return null
+
+  return (
+    <Alert variant="danger" className="mb-4">
+      {error}
+    </Alert>
   )
 }

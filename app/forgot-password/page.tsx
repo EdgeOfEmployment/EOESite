@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { requestPasswordReset } from './actions'
 import { PageShell } from '@/components/ui/page-shell'
@@ -6,25 +7,18 @@ import { Card } from '@/components/ui/card'
 import { Input, Label } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
-export default async function ForgotPasswordPage({
+type ForgotPasswordSearchParams = { error?: string; sent?: string }
+
+export default function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string }>
+  searchParams: Promise<ForgotPasswordSearchParams>
 }) {
-  const { error, sent } = await searchParams
-
   return (
     <PageShell title="비밀번호 찾기" width="sm" top="auth">
-      {error && (
-        <Alert variant="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
-      {sent && (
-        <Alert variant="success" className="mb-4">
-          입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다.
-        </Alert>
-      )}
+      <Suspense fallback={null}>
+        <TopNotice searchParamsPromise={searchParams} />
+      </Suspense>
       <Card as="form" action={requestPasswordReset} className="flex flex-col gap-4">
         <Label htmlFor="email" className="sr-only">
           이메일
@@ -40,5 +34,28 @@ export default async function ForgotPasswordPage({
         </Link>
       </p>
     </PageShell>
+  )
+}
+
+export async function TopNotice({
+  searchParamsPromise,
+}: {
+  searchParamsPromise: Promise<ForgotPasswordSearchParams>
+}) {
+  const { error, sent } = await searchParamsPromise
+
+  return (
+    <>
+      {error && (
+        <Alert variant="danger" className="mb-4">
+          {error}
+        </Alert>
+      )}
+      {sent && (
+        <Alert variant="success" className="mb-4">
+          입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다.
+        </Alert>
+      )}
+    </>
   )
 }
