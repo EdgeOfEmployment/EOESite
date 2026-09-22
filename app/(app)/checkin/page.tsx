@@ -14,11 +14,16 @@ import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
 import { Skeleton } from '@/components/skeleton'
 
-// `selectedDate` is derived from both the `date` search param and the current time, which
-// the instant validator cannot sample — the same situation Phase 1 hit on the two calendar
-// pages. See also the note on /jobposts and /interviews: `prefetch: 'static'` additionally
-// requires declared `samples` for headers and search params, which only `prefetch: 'runtime'`
-// accepts.
+// Stays `false` — `prefetch: 'runtime'` was tried on this route and rejected on evidence, so
+// do not reopen it a third time. Under runtime prefetching the build fails three times over
+// with "Route "/checkin" used `new Date()` before accessing either uncached data (e.g.
+// `fetch()`) or awaiting `connection()`", pointing at resolveDayContext — which samples the
+// clock to compute `todayKst`, something inherent to a date-navigated route. Inserting
+// `await connection()` there does make the build pass, but the route then reports NO
+// Revalidate/Expire in the build table, where /jobposts and /interviews report `1m 1h`:
+// `connection()` opts the render out of prefetch-time execution, so the runtime prefetch has
+// nothing to cache. The configuration would buy literally nothing and cost a `connection()`
+// call plus a sample block to maintain.
 export const unstable_instant = false
 
 type CheckinSearchParams = { error?: string; success?: string; date?: string }
