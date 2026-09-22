@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { CheckinGoalStatus } from '@/lib/checkin/types'
+import { FINES_TAG } from '@/lib/checkin/fines'
 
 const getClaimsMock = vi.fn()
 const uploadMock = vi.fn()
@@ -102,9 +103,8 @@ describe('createCheckinPost', () => {
     // revalidatePath('/checkin') would expire the route's `_N_T_/checkin` implicit tag and
     // discard every cached day, not just this one — see the Architecture section.
     expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
-    // revalidatePath('/') stays: it emits only `_N_T_/` + `_N_T_/index`, which belong to the
-    // still-dynamic dashboard route and to nothing else.
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
     expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
     // Tagged from the row the DB returned (2026-08-09 KST), NOT from `nowIso` (2026-08-10 KST).
     // `is_late: false / fine_amount: 0` above still comes from `nowIso`, which is correct:
@@ -526,6 +526,7 @@ describe('deleteCheckinPost', () => {
     expect(revalidatePathMock).not.toHaveBeenCalledWith('/checkin')
     expect(revalidateTagMock).toHaveBeenCalledWith('checkin-calendar', 'max')
     expect(updateTagMock).toHaveBeenCalledWith('checkin-feed-2026-08-05')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('throws when the caller is not an admin', async () => {

@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { FINES_TAG } from '@/lib/checkin/fines'
 import { getVerifiedUser } from '@/lib/auth/verify'
 
 export async function setCheckinPostPaid(postId: string, paid: boolean) {
@@ -31,8 +32,14 @@ export async function setCheckinPostPaid(postId: string, paid: boolean) {
 
   if (error) throw new Error(error.message)
 
+  // `revalidatePath('/admin')` above stays: /admin is deliberately uncached, so there is no
+  // scope for a path call to over-invalidate, and it is what clears the admin's client router
+  // cache. `revalidatePath('/')` is what had to go — the dashboard's fine tables now live in a
+  // `'use cache'` scope tagged `FINES_TAG`, and a path call on `/` would discard every
+  // dashboard entry rather than just this one. `updateTag` so the admin sees their own change
+  // at once.
   revalidatePath('/admin')
-  revalidatePath('/')
+  updateTag(FINES_TAG)
 }
 
 export async function cancelCheckinFine(postId: string) {
@@ -56,7 +63,7 @@ export async function cancelCheckinFine(postId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/admin')
-  revalidatePath('/')
+  updateTag(FINES_TAG)
 }
 
 export async function addManualFine(formData: FormData) {
@@ -104,7 +111,7 @@ export async function addManualFine(formData: FormData) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/admin')
-  revalidatePath('/')
+  updateTag(FINES_TAG)
 }
 
 export async function deleteManualFine(fineId: string) {
@@ -128,7 +135,7 @@ export async function deleteManualFine(fineId: string) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/admin')
-  revalidatePath('/')
+  updateTag(FINES_TAG)
 }
 
 export async function setManualFinePaid(fineId: string, paid: boolean) {
@@ -159,5 +166,5 @@ export async function setManualFinePaid(fineId: string, paid: boolean) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/admin')
-  revalidatePath('/')
+  updateTag(FINES_TAG)
 }

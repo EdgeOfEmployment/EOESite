@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { FINES_TAG } from '@/lib/checkin/fines'
 
 const ADMIN_ID = 'admin-1'
 const MEMBER_ID = 'member-1'
@@ -14,6 +15,7 @@ const deleteMock = vi.fn()
 const fromMock = vi.fn()
 const getClaimsMock = vi.fn()
 const revalidatePathMock = vi.fn()
+const updateTagMock = vi.fn()
 
 let roleById: Record<string, string | null>
 let statusById: Record<string, string | null>
@@ -27,6 +29,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import { setCheckinPostPaid, cancelCheckinFine, addManualFine, deleteManualFine, setManualFinePaid } from './fine-actions'
@@ -86,7 +89,8 @@ describe('setCheckinPostPaid', () => {
     })
     expect(updateEqMock).toHaveBeenCalledWith('id', POST_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('marks a post unpaid and clears paid_at/paid_by', async () => {
@@ -126,7 +130,8 @@ describe('cancelCheckinFine', () => {
     expect(updateMock).toHaveBeenCalledWith({ fine_amount: 0 })
     expect(updateEqMock).toHaveBeenCalledWith('id', POST_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('throws when the caller is not an admin, without updating', async () => {
@@ -156,7 +161,8 @@ describe('addManualFine', () => {
       created_by: ADMIN_ID,
     })
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('throws when the caller is not an admin, without inserting', async () => {
@@ -210,7 +216,8 @@ describe('deleteManualFine', () => {
     expect(fromMock).toHaveBeenCalledWith('manual_fines')
     expect(deleteEqMock).toHaveBeenCalledWith('id', MANUAL_FINE_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('throws when the caller is not an admin, without deleting', async () => {
@@ -240,7 +247,8 @@ describe('setManualFinePaid', () => {
     })
     expect(updateEqMock).toHaveBeenCalledWith('id', MANUAL_FINE_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
-    expect(revalidatePathMock).toHaveBeenCalledWith('/')
+    expect(revalidatePathMock).not.toHaveBeenCalledWith('/')
+    expect(updateTagMock).toHaveBeenCalledWith(FINES_TAG)
   })
 
   it('marks a manual fine unpaid and clears paid_at/paid_by', async () => {

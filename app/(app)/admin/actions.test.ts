@@ -11,6 +11,7 @@ const updateMock = vi.fn()
 const fromMock = vi.fn()
 const getClaimsMock = vi.fn()
 const revalidatePathMock = vi.fn()
+const updateTagMock = vi.fn()
 
 let roleById: Record<string, string | null>
 
@@ -23,6 +24,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: (...args: unknown[]) => revalidatePathMock(...args),
+  updateTag: (...args: unknown[]) => updateTagMock(...args),
 }))
 
 import { approveUser, rejectUser } from './actions'
@@ -62,6 +64,7 @@ describe('approveUser', () => {
     expect(updateMock).toHaveBeenCalledWith({ status: 'approved' })
     expect(updateEqMock).toHaveBeenCalledWith('id', TARGET_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
+    expect(updateTagMock).toHaveBeenCalledWith('member-names')
   })
 
   it('throws when the update fails', async () => {
@@ -69,6 +72,7 @@ describe('approveUser', () => {
 
     await expect(approveUser(TARGET_ID)).rejects.toThrow('db error')
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 })
 
@@ -81,6 +85,7 @@ describe('rejectUser', () => {
     expect(updateMock).toHaveBeenCalledWith({ status: 'rejected' })
     expect(updateEqMock).toHaveBeenCalledWith('id', TARGET_ID)
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin')
+    expect(updateTagMock).toHaveBeenCalledWith('member-names')
   })
 
   it('throws when the update fails', async () => {
@@ -88,6 +93,7 @@ describe('rejectUser', () => {
 
     await expect(rejectUser(TARGET_ID)).rejects.toThrow('db error')
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 })
 
@@ -99,6 +105,7 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 
   it('throws when there is no authenticated caller, without updating the target', async () => {
@@ -108,6 +115,7 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 
   it('throws when an admin tries to act on their own account, without updating', async () => {
@@ -115,6 +123,7 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 
   it('also blocks approving one\'s own account', async () => {
@@ -122,6 +131,7 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 
   it('throws when rejecting a different admin, without updating', async () => {
@@ -131,6 +141,7 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 
   it('throws when approving a different admin, without updating', async () => {
@@ -140,5 +151,6 @@ describe('authorization', () => {
 
     expect(updateMock).not.toHaveBeenCalled()
     expect(revalidatePathMock).not.toHaveBeenCalled()
+    expect(updateTagMock).not.toHaveBeenCalled()
   })
 })

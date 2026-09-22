@@ -1,11 +1,12 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
+import { revalidateTag, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { computeLateFine, getKstDateString } from '@/lib/checkin/time'
+import { computeLateFine, getKstDateString, checkinFeedTag } from '@/lib/checkin/time'
 import type { CheckinGoal, CheckinGoalStatus } from '@/lib/checkin/types'
 import { getVerifiedUser } from '@/lib/auth/verify'
+import { FINES_TAG } from '@/lib/checkin/fines'
 
 // `updateTag`, not `revalidateTag`: a member who posts, comments, reacts or edits a goal
 // must see their own write on the very next read. The tag is per KST day so a write to
@@ -19,7 +20,7 @@ import { getVerifiedUser } from '@/lib/auth/verify'
 // client router cache on its own: it routes through the same `revalidate()` helper with an
 // undefined profile, which sets `pathWasRevalidated`.
 function revalidateCheckinDay(kstDate: string) {
-  updateTag(`checkin-feed-${kstDate}`)
+  updateTag(checkinFeedTag(kstDate))
 }
 
 // Supabase Storage rejects keys containing spaces or non-ASCII characters
@@ -100,10 +101,15 @@ export async function createCheckinPost(formData: FormData) {
     return
   }
 
-  // `revalidatePath('/')` stays — the dashboard is still fully dynamic and reads today's
-  // checkin_posts. It emits only the `_N_T_/` and `_N_T_/index` soft tags, which belong to
-  // the `/` route alone, so it does not touch any checkin, jobposts or interviews cache.
-  revalidatePath('/')
+  // Phase 4 kept `revalidatePath('/')` here because the dashboard was still fully dynamic.
+  // Phase 5 moved its queries into `'use cache'` scopes, so the path call would now expire
+  // the root route's implicit soft tag `_N_T_/` and make the reader discard every dashboard
+  // entry older than this instant — including the checkin-feed entry that /checkin itself
+  // reads. It is deleted rather than replaced: the dashboard's today-status scope is tagged
+  // with the very same per-day tag, so `revalidateCheckinDay(...)` below already invalidates
+  // it. The only thing needing a new tag is the fine table, because this action writes
+  // `fine_amount`.
+  updateTag(FINES_TAG)
   revalidateTag('checkin-calendar', 'max')
   // Tag by the row the database actually wrote, not by `nowIso`.
   revalidateCheckinDay(getKstDateString(inserted.created_at))
@@ -293,6 +299,11 @@ export async function deleteCheckinPost(postId: string) {
 
   if (error) throw new Error(error.message)
 
+  // The deleted row may have carried a nonzero `fine_amount`. It has no `revalidatePath('/')`
+  // call to migrate — this action never had one — which is exactly why it was nearly missed:
+  // it needs `updateTag(FINES_TAG)` for the same reason createCheckinPost does, not because
+  // anything here resembles a path-call replacement.
+  updateTag(FINES_TAG)
   revalidateTag('checkin-calendar', 'max')
   revalidateCheckinDay(getKstDateString(post.created_at))
 }

@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, updateTag } from 'next/cache'
+import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import { getVerifiedUser } from '@/lib/auth/verify'
 
 type UserStatus = 'approved' | 'rejected'
@@ -38,6 +39,12 @@ async function setUserStatus(userId: string, status: UserStatus) {
   if (error) throw new Error(error.message)
 
   revalidatePath('/admin')
+  // Task 2's getCodingMembers() and Task 4's getTodayCheckinStatus()/getMonthlyFines() all
+  // filter on `status = 'approved'`, so a status change must invalidate every cache scope
+  // tagged `MEMBER_NAMES_TAG` or an approved/rejected member sits (in)correctly filtered until
+  // those scopes' cache windows turn over. `revalidatePath('/admin')` above is unaffected by
+  // this and stays for the same reason it always has: /admin itself has no `'use cache'` scope.
+  updateTag(MEMBER_NAMES_TAG)
 }
 
 export async function approveUser(userId: string) {
