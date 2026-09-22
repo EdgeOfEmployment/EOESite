@@ -86,7 +86,7 @@ The `revalidatePath('/admin')` calls stay untouched everywhere they appear: `/ad
 
 **Task 4 and Task 5 must land in the same work session, back to back.** Task 4's commit puts the dashboard's queries behind `'use cache'` while `revalidatePath('/')` is still live in the sites above (removed only in Task 5). Per the `_N_T_` mechanism this section documents, that interim state actively *over*-invalidates: every fine mutation and every check-in post committed between Task 4's commit and Task 5's commit discards every dashboard cache entry older than that instant — including the shared `` checkin-feed-${todayKst} `` entry `/checkin` itself reads, degrading `/checkin`'s already-shipped caching too, not just the new dashboard's. Task 4 and Task 5 are kept as two separate commits rather than merged into one — Task 4 is already the largest task in this plan (a full rewrite of `app/(app)/page.tsx`, three new cache scopes, a full test rewrite, and a `loading.tsx` deletion), and folding five more call-site edits across three more files into it would make one commit harder to review, not easier. The safety property that matters is enforced procedurally instead: **Task 4's commit must never be pushed, merged, or left standing alone.** Both tasks carry a prominent restatement of this at their start; see there for the exact requirement.
 
-**The `unstable_instant` revisit (Task 6) — researched, and adopted for two of the three routes.** Phase 4 set `unstable_instant = false` on `/jobposts`, `/interviews` and `/checkin` with a note to revisit using `prefetch: 'runtime'` plus declared `samples`. That revisit was done in this session against real builds, and the answer differs per route.
+**The `unstable_instant` revisit (Task 6) — researched, and adopted for one of the three routes; a second was deferred after a real build failure.** Phase 4 set `unstable_instant = false` on `/jobposts`, `/interviews` and `/checkin` with a note to revisit using `prefetch: 'runtime'` plus declared `samples`. That revisit's *research* concluded the config was viable on both `/jobposts` and `/interviews`, and said so below. Task 6's actual execution found otherwise for `/jobposts`: `app/(app)/jobposts/post-form.tsx`'s `PostForm` is a Client Component that calls `new Date()` in render with no `<Suspense>` boundary above it on that page, and this Next.js version rejects that once the route is actually prerendered under `prefetch: 'runtime'`. That defect was invisible to every build run before Task 1 landed, because the build was dying earlier — on the auth pages (`/login`, `/forgot-password`, etc., see Finding A above) — so it aborted before ever reaching `/jobposts`'s prerender path (the same "`next build` stops at the first error" mechanic Finding A itself documents). The research below never actually exercised a build that got far enough to hit it. So: **`/jobposts` is deferred, not adopted** — it keeps `unstable_instant = false`, with a comment recording the attempt and the blocker, and a future task should pick it up once a design decision is made about `PostForm`'s Suspense boundary. `/interviews` has no such blocker and is adopted as originally researched.
 
 The API shape is in `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/instant.md`. The prose documents only `prefetch: 'static'`; the `runtime` variant appears solely in the TypeScript block:
 
@@ -111,12 +111,14 @@ Add it to the sample's `searchParams` object, or `{ "error": null }` if it shoul
   digest: 'INSTANT_VALIDATION_ERROR'
 ```
 
-The config below then built green on both `/jobposts` and `/interviews`, and — the part that makes it worth doing — both routes acquired a prefetch lifetime in the build output where they previously had none:
+The research session's build reported both routes green, with a prefetch lifetime in the build output where they previously had none:
 
 ```
 ├ ◐ /interviews                      1m      1h
 ├ ◐ /jobposts                        1m      1h
 ```
+
+As the paragraph above states, that `/jobposts` result did not hold up when Task 6 actually applied the change: the research build never ran the full auth-page-fixed build that would have reached `/jobposts`'s real prerender path, so it never hit the `post-form.tsx` `new Date()` failure described above. Only `/interviews` is adopted; `/jobposts` keeps `unstable_instant = false`.
 
 `/checkin` is a different answer, and it is a *no*. Under `prefetch: 'runtime'` it fails three times over:
 
@@ -170,7 +172,7 @@ grep -c "^SUPABASE_SERVICE_ROLE_KEY=" .env.local
 - `app/(app)/admin/page.tsx`, `app/(app)/admin/page.test.tsx` — Task 3.
 - `app/(app)/page.tsx`, `app/(app)/page.test.tsx`, `lib/checkin/time.ts`, `lib/checkin/time.test.ts`, `lib/checkin/fines.ts`, `lib/checkin/fines.test.ts`, `app/(app)/checkin/page.tsx` — Task 4. (`checkin/page.tsx` gets a small, targeted edit here — see Task 4 Step 1 — adopting `checkinFeedTag` and `MEMBER_NAMES_TAG` at its pre-existing `cacheTag` call site; it is not otherwise rewritten by this task.)
 - `app/(app)/checkin/actions.ts`, `app/(app)/admin/fine-actions.ts`, `app/(app)/admin/actions.ts` — Task 5.
-- `app/(app)/jobposts/page.tsx`, `app/(app)/interviews/page.tsx`, `app/(app)/checkin/page.tsx` — Task 6 (the `unstable_instant` export and its comment only; this is `checkin/page.tsx`'s second, unrelated edit in this plan, after Task 4's tag-hygiene edit above).
+- `app/(app)/interviews/page.tsx`, `app/(app)/checkin/page.tsx` — Task 6 (the `unstable_instant` export and its comment only; this is `checkin/page.tsx`'s second, unrelated edit in this plan, after Task 4's tag-hygiene edit above). `app/(app)/jobposts/page.tsx` gets a comment-only edit too — recording the attempted-and-reverted `prefetch: 'runtime'` change and why — but its `unstable_instant = false` export itself is unchanged; see Task 6 below.
 
 **Deleted:**
 
@@ -2726,47 +2728,18 @@ git commit -m "refactor: invalidate the dashboard and member-names by tag instea
 
 ---
 
-## Task 6: Adopt runtime instant prefetching on `/jobposts` and `/interviews`
+## Task 6: Adopt runtime instant prefetching on `/interviews` — COMPLETED WITH REDUCED SCOPE (`/jobposts` deferred)
 
-Phase 4 opted all three feeds out of instant validation with `= false` and a note to revisit. The revisit is done; the answer is yes for two routes and a documented no for the third. **The samples object must be a plain literal** — adding `as const` or `as Array<[string, string]>` makes `next build` die during page-data collection with `⨯ Invalid segment configuration export detected`, which names no file and no reason.
+Phase 4 opted all three feeds out of instant validation with `= false` and a note to revisit. The revisit's research concluded the config was viable on both `/jobposts` and `/interviews`. **This task, as actually executed, found that `/jobposts` is not viable**: applying the config there hit a real `next build` failure, because `app/(app)/jobposts/post-form.tsx`'s `PostForm` is a Client Component that calls `new Date()` in render with no `<Suspense>` boundary above it, and this Next.js version rejects that once the route is actually prerendered under `prefetch: 'runtime'` (see the Architecture section's correction above for why the original research missed this). Fixing that needs a design decision — Suspense-wrap `PostForm`, accept a loading-state tradeoff for an always-visible form, or restructure how it computes today's date — that is out of scope for this task, so `/jobposts` was left untouched and is deferred to a future task (see `Deferred to Phase 6` at the end of this document). Task 6's actual scope narrowed to `/interviews` (adopted) and `/checkin` (a documented no, unchanged from the original plan). **The samples object must be a plain literal** — adding `as const` or `as Array<[string, string]>` makes `next build` die during page-data collection with `⨯ Invalid segment configuration export detected`, which names no file and no reason.
 
 **Files:**
-- Modify: `app/(app)/jobposts/page.tsx:14-22`
 - Modify: `app/(app)/interviews/page.tsx:14-19`
 - Modify: `app/(app)/checkin/page.tsx:17-22` (Task 4 already inserted one import line above this block for `MEMBER_NAMES_TAG` — see Task 4, Step 1 — shifting it from the file's original `:16-21` by one line)
+- Modify (comment only, `unstable_instant` export unchanged): `app/(app)/jobposts/page.tsx` — records the attempted-and-reverted `prefetch: 'runtime'` change and the `post-form.tsx` blocker; `export const unstable_instant = false` itself is untouched.
 
-- [ ] **Step 1: Replace the `unstable_instant` block in `app/(app)/jobposts/page.tsx`**
+- [ ] **Step 1: `/jobposts` — deferred, comment-only**
 
-Replace the comment block and `export const unstable_instant = false` (lines 14–22) with:
-
-```tsx
-// Runtime prefetching with declared samples, validated at build time. Phase 4 set this to
-// `false` because `prefetch: 'static'` demands `samples` for the `x-user-id` header (read by
-// getSessionProfile() in FeedContent) and the `error` search param (read by TopNotice), and
-// `samples` only exists on the `prefetch: 'runtime'` variant of InstantConfig. It does work:
-// with this config the build reports `/jobposts  1m  1h`, i.e. a real cached prefetch, where
-// before it reported no lifetime at all.
-//
-// Two rules the docs do not state, both learned from build failures:
-//  1. No type assertions anywhere in this object. `as const` or `as Array<[string, string]>`
-//     makes `next build` fail with "Invalid segment configuration export detected" during page
-//     data collection — segment configs are statically analysed and a cast defeats that.
-//  2. Every search param the route reads must appear, including the usually-absent ones, as
-//     `null`. Omitting `error` fails with INSTANT_VALIDATION_ERROR naming the exact line.
-export const unstable_instant = {
-  prefetch: 'runtime',
-  samples: [
-    {
-      headers: [
-        ['x-user-id', '00000000-0000-0000-0000-000000000000'],
-        ['x-user-role', 'member'],
-        ['x-user-status', 'approved'],
-      ],
-      searchParams: { error: null, success: null },
-    },
-  ],
-}
-```
+Do **not** change `export const unstable_instant = false` in `app/(app)/jobposts/page.tsx`. Add a note to its existing comment block recording that `prefetch: 'runtime'` + declared `samples` (per `/interviews`, below) was attempted and reverted here, and why: `post-form.tsx`'s `PostForm` is a Client Component that calls `new Date()` in render with no `<Suspense>` boundary above it on this page, and this Next.js version rejects that once the route is actually prerendered — invisible under `unstable_instant = false` (which never prerenders the route), but a real build failure under `prefetch: 'runtime'`. Note that fixing it needs a design decision out of scope here, and revisit once that decision is made.
 
 - [ ] **Step 2: Replace the `unstable_instant` block in `app/(app)/interviews/page.tsx`**
 
@@ -2802,7 +2775,8 @@ export const unstable_instant = {
 // `fetch()`) or awaiting `connection()`", pointing at resolveDayContext — which samples the
 // clock to compute `todayKst`, something inherent to a date-navigated route. Inserting
 // `await connection()` there does make the build pass, but the route then reports NO
-// Revalidate/Expire in the build table, where /jobposts and /interviews report `1m 1h`:
+// Revalidate/Expire in the build table, where /interviews reports `1m 1h` (/jobposts also
+// has no lifetime, but for an unrelated reason — see its own comment):
 // `connection()` opts the render out of prefetch-time execution, so the runtime prefetch has
 // nothing to cache. The configuration would buy literally nothing and cost a `connection()`
 // call plus a sample block to maintain.
@@ -2815,14 +2789,13 @@ export const unstable_instant = false
 npm run build
 ```
 
-Expected: exit `0`, and the route table shows lifetimes on exactly these two rows:
+Expected: exit `0`, and the route table shows a lifetime on exactly this row:
 
 ```
 ├ ◐ /interviews                      1m      1h
-├ ◐ /jobposts                        1m      1h
 ```
 
-`/checkin` must show no lifetime. If you instead get `⨯ Invalid segment configuration export detected`, a type assertion crept into one of the sample objects — remove it. If you get `INSTANT_VALIDATION_ERROR` naming a search param, add that param to the sample as `null`.
+`/checkin` and `/jobposts` must both show no lifetime — `/checkin` because it keeps `unstable_instant = false` by design (Step 3), `/jobposts` because it also keeps `unstable_instant = false`, deferred after the `post-form.tsx` build failure (Step 1). If you instead get `⨯ Invalid segment configuration export detected`, a type assertion crept into one of the sample objects — remove it. If you get `INSTANT_VALIDATION_ERROR` naming a search param, add that param to the sample as `null`.
 
 - [ ] **Step 5: Run the full suite**
 
@@ -2836,7 +2809,7 @@ Expected: PASS. The feed page tests import these modules, so a malformed export 
 
 ```bash
 git add "app/(app)/jobposts/page.tsx" "app/(app)/interviews/page.tsx" "app/(app)/checkin/page.tsx"
-git commit -m "feat: validate runtime instant prefetching on the jobposts and interviews feeds"
+git commit -m "feat: validate runtime instant prefetching on the interviews feed; defer jobposts"
 ```
 
 ---
@@ -2906,7 +2879,7 @@ Expected: PASS, all files. If a handful of files fail with 5s timeouts, re-run j
 npm run build
 ```
 
-Expected: exit `0`, `✓ Generating static pages using 7 workers (20/20)`, a route table covering all 20 routes with `/jobposts` and `/interviews` showing `1m 1h`, and **no** `Error: Route "…"` line anywhere. This is the green build the whole effort has been working toward.
+Expected: exit `0`, `✓ Generating static pages using 7 workers (20/20)`, a route table covering all 20 routes with `/interviews` showing `1m 1h`, and **no** `Error: Route "…"` line anywhere. `/jobposts` intentionally shows no lifetime (it is fully dynamic, `ƒ`, per its unchanged `unstable_instant = false`) — it was deferred during Task 6 after a real build failure (`post-form.tsx`'s Suspense-less `new Date()` call); see the Task 6 correction in the Architecture section and Task 6 Step 1. This is the green build the whole effort has been working toward.
 
 - [ ] **Step 5: Run lint**
 
@@ -2929,3 +2902,4 @@ Report to that skill: the branch is `worktree-instant-navigation-foundation`, it
 Recorded here so the next phase starts from evidence rather than rediscovery:
 
 - **`/feedback/[id]` and `/interviews/[sessionId]`.** Both block on all their data at runtime and pass the build only because of their own `loading.tsx` — verified by removing those files and rebuilding, which produced `Error: Route "/feedback/[id]": Uncached data was accessed outside of <Suspense>` and the same for `/interviews/[sessionId]`. Converting them needs two design answers this plan did not have: what the static shell is when the page title comes from the database (`session.title`; a heading built from a job post's `company_name`), and how a `redirect()` thrown from inside a `<Suspense>` boundary behaves once a shell has already been flushed. Phase 6 should answer both before writing code, and should delete each route's `loading.tsx` in the same task that adds its boundaries.
+- **`/jobposts` runtime instant prefetching.** Task 6 attempted `prefetch: 'runtime'` + declared `samples` here (the same config adopted on `/interviews`) and reverted it after a real `next build` failure: `app/(app)/jobposts/post-form.tsx`'s `PostForm` is a Client Component that calls `new Date()` in render with no `<Suspense>` boundary above it in `app/(app)/jobposts/page.tsx`, and this Next.js version rejects that once the route is actually prerendered. `/jobposts` keeps `unstable_instant = false` in the meantime — see the comment on that export and the Architecture section's correction above. Picking this back up needs a design decision first: Suspense-wrap `PostForm`, accept a loading-state tradeoff for an always-visible form, or restructure how it computes today's date.

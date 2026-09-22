@@ -17,8 +17,16 @@ import { Skeleton } from '@/components/skeleton'
 // FeedContent) and the `error` search param (read by TopNotice), and `samples` is only
 // accepted alongside `prefetch: 'runtime'`. Wrapping both reads in <Suspense>, which this
 // page already does, does not satisfy the validator. Opting out matches what Phase 1 did
-// on /jobposts/calendar and /checkin/calendar. Revisit with `prefetch: 'runtime'` +
-// samples if instant prefetching becomes worth the extra configuration.
+// on /jobposts/calendar and /checkin/calendar.
+//
+// Runtime prefetching (`prefetch: 'runtime'` + declared `samples`, per `/interviews`) was
+// attempted here and reverted: `post-form.tsx`'s `PostForm` is a Client Component that
+// calls `new Date()` in render with no <Suspense> boundary above it in this page, and this
+// Next.js version rejects that once the route is actually prerendered — invisible under
+// `unstable_instant = false` (which never prerenders the route), but a real build failure
+// under `prefetch: 'runtime'`. Fixing it needs a design decision (Suspense-wrap `PostForm`,
+// accepting a loading-state tradeoff for an always-visible form, or restructure how it
+// computes today's date) that's out of scope here; revisit once that's decided.
 export const unstable_instant = false
 
 type JobPostsSearchParams = { error?: string; success?: string }
