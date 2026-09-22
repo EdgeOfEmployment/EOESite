@@ -15,9 +15,14 @@ vi.mock('next/cache', () => ({
 
 // `connection()` requires a real Next.js request scope, which this render-function-level
 // test does not run inside — mock it as a no-op so `TodayAlert`/`StatusTable`/`FineTables`
-// can await it the same way they do in the real request/build lifecycle.
+// can await it the same way they do in the real request/build lifecycle. Hoisted so tests
+// can assert `markDynamic()` (which wraps this) actually called it.
+const { connectionMock } = vi.hoisted(() => ({
+  connectionMock: vi.fn(async () => undefined),
+}))
+
 vi.mock('next/server', () => ({
-  connection: vi.fn(async () => undefined),
+  connection: connectionMock,
 }))
 
 vi.mock('@/lib/supabase/cache-client', () => ({
@@ -107,6 +112,7 @@ describe('DashboardPage TodayAlert', () => {
     const ui = await TodayAlert()
     render(ui)
 
+    expect(connectionMock).toHaveBeenCalled()
     expect(screen.getByText('오늘의 10시 인증을 완료했어요!')).toBeInTheDocument()
   })
 })
@@ -117,6 +123,7 @@ describe('DashboardPage StatusTable', () => {
     const ui = await StatusTable()
     render(ui)
 
+    expect(connectionMock).toHaveBeenCalled()
     expect(cacheTag).toHaveBeenCalledWith(expect.stringMatching(/^checkin-feed-\d{4}-\d{2}-\d{2}$/), 'member-names')
     expect(cacheLife).toHaveBeenCalledWith('seconds')
     expect(screen.getByText('김민수')).toBeInTheDocument()
@@ -148,6 +155,7 @@ describe('DashboardPage FineTables', () => {
     const ui = await FineTables()
     render(ui)
 
+    expect(connectionMock).toHaveBeenCalled()
     expect(cacheTag).toHaveBeenCalledWith('fines', 'member-names')
     expect(
       screen.getByText(

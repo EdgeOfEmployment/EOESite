@@ -34,6 +34,21 @@ function todayKst(): string {
   return getKstDateString(new Date().toISOString())
 }
 
+/**
+ * Marks the calling Server Component as dynamic before it touches `new Date()` — this Next.js
+ * version's prerenderer requires a request-time read (cookies/headers/searchParams/connection)
+ * before any non-deterministic call like `new Date()`, or it can't tell the render is meant to
+ * be dynamic (node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md).
+ * Costs nothing here: `/` doesn't opt into `unstable_instant`'s build-time prefetch validation
+ * (unlike `/checkin`, which rejected this same `connection()` approach for that reason — see
+ * Task 6 of docs/superpowers/plans/2026-09-13-instant-navigation-phase5-remaining-routes.md).
+ * `CodingWidget` doesn't need this: it calls `getSessionProfile()` first, which already reads
+ * `headers()` before `todayKst()` runs.
+ */
+async function markDynamic(): Promise<void> {
+  await connection()
+}
+
 interface MonthFine {
   authorId: string
   fineAmount: number
@@ -184,14 +199,13 @@ function FineTablesSkeleton() {
  * the table up above the link and widget, silently reordering the page as a side effect of adding
  * caching. Both this and `StatusTable` call `getTodayCheckinStatus`, which is intentional: it is a
  * `'use cache'` scope, so the second call within the same render is a cache hit, not a second
- * Supabase round trip — the split costs nothing and preserves the existing visual order exactly.
+ * Supabase round trip — once the entry is warm. A cold cache (e.g. immediately after an
+ * invalidation) can have both boundaries' calls race past the cache check before either's
+ * underlying Supabase query resolves, so both can hit Supabase; the worst case is one redundant
+ * round trip, not incorrect data.
  */
 export async function TodayAlert() {
-  // Required before touching `new Date()` (inside `todayKst()` below) — this Next.js
-  // version's prerenderer needs a request-time read (cookies/headers/searchParams/
-  // connection) before any `new Date()` call, or it can't tell the render is meant to be
-  // dynamic. See node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md.
-  await connection()
+  await markDynamic()
 
   const [session, { todaysAuthorIds }] = await Promise.all([
     getSessionProfile(),
@@ -208,11 +222,7 @@ export async function TodayAlert() {
 }
 
 export async function StatusTable() {
-  // Required before touching `new Date()` (inside `todayKst()` below) — this Next.js
-  // version's prerenderer needs a request-time read (cookies/headers/searchParams/
-  // connection) before any `new Date()` call, or it can't tell the render is meant to be
-  // dynamic. See node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md.
-  await connection()
+  await markDynamic()
 
   const { members, todaysAuthorIds } = await getTodayCheckinStatus(todayKst())
   const statusRows = buildTodayStatus(members, todaysAuthorIds)
@@ -245,6 +255,8 @@ export async function StatusTable() {
  * the caller's own completions are per-member, so only that read stays uncached.
  */
 export async function CodingWidget() {
+  // No `markDynamic()`/`connection()` needed here: `getSessionProfile()` below already reads
+  // `headers()` first, which is itself a request-time read that satisfies the prerenderer.
   const session = await getSessionProfile()
 
   if (session?.status !== 'approved') return null
@@ -318,11 +330,7 @@ export async function CodingWidget() {
 }
 
 export async function FineTables() {
-  // Required before touching `new Date()` (inside `todayKst()` below) — this Next.js
-  // version's prerenderer needs a request-time read (cookies/headers/searchParams/
-  // connection) before any `new Date()` call, or it can't tell the render is meant to be
-  // dynamic. See node_modules/next/dist/docs/01-app/03-api-reference/04-functions/connection.md.
-  await connection()
+  await markDynamic()
 
   const { members, fines } = await getMonthlyFines(kstMonthKey(todayKst()))
 
