@@ -26,3 +26,13 @@ When dispatching subagents (Agent tool), always set `model` explicitly. Use the 
 **Reviews:** the reviewer must be a different subagent from the implementer. Per-task spec/code-quality reviews may use the same tier as the implementation (minimum `haiku` for tier-1 tasks); the final whole-feature review always uses `opus`.
 
 **Read-only searches** across many files go to the `Explore` agent rather than a tiered general-purpose agent.
+
+# AI usage record (`docs/ai-usage.md`)
+
+`docs/ai-usage.md` is the owner's running record of how Claude Code was used on this project (for job applications). It and `scripts/ai-usage-stats.mjs` are local-only (listed in `.git/info/exclude`), so skip this section if they don't exist in your checkout. Keep it current:
+
+- **When:** after a feature branch is merged (end of `finishing-a-development-branch`), or when the user introduces a new skill/workflow/guideline.
+- **How:** run `node scripts/ai-usage-stats.mjs` (add `--tests` for the test count), append a dated row to section 6 — never edit or delete earlier rows — then add new features to section 1, new tools/skills/methods to section 2, and an entry to section 7. Update the "마지막 갱신" date.
+- **Session counts shrink** because Claude Code deletes transcripts older than the retention period; in the body, cite the largest measured value with its date, never overwrite it with a smaller one.
+- **Section 3 (the owner's own judgments/catches) and section 0 (real-usage numbers):** only add or change after confirming with the user — do not attribute decisions or discoveries to them on your own.
+- Write in Korean, matching the existing tone.
