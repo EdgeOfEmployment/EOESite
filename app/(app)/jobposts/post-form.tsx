@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createJobPost } from './actions'
+import { getKstDateString } from '@/lib/checkin/time'
 import { Card } from '@/components/ui/card'
 import { Input, Textarea, Label } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,8 +13,12 @@ interface QuestionField {
 }
 
 export function PostForm() {
-  const today = new Date().toISOString().slice(0, 10)
+  const dateRef = useRef<HTMLInputElement>(null)
   const [questions, setQuestions] = useState<QuestionField[]>([{ question: '', answer: '' }])
+
+  useEffect(() => {
+    if (dateRef.current && !dateRef.current.value) dateRef.current.value = getKstDateString(new Date().toISOString())
+  }, [])
 
   function addQuestion() {
     setQuestions((prev) => [...prev, { question: '', answer: '' }])
@@ -90,7 +95,7 @@ export function PostForm() {
       <Label htmlFor="postDate" className="sr-only">
         날짜
       </Label>
-      <Input id="postDate" name="postDate" type="date" defaultValue={today} required />
+      <Input id="postDate" name="postDate" type="date" ref={dateRef} />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="feedbackRequested" />
         피드백 받고 싶어요

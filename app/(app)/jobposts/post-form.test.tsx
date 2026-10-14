@@ -38,6 +38,23 @@ describe('PostForm', () => {
     expect(screen.getAllByPlaceholderText('답변')).toHaveLength(1)
   })
 
+  it('fills the date input with the KST date after mount', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-13T23:30:00Z'))
+      render(<PostForm />)
+
+      expect(screen.getByLabelText('날짜')).toHaveValue('2026-10-14')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not require the date input so the server can fill an empty value', () => {
+    render(<PostForm />)
+    expect(screen.getByLabelText('날짜')).not.toBeRequired()
+  })
+
   it('does not show a delete button when only one question remains', () => {
     render(<PostForm />)
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
