@@ -50,6 +50,23 @@ describe('PostForm', () => {
     }
   })
 
+  it('restores the KST default date when the form resets after submit', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date('2026-10-13T23:30:00Z'))
+      render(<PostForm />)
+      const input = screen.getByLabelText('날짜') as HTMLInputElement
+
+      fireEvent.change(input, { target: { value: '2026-01-01' } })
+      expect(input).toHaveValue('2026-01-01')
+      input.form!.reset()
+
+      expect(input).toHaveValue('2026-10-14')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('does not require the date input so the server can fill an empty value', () => {
     render(<PostForm />)
     expect(screen.getByLabelText('날짜')).not.toBeRequired()

@@ -17,7 +17,12 @@ export function PostForm() {
   const [questions, setQuestions] = useState<QuestionField[]>([{ question: '', answer: '' }])
 
   useEffect(() => {
-    if (dateRef.current && !dateRef.current.value) dateRef.current.value = getKstDateString(new Date().toISOString())
+    const el = dateRef.current
+    if (!el || el.value) return
+    const today = getKstDateString(new Date().toISOString())
+    // defaultValue too, so the form reset after a submit restores the date
+    el.defaultValue = today
+    el.value = today
   }, [])
 
   function addQuestion() {
