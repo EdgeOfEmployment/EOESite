@@ -149,6 +149,28 @@ describe('createJobPost', () => {
     expect(updateTagMock).toHaveBeenCalledWith('jobposts-feed')
   })
 
+  it('defaults an empty post date to the KST date, not the UTC date', async () => {
+    const { jobPostsInsert } = mockInsert()
+    const formData = buildFormData({
+      companyName: '토스',
+      postDate: '',
+      questionCount: '1',
+      'question-0': '지원동기',
+      'answer-0': '내용',
+    })
+
+    // 2026-10-13T23:30Z is 2026-10-14 08:30 KST, so the UTC date would be the wrong day.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-13T23:30:00Z'))
+    try {
+      await expect(createJobPost(formData)).rejects.toThrow()
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(jobPostsInsert).toHaveBeenCalledWith(expect.objectContaining({ post_date: '2026-10-14' }))
+  })
+
   it('creates a feedback snapshot split into per-question lines when feedback is requested', async () => {
     const { feedbackDocsInsert } = mockInsert()
     const formData = buildFormData({

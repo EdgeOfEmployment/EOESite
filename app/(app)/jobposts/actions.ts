@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { buildFeedbackLines } from '@/lib/jobposts/snapshot'
 import { getVerifiedUser } from '@/lib/auth/verify'
+import { getKstDateString } from '@/lib/checkin/time'
 
 function revalidateJobPosts() {
   revalidateTag('jobposts-calendar', 'max')
@@ -14,7 +15,7 @@ function revalidateJobPosts() {
 export async function createJobPost(formData: FormData) {
   const companyName = formData.get('companyName') as string
   const postingInfo = (formData.get('postingInfo') as string) || null
-  const postDate = (formData.get('postDate') as string) || new Date().toISOString().slice(0, 10)
+  const postDate = (formData.get('postDate') as string) || getKstDateString(new Date().toISOString())
   const feedbackRequested = formData.get('feedbackRequested') === 'on'
   const questionCount = Number(formData.get('questionCount') ?? '0')
 
