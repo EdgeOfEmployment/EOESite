@@ -12,22 +12,27 @@ import { Alert } from '@/components/ui/alert'
 import { Toast } from '@/components/ui/toast'
 import { Skeleton } from '@/components/skeleton'
 
-// `prefetch: 'static'` fails build-time instant validation on this route: the validator
-// requires declared `samples` for the `x-user-id` header (read by getSessionProfile() in
-// FeedContent) and the `error` search param (read by TopNotice), and `samples` is only
-// accepted alongside `prefetch: 'runtime'`. Wrapping both reads in <Suspense>, which this
-// page already does, does not satisfy the validator. Opting out matches what Phase 1 did
-// on /jobposts/calendar and /checkin/calendar.
-//
-// Runtime prefetching (`prefetch: 'runtime'` + declared `samples`, per `/interviews`) was
-// attempted here and reverted: `post-form.tsx`'s `PostForm` is a Client Component that
-// calls `new Date()` in render with no <Suspense> boundary above it in this page, and this
-// Next.js version rejects that once the route is actually prerendered — invisible under
-// `unstable_instant = false` (which never prerenders the route), but a real build failure
-// under `prefetch: 'runtime'`. Fixing it needs a design decision (Suspense-wrap `PostForm`,
-// accepting a loading-state tradeoff for an always-visible form, or restructure how it
-// computes today's date) that's out of scope here; revisit once that's decided.
-export const unstable_instant = false
+// Runtime instant prefetching is enabled here (`prefetch: 'runtime'` + declared `samples`;
+// the build reports `/jobposts  1m  1h`). Same reasoning and same two gotchas as /interviews:
+//   1. No type assertions anywhere in this object. A cast makes the build fail with
+//      "Invalid segment configuration export detected".
+//   2. Declare every search param the route reads (`error`, `success`); absent ones as `null`.
+// The `x-user-*` header samples cover getSessionProfile() in FeedContent.
+// This became possible once `PostForm` stopped calling `new Date()` during render: it now
+// fills the date after mount, so it no longer needs a <Suspense> boundary.
+export const unstable_instant = {
+  prefetch: 'runtime',
+  samples: [
+    {
+      headers: [
+        ['x-user-id', '00000000-0000-0000-0000-000000000000'],
+        ['x-user-role', 'member'],
+        ['x-user-status', 'approved'],
+      ],
+      searchParams: { error: null, success: null },
+    },
+  ],
+}
 
 type JobPostsSearchParams = { error?: string; success?: string }
 
