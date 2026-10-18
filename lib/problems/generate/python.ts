@@ -39,10 +39,10 @@ const PY_EQUALS: Record<ValueType, string> = {
     'return isinstance(got, (int, float)) and not isinstance(got, bool) and abs(got - expected) <= 1e-6 * max(1.0, abs(expected))',
   bool: 'return isinstance(got, bool) and got == expected',
   string: 'return isinstance(got, str) and got == expected',
-  'int[]': 'return isinstance(got, (list, tuple)) and list(got) == expected',
+  'int[]': 'return isinstance(got, (list, tuple)) and all(_is_int(x) for x in got) and list(got) == expected',
   'string[]': 'return isinstance(got, (list, tuple)) and list(got) == expected',
   'int[][]':
-    'return isinstance(got, (list, tuple)) and [list(r) if isinstance(r, (list, tuple)) else r for r in got] == expected',
+    'return isinstance(got, (list, tuple)) and all(isinstance(r, (list, tuple)) and all(_is_int(x) for x in r) for r in got) and [list(r) for r in got] == expected',
 }
 
 /** JSON is already valid Python for ints, strings and lists of them; only floats and bools differ. */
@@ -52,7 +52,11 @@ export function pyLiteral(type: ValueType, value: Json): string {
   return JSON.stringify(value)
 }
 
-const PY_RUNTIME = String.raw`def _fmt(v):
+const PY_RUNTIME = String.raw`def _is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _fmt(v):
     try:
         s = json.dumps(v, ensure_ascii=False)
     except (TypeError, ValueError):
@@ -73,7 +77,7 @@ def _main():
         start = time.perf_counter()
         try:
             got = solution(*args)
-        except Exception as e:
+        except (Exception, SystemExit) as e:
             all_ok = False
             print("ERROR  " + type(e).__name__ + ": " + str(e))
             continue

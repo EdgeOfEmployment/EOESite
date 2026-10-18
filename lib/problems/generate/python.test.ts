@@ -32,6 +32,16 @@ describe('generatePython', () => {
     expect(content).toContain('    ("Example 1", "Example", [[], 0], 0),\n    ("Extra 1", "Extra", [[1,2], 3], 6),')
   })
 
+  it('rejects bools and floats inside int arrays', () => {
+    const { content } = generatePython({ ...problem, signature: { ...problem.signature, returnType: 'int[]' }, testCases: [{ args: [[1], 1], expected: [1], isExample: true }] }, opts)
+    expect(content).toContain('all(_is_int(x) for x in got)')
+    expect(content).toContain('def _is_int(v):\n    return isinstance(v, int) and not isinstance(v, bool)')
+  })
+
+  it('reports SystemExit from a solution as an error instead of stopping the run', () => {
+    expect(generatePython(problem, opts).content).toContain('except (Exception, SystemExit) as e:')
+  })
+
   it('uses the comparator for the return type', () => {
     const { content } = generatePython({ ...problem, signature: { ...problem.signature, returnType: 'double' } }, opts)
     expect(content).toContain('abs(got - expected) <= 1e-6 * max(1.0, abs(expected))')
