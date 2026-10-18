@@ -53,9 +53,9 @@ created_by       uuid not null references profiles(id) on delete cascade
 created_at       timestamptz not null default now()
 updated_at       timestamptz not null default now()
 ```
-Index: `create index on bank_problems (company)`.
+Indexes: `bank_problems (company)` and `bank_problems (created_at desc)`.
 
-`company` is normalized by the server action before insert/update: trim, then collapse internal whitespace runs to a single space. Case is preserved as typed. Autocomplete keeps variants from splitting, and an admin can fix any that do.
+`company` and `title` are normalized by `validateProblem` before insert/update: trim, then collapse internal whitespace runs (including newlines) to a single space. Case is preserved as typed. Autocomplete keeps company variants from splitting, and an admin can fix any that do.
 
 **Signature (jsonb):**
 ```json
@@ -81,7 +81,8 @@ Index: `create index on bank_problems (company)`.
 - `delete`: `using (is_approved() and (created_by = auth.uid() or is_admin()))`.
 
 **Storage bucket `problem-images`** (public, like `checkin-photos`):
-- Object key `${userId}/${randomUUID()}${ext}`, ASCII only, reusing `resolveExtension`.
+- Object key `${userId}/${randomUUID()}${ext}`, ASCII only, reusing `resolveExtension` (moved from `app/(app)/checkin/actions.ts` to `lib/storage/file-extension.ts`).
+- Uploads are limited to **4 MB** (png/jpeg/gif/webp), leaving room for multipart overhead under the 5 MB `serverActions.bodySizeLimit`.
 - `insert` policy: approved members, and the first path segment must equal `auth.uid()`.
 - `select`: anyone (public bucket; URLs are unguessable).
 - `delete`: the owner (first path segment = `auth.uid()`) or `is_admin()`.
@@ -118,14 +119,15 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 
 ### `/problems/new` and `/problems/[id]/edit` — form (client component)
 - **회사** `Input` with a `<datalist>` of existing companies (from the cached summary read). **문제 제목** `Input`. A live preview of the display title appears below them.
-- **문제 설명** and **제한사항**: a Markdown textarea with 작성/미리보기 tabs. The preview uses the same renderer as the detail page. An **이미지 추가** button uploads via the `uploadProblemImage` action (≤ 5 MB; png/jpeg/gif/webp) and inserts `![](publicUrl)` at the cursor.
+- **문제 설명** and **제한사항**: a Markdown textarea with 작성/미리보기 tabs. The preview uses the same renderer as the detail page. An **이미지 추가** button uploads via the `uploadProblemImage` action (≤ 4 MB; png/jpeg/gif/webp) and inserts `![](publicUrl)` at the cursor.
 - **시간 제한 (ms)**: number input, default 1000.
 - **함수 시그니처**: a list of `name` + type `<select>` rows (add/remove, 1–6), plus a return-type `<select>`. A read-only line shows the result, e.g. `solution(arr: int[], k: int) -> int`.
 - **테스트 케이스** table:
   - One column per param, then `기대값`, then `예시` (checkbox).
   - **+ 케이스 추가** adds a row; each row has a delete button.
   - Each cell is a text input holding a JSON literal (`[1,2,3]`, `"abc"`, `5`).
-  - Validation runs on change: an invalid cell gets a red border and an inline message (e.g. `int[] 요소는 정수여야 합니다`, `int 범위를 벗어났습니다`).
+  - Validation runs on change: a typed-but-invalid cell gets a red border and an inline message (e.g. `int[]의 원소는 int 범위의 정수여야 합니다`). Empty cells show no inline message; they only block submission through the form-level line next to the submit button (`테스트 케이스에 비어 있거나 잘못된 칸이 있습니다`).
+  - Form state lives in a pure draft model (`lib/problems/draft.ts`) that keeps cells as raw text and produces either per-cell errors or the validated payload.
   - A newly added row starts with `예시` checked only if it is row 1 or 2.
   - Changing a param's type re-validates that column. Adding a param adds an empty column. Removing a param drops its column after a `confirm()`.
 - Submit is disabled while any field is invalid.
@@ -164,7 +166,7 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 generate(problem: BankProblem, lang: 'c' | 'js' | 'python' | 'java', opts: { problemUrl: string })
   -> { filename: string, content: string }
 ```
-Modules: `index.ts` (dispatch plus shared comment and Markdown prep), `c.ts`, `js.ts`, `python.ts`, `java.ts`, `format.ts` (per-language literal emitters).
+Modules: `index.ts` (dispatch and the language list), `shared.ts` (case ordering, header lines, comment rendering, markers), and one module per language with its own literal emitters: `c.ts`, `js.ts`, `python.ts`, `java.ts`.
 
 ### Output files
 
@@ -180,9 +182,11 @@ Modules: `index.ts` (dispatch plus shared comment and Markdown prep), `c.ts`, `j
    - display title, problem URL, time limit, run command;
    - `description_md` and `constraints_md` verbatim;
    - each image `![alt](url)` replaced with `[이미지: alt — 사이트에서 확인]`, with the problem URL given once in the header.
+   - Text is split on every line terminator any target honors (`\r\n`, `\r`, `\n`, U+2028, U+2029), so no fragment of a description escapes its comment.
    - Java only: a backslash followed by `u` in comment text becomes `\ u`, because javac processes `\uXXXX` escapes inside comments.
+   - C only: `??` becomes `? ?` (gcc's `-std=c99` enables trigraphs, and `??/` is a backslash), and a line ending in `\` gets a trailing `.` so it can't splice the next line in.
 2. **Solution stub**: the `solution` signature with a `// TODO` and a type-appropriate default return (`0`, `0L`, `0.0`, `false`, `""`, empty array). This is the only region the member edits. It is marked with `===== 여기에 풀이를 작성하세요 =====` / `===== 아래는 채점 코드입니다 (수정하지 마세요) =====`.
-3. **Harness**: the test-case data as native literals, a comparator per return type, a value printer, a timer, and a runner.
+3. **Harness**: the test-case data, a comparator per return type, a value printer, a timer, and a runner. Case data is native literals in C, JS and Python. Java embeds each value as JSON text, chunked into string constants and parsed at runtime by a small reader in the harness, because array initializers compile to per-element bytecode (a few thousand elements would hit the 64 KB method limit) and distinct large ints would exhaust the 65,535-entry constant pool. Each Java case gets its own method.
 
 ### Type mapping
 
@@ -192,25 +196,29 @@ Modules: `index.ts` (dispatch plus shared comment and Markdown prep), `c.ts`, `j
 | `long` | `long long x` | `long long` | `number` | `int` | `long` |
 | `double` | `double x` | `double` | `number` | `float` | `double` |
 | `bool` | `bool x` (`<stdbool.h>`) | `bool` | `boolean` | `bool` | `boolean` |
-| `string` | `const char* x` | `char*` (malloc'd) | `string` | `str` | `String` |
-| `int[]` | `const int x[], int x_len` | `int*` + `int* ret_len` | `number[]` | `List[int]` | `int[]` |
-| `string[]` | `const char* x[], int x_len` | `char**` + `int* ret_len` | `string[]` | `List[str]` | `String[]` |
-| `int[][]` | `const int** x, int x_rows, int x_cols` | `int**` + `int* ret_rows, int* ret_cols` | `number[][]` | `List[List[int]]` | `int[][]` |
+| `string` | `char* x` | `char*` (malloc'd) | `string` | `str` | `String` |
+| `int[]` | `int x[], int x_len` | `int*` + `int* ret_len` | `number[]` | `List[int]` | `int[]` |
+| `string[]` | `char* x[], int x_len` | `char**` + `int* ret_len` | `string[]` | `List[str]` | `String[]` |
+| `int[][]` | `int** x, int x_rows, int x_cols` | `int**` + `int* ret_rows, int* ret_cols` | `number[][]` | `List[List[int]]` | `int[][]` |
+
+- C params are deliberately **not** `const`: in-place idioms like `qsort(arr, ...)` are common in coding tests, and each case declares its own `static` copy of every argument, so mutation stays inside that case.
 
 - C out-params for the return length come last.
 - C empty arrays are passed as `NULL` with length 0, because C99 forbids zero-length array literals. A returned `NULL` with length 0 counts as an empty array.
 - Python uses `from typing import List` style hints for 3.8 compatibility.
-- Java: `class Solution` has an instance method `public <returnType> solution(...)` (Programmers style) and `public static void main` holds the harness. Non-ASCII characters in Java **string literals** are emitted as `\uXXXX` escapes so the source compiles under any platform encoding. C/JS/Python string literals stay UTF-8, with `"`, `\` and control characters escaped.
+- Java: `class Solution` has an instance method `public <returnType> solution(...)` (Programmers style) and `public static void main` holds the harness. Non-ASCII characters in Java **string literals** are emitted as `\uXXXX` escapes so the source compiles under any platform encoding; control characters use named or octal escapes, never `\u`, since javac would expand `\u000a` into a real newline before lexing. C string literals emit every byte outside printable ASCII as a 3-digit octal escape of its UTF-8 encoding and escape `?` (trigraphs). JS/Python reuse `JSON.stringify` for strings and arrays.
+- C helpers are all referenced from `main` as `(void)h_xxx;` so `-Wall` stays quiet, and C never uses `%lld` (older MinGW printf lacks it).
+- Python's harness calls `sys.stdout.reconfigure(errors="backslashreplace")` so printing a Korean or emoji value to a non-UTF-8 pipe can't crash the run.
 
 ### Harness behavior
-- Runs the examples first, then the extras. Each case prints one line, flushed before the call so a C crash shows which case was running:
+- Runs the examples first, then the extras, each kind numbered from 1. Each case prints its label before the call (flushed, so a C crash shows which case was running), then the result:
   ```
   [Example 1] PASS  3ms
   [Example 2] FAIL  12ms
       expected: [1, 2]
       got:      [2, 1]
-  [Extra 3]   PASS  1520ms  WARN time limit exceeded (1000ms)
-  [Extra 4]   ERROR  IndexError: list index out of range
+  [Extra 1] PASS  1520ms  WARN time limit exceeded (1000ms)
+  [Extra 2] ERROR  IndexError: list index out of range
   ----
   Examples: 1/2 passed | Extra: 4/5 passed | ALL PASSED / SOME FAILED
   ```
@@ -233,13 +241,13 @@ Modules: `index.ts` (dispatch plus shared comment and Markdown prep), `c.ts`, `j
 
 ## Dependencies
 
-- Add `react-markdown` and `remark-gfm`. Before use, check that their current majors support React 19.
+- Add `react-markdown@10.1.0` (peer `react >= 18`) and `remark-gfm@4.0.1`. Markdown styles go under a `.markdown` class in `app/globals.css` rather than adding `@tailwindcss/typography`.
 
 ## Testing
 
 - **`lib/problems/validate.ts`**: every type's accept/reject boundaries (int range, safe-integer long, non-finite double, non-rectangular `int[][]`, wrong element types); param-name rules (reserved words, C-suffix collisions, duplicates); case-count and example-required rules.
-- **`lib/problems/generate/*`**: for each language, signature and default-return output for all 8 return types and all param types; literal escaping (quotes, backslashes, newlines, Korean, Java `\u` escaping, empty arrays → C `NULL`); header-comment sanitization (`*/`, Java `\u` in comments, image replacement). Use focused string assertions plus one inline snapshot per language for a representative problem.
-- **Local toolchain check** `scripts/verify-problem-generators.mjs` (manual, not CI): for a fixture set covering every type, generate each language's file, splice in a known-correct reference solution and then a deliberately wrong one, compile and run with `gcc` / `node` / `python` / `javac`, and assert exit code 0 for correct and 1 for wrong. A missing toolchain is skipped with a notice.
+- **`lib/problems/generate/*`**: for each language, signature and default-return output for all 8 return types and all param types; literal escaping (quotes, backslashes, newlines, Korean, Java `\u` escaping, empty arrays → C `NULL`); header-comment sanitization (`*/`, Java `\u` in comments, C trigraphs and trailing backslashes, image replacement). Focused string assertions, one test file per language.
+- **Toolchain check** `lib/problems/generate/toolchain.test.ts`, opt-in with `VERIFY_TOOLCHAINS=1 npx vitest run lib/problems/generate/toolchain.test.ts` (skipped in normal runs and CI): for 8 fixtures that together cover every param and return type plus a hostile description, it generates each language's file and runs it twice with `gcc -std=c99 -Wall -Werror` / `node` / `python` / `javac`. Unmodified (the stub's default return) it must print `SOME FAILED` and exit 1; with a known-correct solution spliced between the markers it must print `ALL PASSED` and exit 0. A missing toolchain skips that language. The prototype passed all 32 runs on gcc 6.3 (MinGW), Node 22, Python 3.12 and JDK 21.
 - **Server actions**: create/update/delete happy paths; server-side re-validation rejects a tampered payload; company normalization; `image_paths` derivation and diff-removal on update; author-vs-admin-vs-other permission outcomes.
 - **Pages**: list filter and search via search params, company counts, empty states; detail renders examples only in 입출력 예 and shows edit/delete only to author/admin; the edit page rejects a non-author non-admin.
 - **Form**: adding/removing params reshapes the case table; invalid cells block submit; first-two-rows example default.
