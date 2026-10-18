@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 
 vi.mock('./actions', () => ({
   uploadProblemImage: vi.fn(),
@@ -88,12 +88,22 @@ describe('ProblemForm', () => {
     expect(screen.getAllByRole('button', { name: '이미지 추가' })[0]).toBeEnabled()
   })
 
-  it('inserts the uploaded image into the latest text', async () => {
+  it('inserts the uploaded image into the latest text as its own paragraph', async () => {
     vi.mocked(uploadProblemImage).mockResolvedValueOnce({ url: 'https://img.example/a.png' })
     renderForm(initial)
     const textarea = screen.getByLabelText('문제 설명') as HTMLTextAreaElement
     textarea.setSelectionRange(0, 0)
     fireEvent.change(screen.getByLabelText('문제 설명 이미지 파일'), { target: { files: [new File(['x'], 'a.png', { type: 'image/png' })] } })
-    expect(await screen.findByDisplayValue('![](https://img.example/a.png)설명')).toBeInTheDocument()
+    await waitFor(() => expect(textarea).toHaveValue('![](https://img.example/a.png)\n\n설명'))
+  })
+
+  // Glued to the end of a line (e.g. a table row) Markdown would read the image as part of that line.
+  it('separates an image inserted at the end of a line with a blank line', async () => {
+    vi.mocked(uploadProblemImage).mockResolvedValueOnce({ url: 'https://img.example/b.png' })
+    renderForm(initial)
+    const textarea = screen.getByLabelText('문제 설명') as HTMLTextAreaElement
+    textarea.setSelectionRange(2, 2)
+    fireEvent.change(screen.getByLabelText('문제 설명 이미지 파일'), { target: { files: [new File(['x'], 'b.png', { type: 'image/png' })] } })
+    await waitFor(() => expect(textarea).toHaveValue('설명\n\n![](https://img.example/b.png)'))
   })
 })

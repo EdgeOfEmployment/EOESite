@@ -7,6 +7,16 @@ import { ALLOWED_IMAGE_TYPES } from '@/lib/problems/images'
 import { cn } from '@/lib/ui/cn'
 import { uploadProblemImage } from './actions'
 
+/**
+ * Puts `block` in its own paragraph. Glued to surrounding text — say the end of a table row —
+ * Markdown would read the image as part of that line (an extra table cell is silently dropped).
+ */
+function insertAsParagraph(before: string, block: string, after: string): string {
+  const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n'
+  const trail = after === '' || after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n'
+  return `${before}${lead}${block}${trail}${after}`
+}
+
 export function MarkdownField({
   id,
   label,
@@ -50,7 +60,7 @@ export function MarkdownField({
       const current = valueRef.current
       const s = Math.min(start, current.length)
       const e = Math.min(end, current.length)
-      onChange(`${current.slice(0, s)}![](${result.url})${current.slice(e)}`)
+      onChange(insertAsParagraph(current.slice(0, s), `![](${result.url})`, current.slice(e)))
     } catch {
       setUploadError('이미지를 올리지 못했어요. 다시 시도해주세요')
     } finally {

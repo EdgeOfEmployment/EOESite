@@ -120,7 +120,7 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 
 ### `/problems/new` and `/problems/[id]/edit` — form (client component)
 - **회사** `Input` with a `<datalist>` of existing companies (from the cached summary read). **문제 제목** `Input`. A live preview of the display title appears below them.
-- **문제 설명** and **제한사항**: a Markdown textarea with 작성/미리보기 tabs. The preview uses the same renderer as the detail page. An **이미지 추가** button uploads via the `uploadProblemImage` action (≤ 4 MB; png/jpeg/gif/webp) and inserts `![](publicUrl)` at the cursor.
+- **문제 설명** and **제한사항**: a Markdown textarea with 작성/미리보기 tabs. The preview uses the same renderer as the detail page. An **이미지 추가** button uploads via the `uploadProblemImage` action (≤ 4 MB; png/jpeg/gif/webp) and inserts `![](publicUrl)` at the cursor as its own paragraph (blank lines added as needed), because an image glued to the end of a line — e.g. a table row — would be swallowed by that line's Markdown.
 - **시간 제한 (ms)**: number input, default 1000.
 - **함수 시그니처**: a list of `name` + type `<select>` rows (add/remove, 1–6), plus a return-type `<select>`. A read-only line shows the result, e.g. `solution(arr: int[], k: int) -> int`.
 - **테스트 케이스** table:

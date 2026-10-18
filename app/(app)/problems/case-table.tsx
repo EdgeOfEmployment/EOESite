@@ -37,7 +37,7 @@ export function CaseTable({
               <th className="p-1 font-medium">
                 기대값 <span className="font-mono text-xs font-normal text-gray-500">{draft.returnType}</span>
               </th>
-              <th className="p-1 font-medium">예시</th>
+              <th className="whitespace-nowrap p-1 font-medium">예시</th>
               <th className="p-1">
                 <span className="sr-only">삭제</span>
               </th>
@@ -80,7 +80,7 @@ export function CaseTable({
                     aria-label={`케이스 ${r + 1} 삭제`}
                     disabled={draft.cases.length <= LIMITS.minCases}
                     onClick={() => onChange(removeCase(draft, row.id))}
-                    className="mt-3 text-xs text-red-600 disabled:opacity-40 dark:text-red-400"
+                    className="mt-3 whitespace-nowrap text-xs text-red-600 disabled:opacity-40 dark:text-red-400"
                   >
                     삭제
                   </button>

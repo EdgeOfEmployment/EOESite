@@ -77,7 +77,7 @@ export async function ProblemList({ searchParamsPromise }: { searchParamsPromise
   return (
     <>
       <Form key={JSON.stringify([company, q])} action="/problems" className="mb-4 flex flex-wrap gap-2">
-        <Select name="company" aria-label="회사" defaultValue={company} className="w-auto">
+        <Select name="company" aria-label="회사" defaultValue={company}>
           <option value="">전체 ({problems.length})</option>
           {counts.map((c) => (
             <option key={c.company} value={c.company}>

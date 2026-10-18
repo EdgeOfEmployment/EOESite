@@ -32,21 +32,24 @@ export function SignatureEditor({
             placeholder="이름 (예: arr)"
             value={param.name}
             onChange={(e) => onChange(updateParam(draft, i, { name: e.target.value }))}
-            className="font-mono"
+            className="min-w-0 font-mono"
           />
-          <Select
-            aria-label={`파라미터 ${i + 1} 타입`}
-            value={param.type}
-            onChange={(e) => onChange(updateParam(draft, i, { type: e.target.value as ValueType }))}
-            className="w-36 shrink-0"
-          >
-            {VALUE_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </Select>
+          {/* Fixed-width wrapper: `cn` doesn't merge Tailwind classes, so a width on Select itself loses to its `w-full`. */}
+          <div className="w-32 shrink-0">
+            <Select
+              aria-label={`파라미터 ${i + 1} 타입`}
+              value={param.type}
+              onChange={(e) => onChange(updateParam(draft, i, { type: e.target.value as ValueType }))}
+            >
+              {VALUE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </Select>
+          </div>
           <Button
+            className="shrink-0"
             type="button"
             variant="secondary"
             aria-label={`파라미터 ${i + 1} 삭제`}
@@ -69,18 +72,19 @@ export function SignatureEditor({
         <Label htmlFor="returnType" className="ml-auto">
           반환 타입
         </Label>
-        <Select
-          id="returnType"
-          value={draft.returnType}
-          onChange={(e) => onChange({ ...draft, returnType: e.target.value as ValueType })}
-          className="w-36"
-        >
-          {VALUE_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {type}
-            </option>
-          ))}
-        </Select>
+        <div className="w-32">
+          <Select
+            id="returnType"
+            value={draft.returnType}
+            onChange={(e) => onChange({ ...draft, returnType: e.target.value as ValueType })}
+          >
+            {VALUE_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
       <code className="text-sm">{formatSignature({ params: draft.params, returnType: draft.returnType })}</code>
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
