@@ -38,6 +38,16 @@ describe('generateJava', () => {
     expect(content).toContain('    static final class Harness {')
   })
 
+  it('constructs the solution inside the per-case try', () => {
+    const { content } = generateJava(problem, opts)
+    expect(content).toContain('try {\n                got = new Solution().solution(a0, a1);')
+    expect(content).not.toContain('Solution s = new Solution();')
+  })
+
+  it('omits the message when an error has none', () => {
+    expect(generateJava(problem, opts).content).toContain('(e.getMessage() == null ? "" : ": " + e.getMessage())')
+  })
+
   it('splits long JSON into several string constants', () => {
     const big = Array.from({ length: 3000 }, (_, i) => i)
     const { content } = generateJava({ ...problem, testCases: [{ args: [big, 1], expected: 1, isExample: true }] }, opts)

@@ -89,7 +89,7 @@ const JAVA_RUNTIME = String.raw`    static final int[] PASSED = new int[2];
 
     static void error(Throwable e) {
         allOk = false;
-        System.out.println("ERROR  " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        System.out.println("ERROR  " + e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage()));
     }
 
     static boolean report(int kind, boolean ok, long ms) {
@@ -265,11 +265,10 @@ function caseMethod(problem: ProblemContent, index: number, c: ReturnType<typeof
     `        start(${kind}, ${javaString(c.label)});`,
     ...argLines,
     `        ${JAVA_TYPE[returnType]} ex = ${JAVA_CONVERTER[returnType]}(parse(j(${jsonChunks(c.expected)})));`,
-    '        Solution s = new Solution();',
     '        long t0 = System.nanoTime();',
     `        ${JAVA_TYPE[returnType]} got;`,
     '        try {',
-    `            got = s.solution(${params.map((_, i) => `a${i}`).join(', ')});`,
+    `            got = new Solution().solution(${params.map((_, i) => `a${i}`).join(', ')});`,
     '        } catch (Throwable e) {',
     '            error(e);',
     '            return;',
