@@ -119,6 +119,8 @@ export function validateSignature(signature: unknown): string | null {
     names.add(param.name)
   }
   const expanded = (params as Param[]).flatMap(cExpandedNames)
+  const reservedExpansion = expanded.find((name) => RESERVED_NAMES.has(name))
+  if (reservedExpansion) return `"${reservedExpansion}"은(는) C 코드에서 예약된 이름과 겹칩니다. 파라미터 이름을 바꿔주세요`
   const collision = expanded.find((name, i) => expanded.indexOf(name) !== i)
   if (collision) return `"${collision}"이(가) C 코드의 배열 길이 인자 이름과 겹칩니다. 파라미터 이름을 바꿔주세요`
   return null

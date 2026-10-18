@@ -3,12 +3,14 @@
  * reject or misread them. Only lowercase-initial names matter: the name rule already requires
  * `^[a-z]`. `stdin`/`stdout`/`stderr`/`errno` are object-like macros in common C libraries
  * (MSVCRT defines `stdin` as `(&_iob[0])`), so a parameter with that name would not compile.
+ * The C list also covers keywords of gcc's default GNU/C23 modes, since not everyone compiles with `-std=c99`.
  */
 const C_NAMES = [
   'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum',
   'extern', 'float', 'for', 'goto', 'if', 'inline', 'int', 'long', 'register', 'restrict', 'return',
   'short', 'signed', 'sizeof', 'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void',
   'volatile', 'while', 'bool', 'true', 'false', 'stdin', 'stdout', 'stderr', 'errno', 'unix', 'linux',
+  'asm', 'typeof', 'alignas', 'alignof', 'constexpr', 'nullptr', 'static_assert', 'thread_local',
 ]
 
 const JS_NAMES = [

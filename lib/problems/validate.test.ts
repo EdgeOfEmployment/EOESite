@@ -85,6 +85,13 @@ describe('validateSignature', () => {
     expect(validateSignature(sig([{ name: 'class', type: 'int' }]))).toMatch(/예약어/)
     expect(validateSignature(sig([{ name: 'stdin', type: 'int' }]))).toMatch(/예약어/)
     expect(validateSignature(sig([{ name: 'a', type: 'int' }, { name: 'a', type: 'int' }]))).toMatch(/중복/)
+    expect(validateSignature(sig([{ name: 'typeof', type: 'int' }]))).toMatch(/예약어/)
+  })
+
+  it('rejects a name whose C length argument is reserved', () => {
+    expect(validateSignature(sig([{ name: 'ret', type: 'int[]' }]))).toBe(
+      '"ret_len"은(는) C 코드에서 예약된 이름과 겹칩니다. 파라미터 이름을 바꿔주세요'
+    )
   })
 
   it('rejects a name that collides with a C length argument', () => {
