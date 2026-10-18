@@ -11,6 +11,15 @@ import {
 import type { Signature } from './types'
 
 describe('validateValue', () => {
+  it('rejects unpaired surrogates but accepts valid emoji', () => {
+    const lone = `a${String.fromCharCode(0xd800)}b`
+    expect(validateValue('string', lone)).toBe('string에 깨진 유니코드 문자가 있습니다')
+    expect(validateValue('string[]', [lone])).toBe('string[]에 깨진 유니코드 문자가 있습니다')
+    expect(validateValue('string', `a${String.fromCharCode(0xdc00)}`)).toBe('string에 깨진 유니코드 문자가 있습니다')
+    expect(validateValue('string', '😀')).toBeNull()
+    expect(validateValue('string[]', ['😀'])).toBeNull()
+  })
+
   it('rejects NUL characters, which C would truncate', () => {
     expect(validateValue('string', `a${String.fromCharCode(0)}b`)).toBe('string에는 NUL 문자(\\u0000)를 넣을 수 없습니다')
     expect(validateValue('string[]', [`a${String.fromCharCode(0)}`])).toBe('string[]에는 NUL 문자(\\u0000)를 넣을 수 없습니다')
