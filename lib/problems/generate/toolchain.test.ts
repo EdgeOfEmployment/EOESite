@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterAll } from 'vitest'
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { generate } from './index'
@@ -19,14 +19,14 @@ import { TOOLCHAIN_FIXTURES } from './toolchain-fixtures'
  * (every case must pass → exit 0).
  */
 
-const ENABLED = Boolean(process.env.VERIFY_TOOLCHAINS)
+const ENABLED = process.env.VERIFY_TOOLCHAINS === '1'
 const IS_WINDOWS = process.platform === 'win32'
 
 function available(cmd: string, args: string[]): boolean {
   return spawnSync(cmd, args, { encoding: 'utf8', shell: false }).status === 0
 }
 
-const PYTHON = available('python3', ['--version']) ? 'python3' : 'python'
+const PYTHON = ENABLED && available('python3', ['--version']) ? 'python3' : 'python'
 
 const TOOLCHAINS: Record<Language, boolean> = ENABLED
   ? {
@@ -73,6 +73,8 @@ const root = ENABLED ? mkdtempSync(path.join(tmpdir(), 'problem-bank-verify-')) 
 const LANGS: Language[] = ['c', 'js', 'python', 'java']
 
 describe.skipIf(!ENABLED)('generated files run under real toolchains', () => {
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
   for (const lang of LANGS) {
     describe.skipIf(!TOOLCHAINS[lang])(lang, () => {
       for (const fixture of TOOLCHAIN_FIXTURES) {
