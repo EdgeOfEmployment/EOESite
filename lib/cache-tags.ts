@@ -23,3 +23,10 @@ export const MEMBER_NAMES_TAG = 'member-names'
  * rather than re-exported through a domain module.
  */
 export const CODING_BOARD_TAG = 'coding-board'
+
+/**
+ * The problem bank's cache tag, shared by every `'use cache'` read in lib/problems/queries.ts and
+ * invalidated by `updateTag` in app/(app)/problems/actions.ts. A named export for the same reason as
+ * `CODING_BOARD_TAG`: a typo in a bare string literal would silently disable invalidation.
+ */
+export const PROBLEM_BANK_TAG = 'problem-bank'
