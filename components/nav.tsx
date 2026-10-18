@@ -10,6 +10,7 @@ const links = [
   { href: '/', label: '홈' },
   { href: '/checkin', label: '인증' },
   { href: '/coding', label: '코테 스터디' },
+  { href: '/problems', label: '문제은행' },
   { href: '/jobposts', label: '자소서/공고' },
   { href: '/interviews', label: '모의면접' },
 ]

@@ -19,6 +19,7 @@ describe('Nav', () => {
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: '인증' })).toHaveAttribute('href', '/checkin')
     expect(screen.getByRole('link', { name: '코테 스터디' })).toHaveAttribute('href', '/coding')
+    expect(screen.getByRole('link', { name: '문제은행' })).toHaveAttribute('href', '/problems')
     expect(screen.getByRole('link', { name: '자소서/공고' })).toHaveAttribute('href', '/jobposts')
     expect(screen.getByRole('link', { name: '모의면접' })).toHaveAttribute('href', '/interviews')
   })
