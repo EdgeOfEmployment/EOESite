@@ -25,6 +25,18 @@ describe('orderCases', () => {
   })
 })
 
+describe('orderCases numbering', () => {
+  it('numbers examples and extras independently', () => {
+    const c = (isExample: boolean) => ({ args: [], expected: 0, isExample })
+    expect(orderCases([c(false), c(true), c(false), c(true)]).map((x) => x.label)).toEqual([
+      'Example 1',
+      'Example 2',
+      'Extra 1',
+      'Extra 2',
+    ])
+  })
+})
+
 describe('headerLines', () => {
   it('carries title, url, limit, run command, body, and signature, with images replaced', () => {
     const lines = headerLines(problem, opts, 'run it')
@@ -35,6 +47,11 @@ describe('headerLines', () => {
     expect(lines).toContain('[이미지: 배열 그림 - 사이트에서 확인]')
     expect(lines).toContain('- n ≤ 10')
     expect(lines.at(-1)).toBe('[함수 시그니처] solution(arr: int[], k: int) -> int')
+  })
+
+  it('leaves a malformed image alone instead of swallowing the text after it', () => {
+    const lines = headerLines({ ...problem, descriptionMd: '![x](oops\n\n중요한 설명 문장)' }, opts, 'x')
+    expect(lines).toContain('중요한 설명 문장)')
   })
 
   it('omits the constraints section when it is empty', () => {

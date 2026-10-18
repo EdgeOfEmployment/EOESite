@@ -36,7 +36,7 @@ export function orderCases(cases: TestCase[]): OrderedCase[] {
 // comment at U+2028/U+2029 and Python at a lone `\r`, so splitting only on `\n` would let the
 // rest of a description line escape the comment and become code.
 const LINE_BREAK = new RegExp('\\r\\n|\\r|\\n|\\u2028|\\u2029')
-const IMAGE = /!\[([^\]]*)\]\([^)]*\)/g
+const IMAGE = /!\[([^\]\n]*)\]\([^)\s]*\)/g
 
 function markdownLines(markdown: string): string[] {
   return markdown
