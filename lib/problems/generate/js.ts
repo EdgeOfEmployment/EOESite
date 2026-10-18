@@ -37,14 +37,15 @@ const JS_EQUALS: Record<ValueType, string> = {
   double: "return typeof got === 'number' && Math.abs(got - expected) <= 1e-6 * Math.max(1, Math.abs(expected))",
   bool: 'return got === expected',
   string: 'return got === expected',
-  'int[]': 'return Array.isArray(got) && got.length === expected.length && got.every((v, i) => v === expected[i])',
-  'string[]': 'return Array.isArray(got) && got.length === expected.length && got.every((v, i) => v === expected[i])',
+  'int[]': 'return Array.isArray(got) && got.length === expected.length && Array.from(got).every((v, i) => v === expected[i])',
+  'string[]': 'return Array.isArray(got) && got.length === expected.length && Array.from(got).every((v, i) => v === expected[i])',
   'int[][]':
-    'return Array.isArray(got) && got.length === expected.length && got.every((row, i) => Array.isArray(row) && row.length === expected[i].length && row.every((v, j) => v === expected[i][j]))',
+    'return Array.isArray(got) && got.length === expected.length && Array.from(got).every((row, i) => Array.isArray(row) && row.length === expected[i].length && Array.from(row).every((v, j) => v === expected[i][j]))',
 }
 
 // Deliberately written without template literals so the emitted JS never needs `${` escaping here.
 const JS_RUNTIME = String.raw`function fmt(v) {
+  if (typeof v === 'number' && !Number.isFinite(v)) return String(v)
   let s
   try {
     s = JSON.stringify(v)
@@ -118,6 +119,7 @@ export function generateJs(problem: ProblemContent, opts: GenerateOptions): Gene
     '}',
     '',
     `// ${HARNESS_MARKER}`,
+    '{',
     `const TIME_LIMIT_MS = ${problem.timeLimitMs}`,
     'const CASES = [',
     ...caseLines,
@@ -128,6 +130,7 @@ export function generateJs(problem: ProblemContent, opts: GenerateOptions): Gene
     '}',
     '',
     JS_RUNTIME,
+    '}',
   ].join('\n')
 
   return { filename: 'solution.js', content: content + '\n' }

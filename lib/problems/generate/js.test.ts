@@ -33,7 +33,23 @@ describe('generateJs', () => {
 
   it('compares nested arrays for int[][] returns', () => {
     const { content } = generateJs({ ...problem, signature: { ...problem.signature, returnType: 'int[][]' } }, opts)
-    expect(content).toContain('row.every((v, j) => v === expected[i][j])')
+    expect(content).toContain('Array.from(row).every((v, j) => v === expected[i][j])')
     expect(content).toContain('  return []\n}')
+  })
+
+  it('treats holes in returned arrays as wrong values', () => {
+    const { content } = generateJs({ ...problem, signature: { ...problem.signature, returnType: 'string[]' }, testCases: [{ args: [[1], 1], expected: ['a'], isExample: true }] }, opts)
+    expect(content).toContain('Array.from(got).every((v, i) => v === expected[i])')
+  })
+
+  it('scopes the harness in a block so solution-level names cannot clash with it', () => {
+    const { content } = generateJs(problem, opts)
+    expect(content).toMatch(/\/\/ ===== 아래는 채점 코드입니다 \(수정하지 마세요\) =====\n\{\nconst TIME_LIMIT_MS = 1500/)
+    expect(content.endsWith('main()\n}\n')).toBe(true)
+  })
+
+  it('prints NaN and Infinity as text instead of JSON null', () => {
+    const { content } = generateJs(problem, opts)
+    expect(content).toContain("if (typeof v === 'number' && !Number.isFinite(v)) return String(v)")
   })
 })
