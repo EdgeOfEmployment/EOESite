@@ -380,7 +380,7 @@ export function generateC(problem: ProblemContent, opts: GenerateOptions): Gener
 
   const content = [
     commentBlock(
-      headerLines(problem, opts, 'gcc -std=c99 -O2 solution.c -o solution && ./solution'),
+      headerLines(problem, opts, 'gcc -std=c99 -O2 solution.c -o solution 컴파일 후 ./solution 실행 (Windows: solution.exe)'),
       '//',
       sanitizeCComment
     ),

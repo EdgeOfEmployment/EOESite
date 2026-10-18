@@ -287,7 +287,7 @@ export function generateJava(problem: ProblemContent, opts: GenerateOptions): Ge
   const cases = orderCases(problem.testCases)
   // javac expands `\u` escapes even inside comments, so `\u000a` in a description would end the comment.
   const header = commentBlock(
-    headerLines(problem, opts, 'javac -encoding UTF-8 Solution.java && java Solution'),
+    headerLines(problem, opts, 'javac -encoding UTF-8 Solution.java 컴파일 후 java Solution 실행'),
     '//',
     (line) => line.replace(/\\u/g, '\\ u')
   )

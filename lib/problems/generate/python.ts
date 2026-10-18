@@ -113,7 +113,7 @@ export function generatePython(problem: ProblemContent, opts: GenerateOptions): 
   const signature = params.map((p) => `${p.name}: ${PY_TYPE[p.type]}`).join(', ')
 
   const content = [
-    commentBlock(headerLines(problem, opts, 'python solution.py'), '#'),
+    commentBlock(headerLines(problem, opts, 'python solution.py (macOS/Linux에서는 python3 solution.py)'), '#'),
     'from typing import List',
     '',
     '',

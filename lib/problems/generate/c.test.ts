@@ -26,6 +26,11 @@ describe('cParam', () => {
 })
 
 describe('generateC', () => {
+  it('documents how to compile and run on every platform', () => {
+    const { content } = generateC(problem, opts)
+    expect(content).toContain('실행 방법: gcc -std=c99 -O2 solution.c -o solution 컴파일 후 ./solution 실행 (Windows: solution.exe)')
+  })
+
   it('emits the stub with out-params for array returns', () => {
     const { filename, content } = generateC(
       {

@@ -17,6 +17,11 @@ const problem: ProblemContent = {
 const opts = { problemUrl: 'https://site.example/problems/abc' }
 
 describe('generateJava', () => {
+  it('documents how to compile and run', () => {
+    const { content } = generateJava(problem, opts)
+    expect(content).toContain('실행 방법: javac -encoding UTF-8 Solution.java 컴파일 후 java Solution 실행')
+  })
+
   it('emits a Solution class with an instance solution method', () => {
     const { filename, content } = generateJava(problem, opts)
     expect(filename).toBe('Solution.java')

@@ -18,6 +18,11 @@ const problem: ProblemContent = {
 const opts = { problemUrl: 'https://site.example/problems/abc' }
 
 describe('generatePython', () => {
+  it('documents how to run on every platform', () => {
+    const { content } = generatePython(problem, opts)
+    expect(content).toContain('실행 방법: python solution.py (macOS/Linux에서는 python3 solution.py)')
+  })
+
   it('emits a typed stub between the markers', () => {
     const { filename, content } = generatePython(problem, opts)
     expect(filename).toBe('solution.py')
