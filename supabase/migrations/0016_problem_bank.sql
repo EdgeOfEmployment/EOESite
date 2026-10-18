@@ -43,8 +43,9 @@ create policy "Authors and admins can delete bank problems"
   on bank_problems for delete
   using (public.is_approved() and (created_by = auth.uid() or public.is_admin()));
 
-insert into storage.buckets (id, name, public)
-values ('problem-images', 'problem-images', true)
+-- Mirrors the server action's limits (lib/problems/images.ts) so direct Storage API uploads can't bypass them.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('problem-images', 'problem-images', true, 4194304, array['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 on conflict (id) do nothing;
 
 create policy "Approved members can upload problem images to own folder"
