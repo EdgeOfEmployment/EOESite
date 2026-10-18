@@ -46,9 +46,21 @@ describe('ProblemList', () => {
   })
 
   it('applies ?company and ?q', async () => {
-    render(await ProblemList({ searchParamsPromise: Promise.resolve({ company: '카카오' }) }))
+    const { unmount } = render(await ProblemList({ searchParamsPromise: Promise.resolve({ company: '카카오' }) }))
     expect(screen.queryByText(/최단 경로/)).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: '회사' })).toHaveValue('카카오')
+    unmount()
+
+    render(await ProblemList({ searchParamsPromise: Promise.resolve({ q: '최단' }) }))
+    expect(screen.queryAllByRole('link', { name: /두 수의 합/ })).toHaveLength(0)
+    expect(screen.getByRole('link', { name: /최단 경로/ })).toBeInTheDocument()
+  })
+
+  it('resets the filter controls when the search params change', async () => {
+    const { rerender } = render(await ProblemList({ searchParamsPromise: Promise.resolve({ company: '카카오', q: '합' }) }))
+    rerender(await ProblemList({ searchParamsPromise: Promise.resolve({}) }))
+    expect(screen.getByRole('combobox', { name: '회사' })).toHaveValue('')
+    expect(screen.getByRole('textbox', { name: '검색' })).toHaveValue('')
   })
 
   it('distinguishes "no problems yet" from "no matches"', async () => {

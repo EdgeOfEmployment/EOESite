@@ -76,7 +76,7 @@ export async function ProblemList({ searchParamsPromise }: { searchParamsPromise
 
   return (
     <>
-      <Form action="/problems" className="mb-4 flex flex-wrap gap-2">
+      <Form key={JSON.stringify([company, q])} action="/problems" className="mb-4 flex flex-wrap gap-2">
         <Select name="company" aria-label="회사" defaultValue={company} className="w-auto">
           <option value="">전체 ({problems.length})</option>
           {counts.map((c) => (
@@ -102,7 +102,7 @@ export async function ProblemList({ searchParamsPromise }: { searchParamsPromise
               <Link href={`/problems/${problem.id}`} className="block">
                 <Card className="hover:bg-gray-50 dark:hover:bg-gray-900">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{displayTitle(problem.company, problem.title)}</span>
+                    <span className="min-w-0 break-words font-medium">{displayTitle(problem.company, problem.title)}</span>
                     <span className="shrink-0 rounded border border-gray-300 px-2 py-0.5 font-mono text-xs dark:border-gray-700">
                       {problem.paramCount}개 인자 → {problem.returnType}
                     </span>
