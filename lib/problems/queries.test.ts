@@ -22,6 +22,14 @@ const rows = [
     created_by: 'gone',
     created_at: '2026-10-17T00:00:00.000Z',
   },
+  {
+    id: 'p-bad',
+    company: '악성',
+    title: '깨진 시그니처',
+    signature: {},
+    created_by: 'user-1',
+    created_at: '2026-10-16T00:00:00.000Z',
+  },
 ]
 
 const detailRow = {
@@ -80,7 +88,7 @@ import { getProblem, getProblemSummaries } from './queries'
 import { MEMBER_NAMES_TAG, PROBLEM_BANK_TAG } from '@/lib/cache-tags'
 
 describe('getProblemSummaries', () => {
-  it('returns newest-first summaries with author names and signature shape', async () => {
+  it('returns newest-first summaries with author names and signature shape, skipping malformed rows', async () => {
     const summaries = await getProblemSummaries()
     expect(orderSpy).toHaveBeenCalledWith('created_at', { ascending: false })
     expect(summaries).toEqual([
@@ -107,6 +115,16 @@ describe('getProblem', () => {
       createdAt: '2026-10-17T00:00:00.000Z',
       updatedAt: '2026-10-18T00:00:00.000Z',
     })
+  })
+
+  it('returns null when the stored row fails validation (code-injection param name)', async () => {
+    detail = {
+      ...detailRow,
+      signature: { params: [{ name: 'n){system("x");int z(int m', type: 'int' }], returnType: 'int' },
+      test_cases: [{ args: [1], expected: 3, isExample: true }],
+    }
+    expect(await getProblem('p-1')).toBeNull()
+    detail = detailRow
   })
 
   it('returns null for an unknown id', async () => {

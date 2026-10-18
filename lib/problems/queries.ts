@@ -1,7 +1,8 @@
 import { cacheLife, cacheTag } from 'next/cache'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { MEMBER_NAMES_TAG, PROBLEM_BANK_TAG } from '@/lib/cache-tags'
-import type { BankProblem, BankProblemSummary, Signature, TestCase } from './types'
+import type { BankProblem, BankProblemSummary, Signature } from './types'
+import { validateProblem, validateSignature } from './validate'
 
 /**
  * Cached problem-bank reads for /problems, /problems/new, /problems/[id] and its edit page.
@@ -9,6 +10,9 @@ import type { BankProblem, BankProblemSummary, Signature, TestCase } from './typ
  * RLS check (supabase/migrations/0016_problem_bank.sql and 0003_coding.sql): bank_problems and
  * profiles both grant SELECT to any approved member with no per-row ownership clause, so the
  * cookie-free cache client is safe here. Every route reaching these functions is gated by proxy.ts.
+ *
+ * Rows are re-validated on read because RLS lets members write bank_problems directly, bypassing the
+ * actions, and the files generated from them are executed by other members.
  *
  * Invalidation is `updateTag(PROBLEM_BANK_TAG)` from app/(app)/problems/actions.ts. Per-viewer
  * decisions (may this viewer edit?) are made by callers outside these cache scopes.
@@ -31,18 +35,20 @@ export async function getProblemSummaries(): Promise<BankProblemSummary[]> {
   ])
 
   const nameById = new Map((profiles ?? []).map((p) => [p.id as string, p.name as string]))
-  return (rows ?? []).map((row) => {
-    const signature = row.signature as Signature
-    return {
-      id: row.id,
-      company: row.company,
-      title: row.title,
-      authorName: nameById.get(row.created_by) ?? UNKNOWN_AUTHOR,
-      createdAt: row.created_at,
-      returnType: signature.returnType,
-      paramCount: signature.params.length,
-    }
-  })
+  return (rows ?? [])
+    .filter((row) => validateSignature(row.signature) === null)
+    .map((row) => {
+      const signature = row.signature as Signature
+      return {
+        id: row.id,
+        company: row.company,
+        title: row.title,
+        authorName: nameById.get(row.created_by) ?? UNKNOWN_AUTHOR,
+        createdAt: row.created_at,
+        returnType: signature.returnType,
+        paramCount: signature.params.length,
+      }
+    })
 }
 
 /** `id` joins the cache key, so callers must pass it through `isUuid` first. */
@@ -59,16 +65,21 @@ export async function getProblem(id: string): Promise<BankProblem | null> {
     .maybeSingle()
   if (!row) return null
 
-  const { data: author } = await supabase.from('profiles').select('name').eq('id', row.created_by).maybeSingle()
-  return {
-    id: row.id,
+  const result = validateProblem({
     company: row.company,
     title: row.title,
     descriptionMd: row.description_md,
     constraintsMd: row.constraints_md,
     timeLimitMs: row.time_limit_ms,
-    signature: row.signature as Signature,
-    testCases: row.test_cases as TestCase[],
+    signature: row.signature,
+    testCases: row.test_cases,
+  })
+  if (!result.ok) return null
+
+  const { data: author } = await supabase.from('profiles').select('name').eq('id', row.created_by).maybeSingle()
+  return {
+    id: row.id,
+    ...result.value,
     createdBy: row.created_by,
     authorName: (author?.name as string | undefined) ?? UNKNOWN_AUTHOR,
     createdAt: row.created_at,
