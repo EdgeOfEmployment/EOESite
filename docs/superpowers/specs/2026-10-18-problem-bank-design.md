@@ -187,7 +187,7 @@ Run commands are worded as two steps rather than `a && b`, because `&&` is a par
 1. **Header comment**, using line comments only (`//` or `#`) so a description containing `*/` can't break out:
    - display title, problem URL, time limit, run command;
    - `description_md` and `constraints_md` verbatim;
-   - each image `![alt](url)` replaced with `[이미지: alt — 사이트에서 확인]`, with the problem URL given once in the header.
+   - each image `![alt](url)` replaced with `[이미지: alt - 사이트에서 확인]` (`[이미지 - 사이트에서 확인]` when alt is empty), with the problem URL given once in the header. Matching never crosses a line break, so a malformed image can't swallow the text after it.
    - Text is split on every line terminator any target honors (`\r\n`, `\r`, `\n`, U+2028, U+2029), so no fragment of a description escapes its comment.
    - Java only: a backslash followed by `u` in comment text becomes `\ u`, because javac processes `\uXXXX` escapes inside comments.
    - C only: `??` becomes `? ?` (gcc's `-std=c99` enables trigraphs, and `??/` is a backslash), and a line ending in `\` gets a trailing `.` so it can't splice the next line in.
@@ -212,7 +212,7 @@ Run commands are worded as two steps rather than `a && b`, because `&&` is a par
 - C out-params for the return length come last.
 - C empty arrays are passed as `NULL` with length 0, because C99 forbids zero-length array literals. A returned `NULL` with length 0 counts as an empty array.
 - Python uses `from typing import List` style hints for 3.8 compatibility.
-- Java: `class Solution` has an instance method `public <returnType> solution(...)` (Programmers style) and `public static void main` holds the harness. Non-ASCII characters in Java **string literals** are emitted as `\uXXXX` escapes so the source compiles under any platform encoding; control characters use named or octal escapes, never `\u`, since javac would expand `\u000a` into a real newline before lexing. C string literals emit every byte outside printable ASCII as a 3-digit octal escape of its UTF-8 encoding and escape `?` (trigraphs). JS/Python reuse `JSON.stringify` for strings and arrays.
+- Java: `class Solution` has an instance method `public <returnType> solution(...)` (Programmers style); `public static void main` only calls `Harness.run()`, and the whole harness lives in a nested `static final class Harness` so its helper names (`parse`, `eq`, `show`, …) can't clash with the solver's own members. Each case constructs `new Solution()` inside its try, so an exception from the solver's field initializers is reported for that case instead of aborting the run. Non-ASCII characters in Java **string literals** are emitted as `\uXXXX` escapes so the source compiles under any platform encoding; control characters use named or octal escapes, never `\u`, since javac would expand `\u000a` into a real newline before lexing. C string literals emit every byte outside printable ASCII as a 3-digit octal escape of its UTF-8 encoding and escape `?` (trigraphs). JS/Python reuse `JSON.stringify` for strings and arrays.
 - C helpers are all referenced from `main` as `(void)h_xxx;` so `-Wall` stays quiet, and C never uses `%lld` (older MinGW printf lacks it).
 - Python's harness calls `sys.stdout.reconfigure(errors="backslashreplace")` so printing a Korean or emoji value to a non-UTF-8 pipe can't crash the run.
 
@@ -231,7 +231,8 @@ Run commands are worded as two steps rather than `a && b`, because `&&` is a par
 - Harness output is **ASCII-only English** on purpose: printing UTF-8 Korean from C on a cp949 Windows console garbles it. String values inside `expected`/`got` print as-is.
 - Printed values are truncated to 200 characters.
 - Timing per call: `clock()` in C, `process.hrtime.bigint()` in JS, `time.perf_counter()` in Python, `System.nanoTime()` in Java. Exceeding the limit is a WARN; the case's PASS/FAIL stands.
-- Exceptions (JS/Python/Java) are caught per case and reported as `ERROR <type>: <message>`, and the run continues. In C a crash ends the run; the last printed case label points to the culprit.
+- Exceptions (JS/Python/Java) are caught per case and reported as `ERROR <type>: <message>`, and the run continues. Python also catches `SystemExit` (but not `KeyboardInterrupt`, so Ctrl+C still stops an infinite loop). In C a crash ends the run; the last printed case label points to the culprit.
+- Comparators are strict about element types: Python's `int[]`/`int[][]` comparators reject bools and floats (`_is_int`), and JS iterates with `Array.from` so holes in a sparse array count as wrong values. JS's harness sits in its own `{ }` block so a solver's top-level `const fmt` can't clash with it, and NaN/Infinity print as such instead of `null`.
 - Each case's arguments are freshly constructed or copied, so a solution that mutates its input doesn't affect later cases.
 - Exit code: 0 if everything passed, 1 otherwise.
 
