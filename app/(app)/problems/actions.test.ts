@@ -53,7 +53,7 @@ function payloadForm(value: unknown = content) {
 const initial = { error: null }
 
 let otherRows: { image_paths: string[] }[] = []
-const overlapsMock = vi.fn(async (_column: string, _values: string[]) => ({ data: otherRows }))
+const overlapsMock = vi.fn<(column: string, values: string[]) => Promise<{ data: { image_paths: string[] }[] }>>(async () => ({ data: otherRows }))
 const othersSelect = () => ({ neq: () => ({ overlaps: overlapsMock }) })
 
 beforeEach(() => {
