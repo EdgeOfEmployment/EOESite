@@ -280,6 +280,9 @@ function caseMethod(problem: ProblemContent, index: number, c: ReturnType<typeof
   ].join('\n')
 }
 
+// The harness lives in a nested class so its helper names cannot collide with the solver's own members.
+const indent = (text: string) => text.replace(/^(?=.)/gm, '    ')
+
 export function generateJava(problem: ProblemContent, opts: GenerateOptions): GeneratedFile {
   const { params, returnType } = problem.signature
   const cases = orderCases(problem.testCases)
@@ -304,15 +307,21 @@ export function generateJava(problem: ProblemContent, opts: GenerateOptions): Ge
     `    // ${HARNESS_MARKER}`,
     `    static final long TIME_LIMIT_MS = ${problem.timeLimitMs}L;`,
     '',
-    JAVA_RUNTIME,
-    '',
-    ...cases.map((c, i) => caseMethod(problem, i + 1, c) + '\n'),
     '    public static void main(String[] args) {',
-    ...cases.map((_, i) => `        case${i + 1}();`),
-    '        System.out.println("----");',
-    '        System.out.println("Examples: " + PASSED[0] + "/" + TOTAL[0] + " passed | Extra: " + PASSED[1] + "/" + TOTAL[1]',
-    '            + " passed | " + (allOk ? "ALL PASSED" : "SOME FAILED"));',
-    '        System.exit(allOk ? 0 : 1);',
+    '        Harness.run();',
+    '    }',
+    '',
+    '    static final class Harness {',
+    indent(JAVA_RUNTIME),
+    '',
+    ...cases.map((c, i) => indent(caseMethod(problem, i + 1, c)) + '\n'),
+    '        static void run() {',
+    ...cases.map((_, i) => `            case${i + 1}();`),
+    '            System.out.println("----");',
+    '            System.out.println("Examples: " + PASSED[0] + "/" + TOTAL[0] + " passed | Extra: " + PASSED[1] + "/" + TOTAL[1]',
+    '                + " passed | " + (allOk ? "ALL PASSED" : "SOME FAILED"));',
+    '            System.exit(allOk ? 0 : 1);',
+    '        }',
     '    }',
     '}',
   ].join('\n')

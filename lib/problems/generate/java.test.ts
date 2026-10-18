@@ -27,9 +27,15 @@ describe('generateJava', () => {
 
   it('decodes each case from JSON text in its own method and calls them in order', () => {
     const { content } = generateJava(problem, opts)
-    expect(content).toContain('        start(0, "Example 1");\n        int[] a0 = toIntArr(parse(j("[]")));')
-    expect(content).toContain('        int ex = toInt(parse(j("6")));')
-    expect(content).toContain('        case1();\n        case2();')
+    expect(content).toContain('            start(0, "Example 1");\n            int[] a0 = toIntArr(parse(j("[]")));')
+    expect(content).toContain('            int ex = toInt(parse(j("6")));')
+    expect(content).toContain('            case1();\n            case2();')
+  })
+
+  it('keeps the harness in a nested class so it cannot clash with the solver\'s helpers', () => {
+    const { content } = generateJava(problem, opts)
+    expect(content).toContain('    public static void main(String[] args) {\n        Harness.run();\n    }')
+    expect(content).toContain('    static final class Harness {')
   })
 
   it('splits long JSON into several string constants', () => {
