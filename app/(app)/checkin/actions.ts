@@ -7,6 +7,7 @@ import { computeLateFine, getKstDateString, checkinFeedTag } from '@/lib/checkin
 import type { CheckinGoal, CheckinGoalStatus } from '@/lib/checkin/types'
 import { getVerifiedUser } from '@/lib/auth/verify'
 import { FINES_TAG } from '@/lib/checkin/fines'
+import { resolveExtension } from '@/lib/storage/file-extension'
 
 // `updateTag`, not `revalidateTag`: a member who posts, comments, reacts or edits a goal
 // must see their own write on the very next read. The tag is per KST day so a write to
@@ -21,14 +22,6 @@ import { FINES_TAG } from '@/lib/checkin/fines'
 // undefined profile, which sets `pathWasRevalidated`.
 function revalidateCheckinDay(kstDate: string) {
   updateTag(checkinFeedTag(kstDate))
-}
-
-// Supabase Storage rejects keys containing spaces or non-ASCII characters
-// (e.g. Korean screenshot filenames like "스크린샷 2026-08-14 143253.png"),
-// so the original filename can't be used as-is in the upload path.
-function resolveExtension(fileName: string): string {
-  const match = /\.([a-zA-Z0-9]+)$/.exec(fileName)
-  return match ? `.${match[1]}` : ''
 }
 
 const GOAL_STATUSES: CheckinGoalStatus[] = ['todo', 'partial', 'done']
