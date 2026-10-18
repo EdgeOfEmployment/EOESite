@@ -52,8 +52,13 @@ function payloadForm(value: unknown = content) {
 
 const initial = { error: null }
 
+let otherRows: { image_paths: string[] }[] = []
+const overlapsMock = vi.fn(async (_column: string, _values: string[]) => ({ data: otherRows }))
+const othersSelect = () => ({ neq: () => ({ overlaps: overlapsMock }) })
+
 beforeEach(() => {
   vi.clearAllMocks()
+  otherRows = []
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', SUPABASE_URL)
   redirectMock.mockImplementation((url: string) => {
     throw new Error(`REDIRECT:${url}`)
@@ -118,6 +123,7 @@ describe('updateProblem', () => {
         eq: () => ({
           maybeSingle: async () => ({ data: existingPaths ? { image_paths: existingPaths } : null }),
         }),
+        ...othersSelect(),
       }),
       update: updateMock,
     })
@@ -151,6 +157,7 @@ describe('deleteProblem', () => {
   function mockDelete(rows: { image_paths: string[] }[]) {
     fromMock.mockReturnValue({
       delete: () => ({ eq: () => ({ select: async () => ({ data: rows, error: null }) }) }),
+      select: othersSelect,
     })
   }
 
@@ -159,6 +166,14 @@ describe('deleteProblem', () => {
     await expect(deleteProblem('p-1')).rejects.toThrow('REDIRECT:/problems?success=')
     expect(removeMock).toHaveBeenCalledWith([KEY_A])
     expect(updateTagMock).toHaveBeenCalledWith(PROBLEM_BANK_TAG)
+  })
+
+  it('keeps images that another problem still references', async () => {
+    mockDelete([{ image_paths: [KEY_A, KEY_OLD] }])
+    otherRows = [{ image_paths: [KEY_A] }]
+    await expect(deleteProblem('p-1')).rejects.toThrow('REDIRECT:/problems?success=')
+    expect(overlapsMock).toHaveBeenCalledWith('image_paths', [KEY_A, KEY_OLD])
+    expect(removeMock).toHaveBeenCalledWith([KEY_OLD])
   })
 
   it('redirects back with a permission error when RLS filtered the delete', async () => {

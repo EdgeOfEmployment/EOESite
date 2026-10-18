@@ -55,6 +55,18 @@ function imagePathsOf(content: ProblemContent): string[] {
   return extractImagePaths([content.descriptionMd, content.constraintsMd], prefix)
 }
 
+/**
+ * Best effort: a leftover image is harmless, a failed edit is not. Skips keys another problem
+ * still references (e.g. a pasted image URL), since removing them would break that problem.
+ */
+async function removeUnusedImages(supabase: Awaited<ReturnType<typeof createClient>>, id: string, candidates: string[]) {
+  if (candidates.length === 0) return
+  const { data: others } = await supabase.from('bank_problems').select('image_paths').neq('id', id).overlaps('image_paths', candidates)
+  const stillUsed = new Set((others ?? []).flatMap((row) => row.image_paths as string[]))
+  const removable = candidates.filter((path) => !stillUsed.has(path))
+  if (removable.length > 0) await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(removable)
+}
+
 export async function createProblem(_prev: FormState, formData: FormData): Promise<FormState> {
   const result = readPayload(formData)
   if (!result.ok) return { error: result.error }
@@ -99,10 +111,7 @@ export async function updateProblem(id: string, _prev: FormState, formData: Form
   updateTag(PROBLEM_BANK_TAG)
 
   const removed = (existing.image_paths as string[]).filter((path) => !imagePaths.includes(path))
-  if (removed.length > 0) {
-    // Best effort: a leftover image is harmless, a failed edit is not.
-    await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(removed)
-  }
+  await removeUnusedImages(supabase, id, removed)
 
   redirect(`/problems/${id}?success=` + encodeURIComponent('문제를 수정했어요'))
 }
@@ -119,8 +128,7 @@ export async function deleteProblem(id: string) {
   // Invalidate before cleanup so a failure while removing images cannot leave the cache stale.
   updateTag(PROBLEM_BANK_TAG)
 
-  const paths = deleted[0].image_paths as string[]
-  if (paths.length > 0) await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(paths)
+  await removeUnusedImages(supabase, id, deleted[0].image_paths as string[])
 
   redirect('/problems?success=' + encodeURIComponent('문제를 삭제했어요'))
 }
