@@ -63,8 +63,8 @@ Indexes: `bank_problems (company)` and `bank_problems (created_at desc)`.
   "returnType": "int" }
 ```
 - 1–6 params.
-- Each `name` matches `^[a-z][a-zA-Z0-9_]{0,29}$`, is unique, and is not a reserved word in any target language or harness (one shared list in `lib/problems/reserved.ts`, the union of C, JS, Python and Java keywords plus `solution`, `main`, `ret_len`, `ret_rows`, `ret_cols`).
-- The C-expanded names (`<name>_len`, `<name>_rows`, `<name>_cols`) must not collide with another param's name.
+- Each `name` matches `^[a-z][a-zA-Z0-9_]{0,29}$`, is unique, and is not a reserved word in any target language or harness. One shared list lives in `lib/problems/reserved.ts`: the union of C (including gcc's GNU/C23 keywords such as `typeof`, `nullptr`, `constexpr`, and the libc macros `stdin`/`stdout`/`stderr`/`errno`), JS (including `arguments`, `eval`, `undefined`), Python and Java keywords, plus `solution`, `main`, `ret_len`, `ret_rows`, `ret_cols`.
+- The C-expanded names (`<name>_len`, `<name>_rows`, `<name>_cols`) must not collide with another param's name or with a reserved name (e.g. `ret: int[]` would expand to `ret_len`, the array-return out-param).
 
 **Test cases (jsonb):**
 ```json
@@ -79,10 +79,11 @@ Indexes: `bank_problems (company)` and `bank_problems (created_at desc)`.
 - `insert`: `with check (created_by = auth.uid() and is_approved())`.
 - `update`: `using (is_approved() and (created_by = auth.uid() or is_admin()))`, with the same `with check`. The update action never sends `created_by`, so an admin edit keeps the original author.
 - `delete`: `using (is_approved() and (created_by = auth.uid() or is_admin()))`.
+- RLS does not stop an approved member from writing a row directly through PostgREST and skipping the actions' validation. Because other members execute files generated from these rows, `lib/problems/queries.ts` re-validates every row on read: summaries with an invalid signature are skipped, and `getProblem` returns `null` (→ 404) unless the row passes `validateProblem`. Locking down direct writes (revoking table grants and writing through a `security definer` function) is a possible later hardening.
 
 **Storage bucket `problem-images`** (public, like `checkin-photos`):
 - Object key `${userId}/${randomUUID()}${ext}`, ASCII only, reusing `resolveExtension` (moved from `app/(app)/checkin/actions.ts` to `lib/storage/file-extension.ts`).
-- Uploads are limited to **4 MB** (png/jpeg/gif/webp), leaving room for multipart overhead under the 5 MB `serverActions.bodySizeLimit`.
+- Uploads are limited to **4 MB** (png/jpeg/gif/webp), leaving room for multipart overhead under the 5 MB `serverActions.bodySizeLimit`. The same limits are set on the bucket itself (`file_size_limit`, `allowed_mime_types`), so direct Storage API uploads can't bypass them.
 - `insert` policy: approved members, and the first path segment must equal `auth.uid()`.
 - `select`: anyone (public bucket; URLs are unguessable).
 - `delete`: the owner (first path segment = `auth.uid()`) or `is_admin()`.
@@ -97,7 +98,7 @@ Validation lives in **`lib/problems/validate.ts`**, pure and shared by the clien
 | `long` | number | integer within ±(2^53-1) (JSON/JS safe-integer limit, stated in the form's help text) | exact |
 | `double` | number | finite | `|a-b| <= 1e-6 * max(1, |b|)` |
 | `bool` | boolean | — | exact |
-| `string` | string | ≤ 10,000 chars | exact (byte/codepoint equal) |
+| `string` | string | ≤ 10,000 chars; no NUL (`\u0000`, which jsonb can't store and C would truncate) and no unpaired UTF-16 surrogates (jsonb rejects them); same rules per element for `string[]` | exact (byte/codepoint equal) |
 | `int[]` | array of `int` | ≤ 100,000 elements | same length, elementwise exact, order-sensitive |
 | `string[]` | array of `string` | ≤ 10,000 elements | same length, elementwise exact |
 | `int[][]` | array of arrays of `int` | **rectangular** (every row the same length; `[]` allowed) | same shape, elementwise exact |
@@ -112,7 +113,7 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 
 ### `/problems` — list
 - Top bar: a **company filter** `<select>` ("전체" plus each company with its count, e.g. `카카오 (5)`, sorted by name), a **search input** (case-insensitive substring over the display title `[company]-title`), and a **문제 작성** button.
-- The filter and search live in URL params `?company=…&q=…`. The search submits as a GET form, so no client JS is needed.
+- The filter and search live in URL params `?company=…&q=…`. The search submits as a GET `next/form`. The form is keyed by the current params so its uncontrolled controls reset when the URL changes through a soft navigation.
 - Rows (`Card`): display title, author name, created date (KST), and a badge with the return type and param count. Ordered newest first. No pagination.
 - `EmptyState` covers both "no problems yet" and "no matches".
 - Data: one cached read returns every problem summary (`id, company, title, created_by name, created_at`). Filtering and counting run **in memory outside the cache scope**, so `?company`/`?q` never join a cache key.
@@ -130,7 +131,8 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
   - Form state lives in a pure draft model (`lib/problems/draft.ts`) that keeps cells as raw text and produces either per-cell errors or the validated payload.
   - A newly added row starts with `예시` checked only if it is row 1 or 2.
   - Changing a param's type re-validates that column. Adding a param adds an empty column. Removing a param drops its column after a `confirm()`.
-- Submit is disabled while any field is invalid.
+- Submit is disabled while any field is invalid. Enter in a single-line input doesn't submit (it's easy to hit while typing JSON); only the submit button does.
+- Image upload captures the selection before the request and inserts into the latest text afterwards, so typing during an upload isn't lost; a failed request shows an inline error and re-enables the button.
 - Submission: the form serializes `{ company, title, descriptionMd, constraintsMd, timeLimitMs, signature, testCases }` into one hidden JSON field and calls the server action with **`useActionState`**. On a validation failure the action returns `{ error }` instead of redirecting, so complex form state isn't lost. This is a new pattern in the repo, justified by this form's size. On success the action redirects to `/problems/[id]?success=…`.
 - Edit mode: only the author or an admin sees the 수정 entry point. The edit page also checks this server-side and redirects with an error otherwise.
 
@@ -144,10 +146,11 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 - The `[id]` param is checked as a UUID before it reaches the cached read, so malformed URLs can't grow the cache key space. Unknown id → `notFound()`.
 
 ### Server actions (`app/(app)/problems/actions.ts`)
-- `createProblem(prev, formData)`, `updateProblem(id, prev, formData)`: `getVerifiedUser()`, parse the JSON payload, run `validateProblem()` (same module as the client), normalize `company`, derive `image_paths` (below), insert/update (`updated_at = now()` on update), then `updateTag(PROBLEM_BANK_TAG)` and redirect.
-- `deleteProblem(id)`: delete the row (RLS enforces author/admin), then best-effort `storage.remove(image_paths)`, then `updateTag` and redirect to `/problems`.
+- `createProblem(prev, formData)`, `updateProblem(id, prev, formData)`: parse the JSON payload (≤ 1 MB), run `validateProblem()` (same module as the client), `getVerifiedUser()`, derive `image_paths` (below), insert/update (`updated_at = now()` on update), then `updateTag(PROBLEM_BANK_TAG)`, then best-effort image cleanup, then redirect.
+- `deleteProblem(id)`: delete the row (RLS enforces author/admin; zero returned rows → permission error), `updateTag`, best-effort image cleanup, redirect to `/problems`.
 - `uploadProblemImage(formData)`: validate size/MIME, upload to `problem-images/${userId}/${uuid}${ext}`, and return `{ url }` or `{ error }`.
-- **`image_paths` derivation:** scan both Markdown fields for URLs that start with this bucket's public URL prefix and store their object keys. On update, best-effort `remove()` the keys that were in the old `image_paths` and are absent from the new one.
+- **`image_paths` derivation:** scan both Markdown fields for image URLs that start with this bucket's public URL prefix and keep only keys shaped like uploaded objects (`<uuid>/<uuid>.<ext>`, query strings stripped), so `..` or encoded segments never reach `remove()`.
+- **Image cleanup:** on update, the keys dropped from `image_paths`; on delete, all of them. Keys still referenced by another `bank_problems` row are skipped (copying a problem's Markdown into a variant is a normal workflow), and the rest are removed best-effort.
 
 ### Caching
 - New constant `PROBLEM_BANK_TAG = 'problem-bank'` in `lib/cache-tags.ts`, with a doc comment in the style of its neighbours.
@@ -157,13 +160,14 @@ All routes live under `app/(app)/problems/` and are gated by `proxy.ts` like eve
 - RLS grants SELECT on `bank_problems` and `profiles` to every approved member with no per-row clause, so the cookie-free cache client is safe (same argument as `lib/coding/queries.ts`).
 - Per-viewer decisions ("can I edit this?") compare `getSessionProfile()` against `createdBy` **outside** the cache scope.
 - Invalidation uses only `updateTag(PROBLEM_BANK_TAG)` from the actions. No `revalidatePath`.
+- `/problems/new` reads only cached data, so the build prerenders it fully (1-minute revalidation); `updateTag` expires it on every write.
 
 ## File Generator
 
 `lib/problems/generate/` is a set of pure TypeScript functions with no DOM or Node APIs, so they run in the browser and in vitest.
 
 ```
-generate(problem: BankProblem, lang: 'c' | 'js' | 'python' | 'java', opts: { problemUrl: string })
+generate(problem: ProblemContent, lang: 'c' | 'js' | 'python' | 'java', opts: { problemUrl: string })
   -> { filename: string, content: string }
 ```
 Modules: `index.ts` (dispatch and the language list), `shared.ts` (case ordering, header lines, comment rendering, markers), and one module per language with its own literal emitters: `c.ts`, `js.ts`, `python.ts`, `java.ts`.
@@ -172,10 +176,12 @@ Modules: `index.ts` (dispatch and the language list), `shared.ts` (case ordering
 
 | Lang | Filename | Run command (printed in the header comment) |
 |---|---|---|
-| C | `solution.c` | `gcc -std=c99 -O2 solution.c -o solution && ./solution` |
+| C | `solution.c` | `gcc -std=c99 -O2 solution.c -o solution 컴파일 후 ./solution 실행 (Windows: solution.exe)` |
 | JS | `solution.js` | `node solution.js` |
-| Python | `solution.py` | `python solution.py` (Python 3.8+) |
-| Java | `Solution.java` | `javac -encoding UTF-8 Solution.java && java Solution` (Java 11+) |
+| Python | `solution.py` | `python solution.py (macOS/Linux에서는 python3 solution.py)` (Python 3.8+) |
+| Java | `Solution.java` | `javac -encoding UTF-8 Solution.java 컴파일 후 java Solution 실행` (Java 11+) |
+
+Run commands are worded as two steps rather than `a && b`, because `&&` is a parse error in Windows PowerShell 5.1.
 
 ### File layout (every language)
 1. **Header comment**, using line comments only (`//` or `#`) so a description containing `*/` can't break out:

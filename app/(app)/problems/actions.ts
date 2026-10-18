@@ -61,7 +61,9 @@ function imagePathsOf(content: ProblemContent): string[] {
  */
 async function removeUnusedImages(supabase: Awaited<ReturnType<typeof createClient>>, id: string, candidates: string[]) {
   if (candidates.length === 0) return
-  const { data: others } = await supabase.from('bank_problems').select('image_paths').neq('id', id).overlaps('image_paths', candidates)
+  const { data: others, error } = await supabase.from('bank_problems').select('image_paths').neq('id', id).overlaps('image_paths', candidates)
+  // If we can't tell which images are shared, keep them all: an orphan is harmless, a lost image is not.
+  if (error) return
   const stillUsed = new Set((others ?? []).flatMap((row) => row.image_paths as string[]))
   const removable = candidates.filter((path) => !stillUsed.has(path))
   if (removable.length > 0) await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(removable)
