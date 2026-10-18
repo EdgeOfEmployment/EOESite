@@ -95,13 +95,15 @@ export async function updateProblem(id: string, _prev: FormState, formData: Form
   if (error) return { error: error.message }
   if (!updated || updated.length === 0) return { error: '권한이 없습니다' }
 
+  // Invalidate before cleanup so a failure while removing images cannot leave the cache stale.
+  updateTag(PROBLEM_BANK_TAG)
+
   const removed = (existing.image_paths as string[]).filter((path) => !imagePaths.includes(path))
   if (removed.length > 0) {
     // Best effort: a leftover image is harmless, a failed edit is not.
     await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(removed)
   }
 
-  updateTag(PROBLEM_BANK_TAG)
   redirect(`/problems/${id}?success=` + encodeURIComponent('문제를 수정했어요'))
 }
 
@@ -114,10 +116,12 @@ export async function deleteProblem(id: string) {
   if (error) redirect(`/problems/${id}?error=` + encodeURIComponent(error.message))
   if (!deleted || deleted.length === 0) redirect(`/problems/${id}?error=` + encodeURIComponent('권한이 없습니다'))
 
+  // Invalidate before cleanup so a failure while removing images cannot leave the cache stale.
+  updateTag(PROBLEM_BANK_TAG)
+
   const paths = deleted[0].image_paths as string[]
   if (paths.length > 0) await supabase.storage.from(PROBLEM_IMAGES_BUCKET).remove(paths)
 
-  updateTag(PROBLEM_BANK_TAG)
   redirect('/problems?success=' + encodeURIComponent('문제를 삭제했어요'))
 }
 
