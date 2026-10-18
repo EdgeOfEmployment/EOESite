@@ -42,7 +42,13 @@ export function ProblemForm({
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form
+      action={formAction}
+      className="flex flex-col gap-6"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.target instanceof HTMLInputElement) e.preventDefault()
+      }}
+    >
       {state.error && <Alert variant="danger">{state.error}</Alert>}
       <input type="hidden" name="payload" value={check.payload ?? ''} />
 

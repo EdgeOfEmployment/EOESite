@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Label, Textarea } from '@/components/ui/input'
 import { Markdown } from '@/components/markdown'
 import { ALLOWED_IMAGE_TYPES } from '@/lib/problems/images'
@@ -25,26 +25,37 @@ export function MarkdownField({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const valueRef = useRef(value)
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
 
   async function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
 
+    const start = textareaRef.current?.selectionStart ?? value.length
+    const end = textareaRef.current?.selectionEnd ?? start
     setUploading(true)
     setUploadError(null)
     const formData = new FormData()
     formData.set('image', file)
-    const result = await uploadProblemImage(formData)
-    setUploading(false)
-
-    if ('error' in result) {
-      setUploadError(result.error)
-      return
+    try {
+      const result = await uploadProblemImage(formData)
+      if ('error' in result) {
+        setUploadError(result.error)
+        return
+      }
+      const current = valueRef.current
+      const s = Math.min(start, current.length)
+      const e = Math.min(end, current.length)
+      onChange(`${current.slice(0, s)}![](${result.url})${current.slice(e)}`)
+    } catch {
+      setUploadError('이미지를 올리지 못했어요. 다시 시도해주세요')
+    } finally {
+      setUploading(false)
     }
-    const start = textareaRef.current?.selectionStart ?? value.length
-    const end = textareaRef.current?.selectionEnd ?? value.length
-    onChange(`${value.slice(0, start)}![](${result.url})${value.slice(end)}`)
   }
 
   const tabClass = (active: boolean) =>

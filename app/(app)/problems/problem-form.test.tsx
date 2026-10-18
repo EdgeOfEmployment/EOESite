@@ -9,6 +9,7 @@ vi.mock('@/components/markdown', () => ({
   Markdown: ({ source }: { source: string }) => <div data-testid="markdown">{source}</div>,
 }))
 
+import { uploadProblemImage } from './actions'
 import { ProblemForm } from './problem-form'
 import type { ProblemContent } from '@/lib/problems/types'
 
@@ -71,5 +72,28 @@ describe('ProblemForm', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ 케이스 추가' }))
     expect(screen.getByLabelText('케이스 2 예시')).toBeChecked()
     expect(screen.getByLabelText('케이스 3 예시')).not.toBeChecked()
+  })
+
+  it('does not submit when Enter is pressed in a cell', () => {
+    renderForm(initial)
+    const notPrevented = fireEvent.keyDown(screen.getByLabelText('케이스 1 arr'), { key: 'Enter' })
+    expect(notPrevented).toBe(false)
+  })
+
+  it('recovers from a failed image upload', async () => {
+    vi.mocked(uploadProblemImage).mockRejectedValueOnce(new Error('network'))
+    renderForm(initial)
+    fireEvent.change(screen.getByLabelText('문제 설명 이미지 파일'), { target: { files: [new File(['x'], 'a.png', { type: 'image/png' })] } })
+    expect(await screen.findByText('이미지를 올리지 못했어요. 다시 시도해주세요')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '이미지 추가' })[0]).toBeEnabled()
+  })
+
+  it('inserts the uploaded image into the latest text', async () => {
+    vi.mocked(uploadProblemImage).mockResolvedValueOnce({ url: 'https://img.example/a.png' })
+    renderForm(initial)
+    const textarea = screen.getByLabelText('문제 설명') as HTMLTextAreaElement
+    textarea.setSelectionRange(0, 0)
+    fireEvent.change(screen.getByLabelText('문제 설명 이미지 파일'), { target: { files: [new File(['x'], 'a.png', { type: 'image/png' })] } })
+    expect(await screen.findByDisplayValue('![](https://img.example/a.png)설명')).toBeInTheDocument()
   })
 })
