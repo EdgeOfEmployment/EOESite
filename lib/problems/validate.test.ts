@@ -11,6 +11,11 @@ import {
 import type { Signature } from './types'
 
 describe('validateValue', () => {
+  it('rejects NUL characters, which C would truncate', () => {
+    expect(validateValue('string', `a${String.fromCharCode(0)}b`)).toBe('string에는 NUL 문자(\\u0000)를 넣을 수 없습니다')
+    expect(validateValue('string[]', [`a${String.fromCharCode(0)}`])).toBe('string[]에는 NUL 문자(\\u0000)를 넣을 수 없습니다')
+  })
+
   it('accepts int bounds and rejects values outside them or non-integers', () => {
     expect(validateValue('int', 2147483647)).toBeNull()
     expect(validateValue('int', -2147483648)).toBeNull()

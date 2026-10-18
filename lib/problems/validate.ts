@@ -49,6 +49,7 @@ export function validateValue(type: ValueType, value: unknown): string | null {
       return typeof value === 'boolean' ? null : 'bool은 true 또는 false여야 합니다'
     case 'string':
       if (typeof value !== 'string') return 'string은 "따옴표"로 감싼 문자열이어야 합니다'
+      if (value.includes('\0')) return 'string에는 NUL 문자(\\u0000)를 넣을 수 없습니다'
       return value.length <= LIMITS.string ? null : `string은 ${LIMITS.string}자 이하여야 합니다`
     case 'int[]':
       if (!Array.isArray(value)) return 'int[]는 [1, 2, 3] 형태의 배열이어야 합니다'
@@ -58,6 +59,7 @@ export function validateValue(type: ValueType, value: unknown): string | null {
       if (!Array.isArray(value)) return 'string[]는 ["a", "b"] 형태의 배열이어야 합니다'
       if (value.length > LIMITS.stringArray) return `string[]는 원소 ${LIMITS.stringArray}개 이하여야 합니다`
       if (!value.every((v) => typeof v === 'string')) return 'string[]의 원소는 문자열이어야 합니다'
+      if (value.some((v) => (v as string).includes('\0'))) return 'string[]에는 NUL 문자(\\u0000)를 넣을 수 없습니다'
       return value.every((v) => (v as string).length <= LIMITS.string)
         ? null
         : `string[]의 각 문자열은 ${LIMITS.string}자 이하여야 합니다`
