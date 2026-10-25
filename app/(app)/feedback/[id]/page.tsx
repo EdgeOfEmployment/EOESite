@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { groupCommentsByLine } from '@/lib/jobposts/comments'
-import { FeedbackLines, type FeedbackLineWithComments } from './feedback-lines'
+import type { FeedbackLineWithComments } from './feedback-lines'
+import { FeedbackDocView } from './views'
 import type { FeedbackLine } from '@/lib/jobposts/types'
-import { PageShell } from '@/components/ui/page-shell'
-import { Alert } from '@/components/ui/alert'
 
 export default async function FeedbackPage({
   params,
@@ -86,14 +85,12 @@ export default async function FeedbackPage({
   }))
 
   return (
-    <PageShell title={heading} width="3xl">
-      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">작성자: {authorName}</p>
-      {queryError && (
-        <Alert variant="danger" className="mb-4">
-          {queryError}
-        </Alert>
-      )}
-      <FeedbackLines feedbackDocId={id} lines={feedbackLines} />
-    </PageShell>
+    <FeedbackDocView
+      feedbackDocId={id}
+      heading={heading}
+      authorName={authorName}
+      lines={feedbackLines}
+      error={queryError}
+    />
   )
 }

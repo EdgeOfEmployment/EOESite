@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DragHandleIcon, SortableItem } from '@/components/ui/sortable-item'
 import { reorderById } from '@/lib/ui/reorder'
+import { useDemoMode } from '@/components/tour/demo-guard'
 
 type DraftGoal = CheckinGoal & { _id: string }
 
@@ -95,6 +96,7 @@ export function GoalsEditor({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState<DraftGoal[]>([])
   const [saving, setSaving] = useState(false)
+  const demo = useDemoMode()
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -128,6 +130,13 @@ export function GoalsEditor({
   }
 
   async function saveGoals() {
+    // The only write in the app that is a plain onClick rather than a <form> submit, so the
+    // /tour DemoGuard cannot intercept it on its own.
+    if (demo.isDemo) {
+      demo.notifyBlocked()
+      setEditing(false)
+      return
+    }
     setSaving(true)
     try {
       await updateCheckinGoals(postId, buildGoalsFormData(draft))

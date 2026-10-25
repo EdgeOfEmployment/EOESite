@@ -4,10 +4,10 @@ import { cacheLife, cacheTag } from 'next/cache'
 import { getSessionProfile } from '@/lib/auth/session'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
-import { PostForm } from './post-form'
-import { PostCard } from './post-card'
+import { CheckinFeedView, DayNavView } from './views'
 import type { CheckinPost, CheckinGoal } from '@/lib/checkin/types'
-import { getKstDateString, kstDayRangeUtc, shiftKstDateString, formatKstDateHeading, checkinFeedTag } from '@/lib/checkin/time'
+import { getKstDateString, kstDayRangeUtc, checkinFeedTag } from '@/lib/checkin/time'
+import { resolveSelectedDate } from '@/lib/checkin/date-param'
 import { MEMBER_NAMES_TAG } from '@/lib/cache-tags'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -27,22 +27,6 @@ import { Skeleton } from '@/components/skeleton'
 export const unstable_instant = false
 
 type CheckinSearchParams = { error?: string; success?: string; date?: string }
-
-const DATE_PARAM_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-
-function resolveSelectedDate(dateParam: string | undefined, todayKst: string): string {
-  if (!dateParam || !DATE_PARAM_PATTERN.test(dateParam)) {
-    return todayKst
-  }
-
-  const parsed = new Date(`${dateParam}T00:00:00.000Z`)
-
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== dateParam) {
-    return todayKst
-  }
-
-  return dateParam > todayKst ? todayKst : dateParam
-}
 
 /**
  * The single place `{ selectedDate, isToday }` is derived. `DayHeader` and `FeedContent` both
@@ -222,33 +206,8 @@ export async function DayHeader({
   searchParamsPromise: Promise<CheckinSearchParams>
 }) {
   const { selectedDate, isToday } = await resolveDayContext(searchParamsPromise)
-  const prevDate = shiftKstDateString(selectedDate, -1)
-  const nextDate = shiftKstDateString(selectedDate, 1)
 
-  return (
-    <>
-      <div className="mb-4 flex items-center justify-center gap-4 text-sm">
-        <Link href={`/checkin?date=${prevDate}`} className="underline">
-          ◀
-        </Link>
-        <span className="font-medium">
-          {formatKstDateHeading(selectedDate)}
-          {isToday ? ' (오늘)' : ''}
-        </span>
-        {isToday ? (
-          <span className="text-gray-300 dark:text-gray-700" aria-hidden="true">
-            ▶
-          </span>
-        ) : (
-          <Link href={`/checkin?date=${nextDate}`} className="underline">
-            ▶
-          </Link>
-        )}
-      </div>
-
-      {isToday && <PostForm />}
-    </>
-  )
+  return <DayNavView selectedDate={selectedDate} isToday={isToday} />
 }
 
 export async function FeedContent({
@@ -264,13 +223,5 @@ export async function FeedContent({
   ])
   const isAdmin = session?.role === 'admin'
 
-  return (
-    <ul className="mt-6 flex flex-col gap-4">
-      {checkinPosts.map((post) => (
-        <li key={post.id}>
-          <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
-        </li>
-      ))}
-    </ul>
-  )
+  return <CheckinFeedView posts={checkinPosts} currentUserId={session!.userId} isAdmin={isAdmin} />
 }

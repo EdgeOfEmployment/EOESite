@@ -41,4 +41,23 @@ describe('Nav', () => {
     render(<Nav />)
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('aria-current', 'page')
   })
+
+  it('renders custom links and trailing content in place of the app links and logout', () => {
+    mockPathname = '/tour/checkin'
+    render(
+      <Nav
+        links={[
+          { href: '/tour', label: '소개', exact: true },
+          { href: '/tour/checkin', label: '인증' },
+        ]}
+        trailing={<a href="/login">로그인</a>}
+      />
+    )
+
+    expect(screen.getByRole('link', { name: '인증' })).toHaveAttribute('href', '/tour/checkin')
+    expect(screen.getByRole('link', { name: '인증' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: '소개' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: '로그인' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
+  })
 })

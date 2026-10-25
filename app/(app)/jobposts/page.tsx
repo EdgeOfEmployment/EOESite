@@ -5,7 +5,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { PostForm } from './post-form'
-import { PostCard } from './post-card'
+import { JobPostFeedView } from './views'
 import type { JobPost } from '@/lib/jobposts/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -145,13 +145,5 @@ export async function FeedContent() {
   const [session, jobPosts] = await Promise.all([getSessionProfile(), getJobPosts()])
   const isAdmin = session?.role === 'admin'
 
-  return (
-    <ul className="mt-6 flex flex-col gap-4">
-      {jobPosts.map((post) => (
-        <li key={post.id}>
-          <PostCard post={post} currentUserId={session!.userId} isAdmin={isAdmin} />
-        </li>
-      ))}
-    </ul>
-  )
+  return <JobPostFeedView posts={jobPosts} currentUserId={session!.userId} isAdmin={isAdmin} />
 }

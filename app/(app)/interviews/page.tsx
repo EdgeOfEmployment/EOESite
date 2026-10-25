@@ -4,7 +4,7 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { createCacheClient } from '@/lib/supabase/cache-client'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
 import { SessionForm } from './session-form'
-import { SessionCard } from './session-card'
+import { InterviewSessionFeedView } from './views'
 import type { InterviewSession } from '@/lib/interviews/types'
 import { PageShell } from '@/components/ui/page-shell'
 import { Alert } from '@/components/ui/alert'
@@ -118,13 +118,5 @@ export async function FeedContent() {
   const [session, interviewSessions] = await Promise.all([getSessionProfile(), getInterviewSessions()])
   const isAdmin = session?.role === 'admin'
 
-  return (
-    <ul className="mt-6 flex flex-col gap-4">
-      {interviewSessions.map((s) => (
-        <li key={s.id}>
-          <SessionCard session={s} currentUserId={session!.userId} isAdmin={isAdmin} />
-        </li>
-      ))}
-    </ul>
-  )
+  return <InterviewSessionFeedView sessions={interviewSessions} currentUserId={session!.userId} isAdmin={isAdmin} />
 }

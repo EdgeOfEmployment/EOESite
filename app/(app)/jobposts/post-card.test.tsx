@@ -63,4 +63,9 @@ describe('PostCard', () => {
     render(<PostCard post={post} currentUserId="user-1" isAdmin={true} />)
     expect(screen.getByRole('button', { name: '삭제' })).toBeInTheDocument()
   })
+
+  it('prefixes the feedback link with basePath', () => {
+    render(<PostCard post={post} currentUserId="user-1" isAdmin={false} basePath="/tour" />)
+    expect(screen.getByRole('link', { name: '피드백 보기' })).toHaveAttribute('href', '/tour/feedback/doc-1')
+  })
 })

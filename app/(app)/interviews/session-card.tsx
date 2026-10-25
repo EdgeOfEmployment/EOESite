@@ -7,10 +7,13 @@ export function SessionCard({
   session,
   currentUserId,
   isAdmin,
+  basePath = '',
 }: {
   session: InterviewSession
   currentUserId: string
   isAdmin: boolean
+  /** Prefix for internal links; `/tour` renders this card inside the demo. */
+  basePath?: string
 }) {
   const isParticipating = session.participants.some((p) => p.userId === currentUserId)
   const canDelete = isAdmin || session.createdBy === currentUserId
@@ -19,7 +22,7 @@ export function SessionCard({
     <Card as="article">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <Link href={`/interviews/${session.id}`} className="font-medium underline">
+          <Link href={`${basePath}/interviews/${session.id}`} className="font-medium underline">
             {session.title}
           </Link>
           <p className="text-xs text-gray-500 dark:text-gray-400">{session.sessionAt}</p>

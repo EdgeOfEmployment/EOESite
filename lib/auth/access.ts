@@ -10,8 +10,9 @@ const PUBLIC_PATHS = ['/login', '/signup', '/pending', '/forgot-password']
 
 // Always reachable, independent of session/approval state: the recovery-link
 // exchange has no session yet, and the page it lands on must accept whatever
-// approval status the profile is in.
-const ALWAYS_ALLOWED_PATHS = ['/auth', '/reset-password']
+// approval status the profile is in. `/tour` is the public demo: it renders only
+// hard-coded fixtures, so visitors, pending users and members all see the same page.
+const ALWAYS_ALLOWED_PATHS = ['/auth', '/reset-password', '/tour']
 
 function matchesPath(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(base + '/')

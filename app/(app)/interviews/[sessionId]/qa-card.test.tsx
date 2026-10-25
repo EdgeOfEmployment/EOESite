@@ -51,4 +51,9 @@ describe('QaCard', () => {
     render(<QaCard qa={qa} currentUserId="user-9" isAdmin={false} />)
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
+
+  it('prefixes the feedback link with basePath', () => {
+    render(<QaCard qa={qa} currentUserId="user-1" isAdmin={false} basePath="/tour" />)
+    expect(screen.getByRole('link', { name: '피드백 보기' })).toHaveAttribute('href', '/tour/feedback/doc-1')
+  })
 })

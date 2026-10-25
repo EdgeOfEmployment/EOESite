@@ -8,10 +8,13 @@ export function PostCard({
   post,
   currentUserId,
   isAdmin,
+  basePath = '',
 }: {
   post: JobPost
   currentUserId: string
   isAdmin: boolean
+  /** Prefix for internal links; `/tour` renders this card inside the demo. */
+  basePath?: string
 }) {
   return (
     <Card as="article">
@@ -67,7 +70,7 @@ export function PostCard({
 
       {post.feedbackDocId && (
         <Link
-          href={`/feedback/${post.feedbackDocId}`}
+          href={`${basePath}/feedback/${post.feedbackDocId}`}
           className="mt-3 inline-block text-sm text-gray-500 underline dark:text-gray-400"
         >
           피드백 보기
