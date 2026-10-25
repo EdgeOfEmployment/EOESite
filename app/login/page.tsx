@@ -41,6 +41,11 @@ export default function LoginPage({
           회원가입
         </Link>
       </p>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <Link href="/tour" className="underline">
+          로그인 없이 둘러보기 →
+        </Link>
+      </p>
     </PageShell>
   )
 }

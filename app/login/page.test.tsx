@@ -30,6 +30,15 @@ describe('LoginPage', () => {
   })
 })
 
+describe('LoginPage tour link', () => {
+  it('links to the public /tour demo', () => {
+    const ui = LoginPage({ searchParams: Promise.resolve({}) })
+    render(ui)
+
+    expect(screen.getByRole('link', { name: '로그인 없이 둘러보기 →' })).toHaveAttribute('href', '/tour')
+  })
+})
+
 describe('LoginPage TopNotice', () => {
   it('shows an error message when present in search params', async () => {
     const ui = await TopNotice({
