@@ -2,13 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getSessionProfile } from '@/lib/auth/session'
 import { queryIfAny } from '@/lib/supabase/query-if-any'
-import { QaForm } from './qa-form'
-import { QaCard } from './qa-card'
+import { InterviewSessionView } from './views'
 import { groupQasByAuthor } from '@/lib/interviews/grouping'
 import type { InterviewQa } from '@/lib/interviews/types'
-import { PageShell } from '@/components/ui/page-shell'
-import { Alert } from '@/components/ui/alert'
-import { Toast } from '@/components/ui/toast'
 
 export default async function InterviewSessionPage({
   params,
@@ -66,32 +62,16 @@ export default async function InterviewSessionPage({
   const qaGroups = groupQasByAuthor(interviewQas)
 
   return (
-    <PageShell title={session.title}>
-      <Toast message={success} />
-      <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">{session.session_at}</p>
-      {session.description && (
-        <p className="mb-6 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">{session.description}</p>
-      )}
-      {queryError && (
-        <Alert variant="danger" className="mb-4">
-          {queryError}
-        </Alert>
-      )}
-      <QaForm sessionId={sessionId} />
-      <div className="mt-6 flex flex-col gap-6">
-        {qaGroups.map((group) => (
-          <section key={group.authorId}>
-            <h2 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">{group.authorName}</h2>
-            <ul className="flex flex-col gap-4">
-              {group.qas.map((qa) => (
-                <li key={qa.id}>
-                  <QaCard qa={qa} currentUserId={caller!.userId} isAdmin={isAdmin} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </div>
-    </PageShell>
+    <InterviewSessionView
+      sessionId={sessionId}
+      title={session.title}
+      sessionAt={session.session_at}
+      description={session.description}
+      qaGroups={qaGroups}
+      currentUserId={caller!.userId}
+      isAdmin={isAdmin}
+      error={queryError}
+      success={success}
+    />
   )
 }
