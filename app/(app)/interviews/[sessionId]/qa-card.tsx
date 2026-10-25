@@ -7,10 +7,13 @@ export function QaCard({
   qa,
   currentUserId,
   isAdmin,
+  basePath = '',
 }: {
   qa: InterviewQa
   currentUserId: string
   isAdmin: boolean
+  /** Prefix for internal links; `/tour` renders this card inside the demo. */
+  basePath?: string
 }) {
   const canDelete = isAdmin || qa.authorId === currentUserId
 
@@ -37,7 +40,7 @@ export function QaCard({
       </div>
 
       <Link
-        href={`/feedback/${qa.feedbackDocId}`}
+        href={`${basePath}/feedback/${qa.feedbackDocId}`}
         className="mt-3 inline-block text-sm text-gray-500 underline dark:text-gray-400"
       >
         피드백 보기

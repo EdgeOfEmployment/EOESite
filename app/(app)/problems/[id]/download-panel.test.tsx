@@ -37,4 +37,10 @@ describe('DownloadPanel', () => {
     click.mockRestore()
     vi.unstubAllGlobals()
   })
+
+  it('prefixes the problem URL in the file header with basePath', () => {
+    render(<DownloadPanel problemId="p-1" problem={problem} basePath="/tour" />)
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }))
+    expect(screen.getByText(/문제 페이지: http:\/\/localhost(:\d+)?\/tour\/problems\/p-1/)).toBeInTheDocument()
+  })
 })

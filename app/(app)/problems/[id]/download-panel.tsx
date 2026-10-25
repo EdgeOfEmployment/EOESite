@@ -11,12 +11,21 @@ import { cn } from '@/lib/ui/cn'
  * the header's problem URL needs `window.location.origin`. That is also why the preview is only
  * rendered after a click — rendering it during SSR would mismatch on hydration.
  */
-export function DownloadPanel({ problemId, problem }: { problemId: string; problem: ProblemContent }) {
+export function DownloadPanel({
+  problemId,
+  problem,
+  basePath = '',
+}: {
+  problemId: string
+  problem: ProblemContent
+  /** Prefix for the problem URL written into the file header; `/tour` renders this panel inside the demo. */
+  basePath?: string
+}) {
   const [lang, setLang] = useState<Language>('python')
   const [showPreview, setShowPreview] = useState(false)
 
   function build() {
-    return generate(problem, lang, { problemUrl: `${window.location.origin}/problems/${problemId}` })
+    return generate(problem, lang, { problemUrl: `${window.location.origin}${basePath}/problems/${problemId}` })
   }
 
   function download() {

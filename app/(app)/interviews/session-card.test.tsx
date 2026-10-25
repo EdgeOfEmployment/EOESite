@@ -57,4 +57,9 @@ describe('SessionCard', () => {
     render(<SessionCard session={session} currentUserId="user-2" isAdmin={false} />)
     expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
   })
+
+  it('prefixes the session link with basePath', () => {
+    render(<SessionCard session={session} currentUserId="user-1" isAdmin={false} basePath="/tour" />)
+    expect(screen.getByRole('link', { name: '2조 모의면접' })).toHaveAttribute('href', '/tour/interviews/session-1')
+  })
 })
