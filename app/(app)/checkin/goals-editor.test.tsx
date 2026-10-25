@@ -10,6 +10,7 @@ vi.mock('./actions', () => ({
 }))
 
 import { GoalsEditor } from './goals-editor'
+import { DemoGuard, DEMO_BLOCKED_MESSAGE } from '@/components/tour/demo-guard'
 import type { CheckinGoal } from '@/lib/checkin/types'
 
 const goals: CheckinGoal[] = [
@@ -141,5 +142,21 @@ describe('GoalsEditor', () => {
     expect(formData.get('completedAt-1')).toBe('2026-08-10T02:00:00.000Z')
 
     await waitFor(() => expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument())
+  })
+
+  it('inside the /tour DemoGuard, shows the demo toast instead of saving', () => {
+    updateCheckinGoalsMock.mockClear()
+    render(
+      <DemoGuard>
+        <GoalsEditor postId="post-1" goals={goals} isAuthor={true} />
+      </DemoGuard>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '수정' }))
+    fireEvent.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(updateCheckinGoalsMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(DEMO_BLOCKED_MESSAGE)
+    expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument()
   })
 })
