@@ -113,4 +113,23 @@ describe('getRedirectPath', () => {
   it('lets unauthenticated users reach /reset-password (submitting fails server-side without a recovery session)', () => {
     expect(getRedirectPath(null, '/reset-password')).toBeNull()
   })
+
+  it('lets unauthenticated visitors reach the /tour demo and its nested pages', () => {
+    expect(getRedirectPath(null, '/tour')).toBeNull()
+    expect(getRedirectPath(null, '/tour/checkin')).toBeNull()
+  })
+
+  it('lets pending users reach /tour instead of bouncing them to /pending', () => {
+    const profile: Profile = { status: 'pending', role: 'member' }
+    expect(getRedirectPath(profile, '/tour')).toBeNull()
+  })
+
+  it('lets approved members reach /tour without bouncing to the dashboard', () => {
+    const profile: Profile = { status: 'approved', role: 'member' }
+    expect(getRedirectPath(profile, '/tour/coding')).toBeNull()
+  })
+
+  it('does not treat /tourist as the public /tour path', () => {
+    expect(getRedirectPath(null, '/tourist')).toBe('/login')
+  })
 })
